@@ -65,8 +65,21 @@ const AppContent = () => {
     initializeMobile();
   }, []);
 
-  // For new/unauthenticated users, show role selection immediately after splash
-  if (showRoleSelection && !isAuthenticated) {
+  // Allow auth-related routes to bypass the role-selection gate
+  const authBypassPaths = new Set([
+    '/login',
+    '/register',
+    '/vendor/login',
+    '/vendor/register',
+    '/delivery/login',
+    '/delivery/register',
+    '/auth' // unified auth if ever used directly
+  ]);
+  const shouldBypassRoleGate = authBypassPaths.has(location.pathname);
+
+  // For new/unauthenticated users, show role selection on normal entry points,
+  // but not when they explicitly navigate to a login/register route.
+  if (!shouldBypassRoleGate && showRoleSelection && !isAuthenticated) {
     return <RoleSelectionPage />;
   }
 

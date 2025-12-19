@@ -9,8 +9,12 @@ import {
   Box,
   Link,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Divider,
+  Stack
 } from '@mui/material';
+import GoogleIcon from '@mui/icons-material/Google';
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
 import { useAuth } from '../context/AuthContext';
 import { login } from '../services/api';
 
@@ -45,6 +49,17 @@ const LoginPage = () => {
   const handleRoleSelect = (role) => {
     setUserRole(role);
     setRole(role);
+  };
+
+  const handleGoogleLogin = () => {
+    // TODO: Wire this up to real Google Sign-In
+    console.log('Google login clicked');
+  };
+
+  const handleMobileOtpLogin = () => {
+    // TODO: Wire this up to real mobile OTP login (e.g., navigate to OTP flow)
+    console.log('Mobile OTP login clicked');
+    navigate('/otp');
   };
 
   const handleSubmit = async (e) => {
@@ -100,6 +115,48 @@ const LoginPage = () => {
         )}
 
         <Box component="form" onSubmit={handleSubmit} noValidate>
+          {/* Social / alternate login options */}
+          <Stack spacing={1.5} sx={{ mb: 3 }}>
+            <Button
+              type="button"
+              fullWidth
+              variant="outlined"
+              startIcon={
+                // Use branded multi-color Google "G" logo
+                <Box
+                  component="img"
+                  src="https://developers.google.com/identity/images/g-logo.png"
+                  alt="Google logo"
+                  sx={{ width: 18, height: 18 }}
+                />
+              }
+              onClick={handleGoogleLogin}
+              sx={{
+                py: 1.1,
+                fontWeight: 600,
+                borderRadius: 2
+              }}
+            >
+              Sign in with Google
+            </Button>
+            <Button
+              type="button"
+              fullWidth
+              variant="outlined"
+              startIcon={<PhoneIphoneIcon />}
+              onClick={handleMobileOtpLogin}
+              sx={{
+                py: 1.1,
+                fontWeight: 600,
+                borderRadius: 2
+              }}
+            >
+              Login with Mobile OTP
+            </Button>
+          </Stack>
+
+          <Divider sx={{ mb: 2 }}>OR</Divider>
+
           <TextField
             margin="normal"
             required

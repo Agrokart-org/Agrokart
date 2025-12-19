@@ -40,7 +40,7 @@ const RoleSelectionPage = () => {
       icon: CustomerIcon,
       color: '#4CAF50',
       gradient: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
-      route: '/auth/login?role=customer',
+      route: '/login?role=customer',
       features: [
         'Quick fertilizer delivery to your farm',
         'Simple, mobile-first ordering experience',
@@ -67,7 +67,7 @@ const RoleSelectionPage = () => {
       icon: DeliveryIcon,
       color: '#2196F3',
       gradient: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
-      route: '/delivery/register',
+      route: '/delivery/login',
       features: ['Accept Deliveries', 'Route Optimization', 'Earn Money', 'Flexible Schedule']
     }
   ];

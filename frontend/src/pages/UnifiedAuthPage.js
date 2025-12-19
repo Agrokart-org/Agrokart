@@ -28,8 +28,7 @@ import {
   Login as LoginIcon,
   PersonAdd as RegisterIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AgrokartLogo from '../components/AgrokartLogo';
 import { auth } from '../config/firebase';
@@ -37,6 +36,7 @@ import { auth } from '../config/firebase';
 const UnifiedAuthPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, register, setRole } = useAuth();
   
   useEffect(() => {
@@ -47,7 +47,15 @@ const UnifiedAuthPage = () => {
     // Removed external network HEAD test to avoid console errors on restricted networks
   }, []);
   
-  const [selectedRole, setSelectedRole] = useState('customer');
+  // Pick initial role from URL query (?role=customer|vendor|delivery), default to customer
+  const searchParams = new URLSearchParams(location.search);
+  const roleParam = searchParams.get('role');
+  const initialRole =
+    roleParam === 'vendor' || roleParam === 'delivery' || roleParam === 'customer'
+      ? roleParam
+      : 'customer';
+
+  const [selectedRole, setSelectedRole] = useState(initialRole);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -97,7 +105,7 @@ const UnifiedAuthPage = () => {
     }
   ];
 
-  const selectedRoleData = roles.find(role => role.id === selectedRole);
+  const selectedRoleData = roles.find(role => role.id === selectedRole) || roles[0];
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -112,6 +120,12 @@ const UnifiedAuthPage = () => {
     setError('');
     setSuccess('');
   };
+
+  // Keep context role in sync with URL-derived initial role on mount / URL change
+  useEffect(() => {
+    setSelectedRole(initialRole);
+    setRole(initialRole);
+  }, [initialRole, setRole]);
 
   const handleAuthModeChange = (event, newMode) => {
     setAuthMode(newMode);
