@@ -26,20 +26,27 @@ const RoleSelectionPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { selectRole } = useAuth();
+  // No default selection to avoid confusion – user explicitly picks a role
   const [selectedRole, setSelectedRole] = useState(null);
   const [showAnimation, setShowAnimation] = useState(true);
 
   const roles = [
     {
       id: 'customer',
-      title: 'Customer',
-      subtitle: 'Shop for Agricultural Products',
-      description: 'Browse fertilizers, seeds, tools and place orders for delivery to your farm',
+      title: 'Customer / Farmer',
+      subtitle: 'Buy Agricultural Products',
+      description:
+        'Order high-quality fertilizers and farm essentials with fast doorstep delivery from trusted nearby vendors.',
       icon: CustomerIcon,
       color: '#4CAF50',
       gradient: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
       route: '/auth/login?role=customer',
-      features: ['Browse Products', 'Place Orders', 'Track Deliveries', 'AI Assistant']
+      features: [
+        'Quick fertilizer delivery to your farm',
+        'Simple, mobile-first ordering experience',
+        'Live order tracking & notifications',
+        'Personalized recommendations for your crops'
+      ]
     },
     {
       id: 'vendor',
@@ -116,7 +123,7 @@ const RoleSelectionPage = () => {
                 color="text.secondary"
                 sx={{ mb: 1 }}
               >
-                Three-Sided Agricultural Marketplace
+                Choose how you want to use Agrokart
               </Typography>
               
               <Typography
@@ -124,7 +131,7 @@ const RoleSelectionPage = () => {
                 color="text.secondary"
                 sx={{ maxWidth: 600, mx: 'auto' }}
               >
-                Choose your role to access the marketplace designed for farmers, vendors, and delivery partners
+                Most people start as a customer/farmer to order fertilizers. You can also continue as a vendor or delivery partner.
               </Typography>
             </Box>
 
@@ -142,10 +149,10 @@ const RoleSelectionPage = () => {
                           height: '100%',
                           cursor: 'pointer',
                           transition: 'all 0.3s ease',
-                          border: '2px solid transparent',
+                          border: isSelected ? `2px solid ${role.color}` : '2px solid transparent',
                           background: isSelected ? role.gradient : 'white',
                           color: isSelected ? 'white' : 'inherit',
-                          transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                          transform: isSelected ? 'scale(1.03)' : 'scale(1)',
                           boxShadow: isSelected 
                             ? `0 20px 40px ${alpha(role.color, 0.3)}`
                             : '0 4px 20px rgba(0,0,0,0.1)',

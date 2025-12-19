@@ -118,7 +118,7 @@ const HomePage = () => {
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden'
-        }}-
+        }}
       >
         {/* Animated Background Elements */}
         <Box

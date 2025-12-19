@@ -65,20 +65,9 @@ const AppContent = () => {
     initializeMobile();
   }, []);
 
-  // Allow certain routes to bypass unified auth gating
-  const authBypassPaths = new Set([
-    '/login',
-    '/auth',
-    '/vendor/login',
-    '/vendor/register',
-    '/delivery/login',
-    '/delivery/register'
-  ]);
-  const shouldBypassAuthGate = authBypassPaths.has(location.pathname);
-
-  // Show unified auth page if not authenticated and role selection is needed
-  if (!shouldBypassAuthGate && showRoleSelection && !isAuthenticated) {
-    return <UnifiedAuthPage />;
+  // For new/unauthenticated users, show role selection immediately after splash
+  if (showRoleSelection && !isAuthenticated) {
+    return <RoleSelectionPage />;
   }
 
   return (

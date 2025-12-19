@@ -182,6 +182,12 @@ export const AuthProvider = ({ children }) => {
     setUserRole(role);
   };
 
+  // Role selection helper used by RoleSelectionPage
+  const selectRole = (role) => {
+    setRole(role);
+    setShowRoleSelection(false);
+  };
+
   // Update user data (used after registration)
   const updateUser = (userData) => {
     setUser(userData);
@@ -209,6 +215,7 @@ export const AuthProvider = ({ children }) => {
     setUserRole,
     setShowRoleSelection,
     setRole,
+    selectRole,
     updateUser,
     setIsAuthenticated: setAuthenticationStatus,
     hideRoleSelection,

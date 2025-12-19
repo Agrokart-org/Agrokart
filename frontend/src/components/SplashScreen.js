@@ -141,7 +141,7 @@ const SplashScreen = ({ onComplete }) => {
                       textAlign: 'center'
                     }}
                   >
-                    Agri
+                    Agro
                   </Typography>
                   <Typography
                     variant="h3"
@@ -153,7 +153,7 @@ const SplashScreen = ({ onComplete }) => {
                       textAlign: 'center'
                     }}
                   >
-                    Net
+                    kart
                   </Typography>
                 </Box>
                 
