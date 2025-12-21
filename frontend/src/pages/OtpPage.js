@@ -8,46 +8,61 @@ import {
   Typography,
   Box,
   CircularProgress,
-  Alert
+  Alert,
+  InputAdornment
 } from '@mui/material';
-import { auth } from '../config/firebase';
-import { onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import PhoneIcon from '@mui/icons-material/Phone';
+import { useAuth } from '../context/AuthContext';
 
 const OtpPage = () => {
+  const [step, setStep] = useState('phone'); // 'phone' or 'otp'
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [timer, setTimer] = useState(30);
   const [canResend, setCanResend] = useState(false);
+
   const navigate = useNavigate();
+  const { sendOtp, verifyOtp, userRole, setRole, updateUser } = useAuth(); // Destructure confirmOtp from context if renamed, or verifyOtp
 
   useEffect(() => {
-    // Check if user is already logged in
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // User is signed in
-        localStorage.setItem('userPhone', user.phoneNumber);
-        localStorage.setItem('userName', `User ${user.phoneNumber.slice(-4)}`);
-        localStorage.setItem('isLoggedIn', 'true');
-        navigate('/home');
-      }
-    });
-
-    // Start resend timer
     let interval;
-    if (timer > 0) {
+    if (step === 'otp' && timer > 0) {
       interval = setInterval(() => {
         setTimer((prev) => prev - 1);
       }, 1000);
-    } else {
+    } else if (timer === 0) {
       setCanResend(true);
     }
+    return () => clearInterval(interval);
+  }, [step, timer]);
 
-    return () => {
-      unsubscribe();
-      clearInterval(interval);
-    };
-  }, [timer, navigate]);
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // Basic validation
+    if (phoneNumber.length < 10) {
+      setError('Please enter a valid phone number');
+      return;
+    }
+
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+    setLoading(true);
+
+    try {
+      await sendOtp(formattedPhone, 'recaptcha-container');
+      setStep('otp');
+      setTimer(30);
+      setCanResend(false);
+    } catch (err) {
+      console.error('Send OTP Error:', err);
+      setError(err.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
@@ -55,134 +70,150 @@ const OtpPage = () => {
     setLoading(true);
 
     try {
-      const result = await window.confirmationResult.confirm(otp);
-      // User signed in successfully
-      const user = result.user;
+      const { user } = await verifyOtp(otp);
+
       console.log('User signed in:', user);
-      // Navigation will be handled by the auth state listener
+
+      // If no role is set or just generic login, check/set role
+      // For now, we trust the flow they came from (or default)
+      // Logic from OtpPage original:
+      localStorage.setItem('userPhone', user.phoneNumber);
+      localStorage.setItem('userName', `User ${user.phoneNumber.slice(-4)}`);
+      localStorage.setItem('isLoggedIn', 'true');
+
+      // If specific role logic is needed (e.g. they came from Vendor login)
+      // We rely on AuthContext userRole persistence
+      if (userRole === 'vendor') {
+        navigate('/vendor/dashboard');
+      } else if (userRole === 'delivery_partner') {
+        navigate('/delivery/dashboard');
+      } else {
+        navigate('/home');
+      }
+
     } catch (err) {
-      console.error('Error verifying OTP:', err);
+      console.error('Verify OTP Error:', err);
       setError('Invalid OTP. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResendOTP = async () => {
-    if (!canResend) return;
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      const phoneNumber = localStorage.getItem('phoneNumber');
-      const formattedPhone = `+91${phoneNumber}`;
-      
-      // Create a new reCAPTCHA verifier
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'normal',
-        'callback': () => {
-          // reCAPTCHA solved
-        }
-      });
-
-      const confirmationResult = await signInWithPhoneNumber(
-        auth,
-        formattedPhone,
-        window.recaptchaVerifier
-      );
-      
-      window.confirmationResult = confirmationResult;
-      
-      setTimer(30);
-      setCanResend(false);
-    } catch (err) {
-      console.error('Error resending OTP:', err);
-      setError('Failed to resend OTP. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  const handleResend = () => {
+    setTimer(30);
+    setCanResend(false);
+    handleSendOTP({ preventDefault: () => { } });
   };
 
   return (
     <Container maxWidth="sm">
       <Box sx={{ mt: 8 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center">
-            Verify OTP
-          </Typography>
-          <Typography variant="body1" gutterBottom align="center" color="text.secondary">
-            Enter the 6-digit code sent to your phone
-          </Typography>
+          {step === 'phone' ? (
+            <>
+              <Typography variant="h4" component="h1" gutterBottom align="center">
+                Login with Phone
+              </Typography>
+              <Typography variant="body1" gutterBottom align="center" color="text.secondary">
+                Enter your mobile number to receive an OTP
+              </Typography>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
+              {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+              <form onSubmit={handleSendOTP}>
+                <TextField
+                  fullWidth
+                  label="Phone Number"
+                  variant="outlined"
+                  margin="normal"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="Enter 10 digit number"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><PhoneIcon /> +91</InputAdornment>,
+                  }}
+                  disabled={loading}
+                />
+
+                <div id="recaptcha-container" style={{ marginTop: 20 }}></div>
+
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  type="submit"
+                  disabled={loading || phoneNumber.length < 10}
+                  sx={{ mt: 3 }}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Send OTP'}
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Typography variant="h4" component="h1" gutterBottom align="center">
+                Verify OTP
+              </Typography>
+              <Typography variant="body1" gutterBottom align="center" color="text.secondary">
+                Enter the 6-digit code sent to {phoneNumber}
+              </Typography>
+
+              {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+              <form onSubmit={handleVerifyOTP}>
+                <TextField
+                  fullWidth
+                  label="OTP"
+                  variant="outlined"
+                  margin="normal"
+                  value={otp}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    if (val.length <= 6) setOtp(val);
+                  }}
+                  placeholder="Enter 6-digit OTP"
+                  inputProps={{ maxLength: 6 }}
+                  disabled={loading}
+                />
+
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  type="submit"
+                  disabled={loading || otp.length !== 6}
+                  sx={{ mt: 3 }}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Verify OTP'}
+                </Button>
+
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                  <Button
+                    variant="text"
+                    onClick={handleResend}
+                    disabled={!canResend || loading}
+                  >
+                    {timer > 0 ? `Resend in ${timer}s` : 'Resend OTP'}
+                  </Button>
+                </Box>
+
+                <Button
+                  fullWidth
+                  variant="text"
+                  onClick={() => setStep('phone')}
+                  sx={{ mt: 1 }}
+                >
+                  Change Phone Number
+                </Button>
+              </form>
+            </>
           )}
 
-          <form onSubmit={handleVerifyOTP}>
-            <TextField
-              fullWidth
-              label="OTP"
-              variant="outlined"
-              margin="normal"
-              value={otp}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '');
-                if (value.length <= 6) {
-                  setOtp(value);
-                }
-              }}
-              placeholder="Enter 6-digit OTP"
-              error={!!error}
-              helperText={error}
-              disabled={loading}
-              inputProps={{
-                maxLength: 6,
-                pattern: '[0-9]*'
-              }}
-            />
-
-            <div id="recaptcha-container" style={{ marginTop: '20px' }}></div>
-
-            <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              size="large"
-              type="submit"
-              disabled={loading || otp.length !== 6}
-              sx={{ mt: 3 }}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Verify OTP'}
-            </Button>
-
-            <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                {timer > 0 ? `Resend OTP in ${timer}s` : 'Didn\'t receive the code?'}
-              </Typography>
-              <Button
-                variant="text"
-                color="primary"
-                onClick={handleResendOTP}
-                disabled={!canResend || loading}
-                sx={{ mt: 1 }}
-              >
-                Resend OTP
-              </Button>
-            </Box>
-
-            <Button
-              fullWidth
-              variant="text"
-              color="primary"
-              onClick={() => navigate('/login')}
-              sx={{ mt: 2 }}
-            >
-              Back to Login
-            </Button>
-          </form>
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Button onClick={() => navigate('/login')}>Back to Login</Button>
+          </Box>
         </Paper>
       </Box>
     </Container>

@@ -1,27 +1,12 @@
-import React, { useState } from 'react';
-import {
-  Button,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Typography,
-  Box,
-  Chip,
-  useTheme,
-  alpha
-} from '@mui/material';
-import {
-  Language as LanguageIcon,
-  ExpandMore as ExpandMoreIcon,
-  Check as CheckIcon
-} from '@mui/icons-material';
+import React from 'react';
+import { Box, Menu, MenuItem, Button, Typography, ListItemIcon } from '@mui/material';
+import { Translate as TranslateIcon, Check as CheckIcon } from '@mui/icons-material';
 import { useLanguage } from '../context/LanguageContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const LanguageSelector = ({ variant = 'button', size = 'medium' }) => {
-  const theme = useTheme();
-  const { currentLanguage, languages, changeLanguage, getCurrentLanguageInfo } = useLanguage();
-  const [anchorEl, setAnchorEl] = useState(null);
+const LanguageSelector = () => {
+  const { currentLanguage, languages, changeLanguage } = useLanguage();
+  const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
 
   const handleClick = (event) => {
@@ -32,175 +17,108 @@ const LanguageSelector = ({ variant = 'button', size = 'medium' }) => {
     setAnchorEl(null);
   };
 
-  const handleLanguageChange = async (languageCode) => {
-    await changeLanguage(languageCode);
+  const handleLanguageSelect = (code) => {
+    changeLanguage(code);
     handleClose();
   };
 
-  const currentLangInfo = getCurrentLanguageInfo();
+  const currentLangInfo = languages.find(l => l.code === currentLanguage) || languages[0];
 
-  // Compact chip variant for mobile/small spaces
-  if (variant === 'chip') {
-    return (
-      <>
-        <Chip
-          icon={<LanguageIcon />}
-          label={currentLangInfo.nativeName}
-          onClick={handleClick}
-          size={size}
-          sx={{
-            bgcolor: 'rgba(255, 255, 255, 0.15)',
-            color: '#FFFFFF',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            '&:hover': {
-              bgcolor: 'rgba(255, 255, 255, 0.25)',
-            },
-            '& .MuiChip-icon': {
-              color: '#FFFFFF'
-            }
-          }}
-        />
-        <Menu
-          anchorEl={anchorEl}
-          open={open}
-          onClose={handleClose}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'right',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
-          PaperProps={{
-            sx: {
-              mt: 1,
-              borderRadius: 2,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-              minWidth: 150
-            }
-          }}
-        >
-          {languages.map((language) => (
-            <MenuItem
-              key={language.code}
-              onClick={() => handleLanguageChange(language.code)}
-              selected={language.code === currentLanguage}
-              sx={{
-                py: 1.5,
-                px: 2,
-                borderRadius: 1,
-                mx: 0.5,
-                mb: 0.5,
-                '&:last-child': { mb: 0 }
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                {language.code === currentLanguage && (
-                  <CheckIcon color="primary" fontSize="small" />
-                )}
-              </ListItemIcon>
-              <ListItemText>
-                <Typography variant="body2" fontWeight={language.code === currentLanguage ? 600 : 400}>
-                  {language.nativeName}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {language.name}
-                </Typography>
-              </ListItemText>
-            </MenuItem>
-          ))}
-        </Menu>
-      </>
-    );
-  }
-
-  // Default button variant
   return (
-    <>
+    <Box>
       <Button
-        color="inherit"
-        startIcon={<LanguageIcon />}
-        endIcon={<ExpandMoreIcon />}
         onClick={handleClick}
-        size={size}
+        startIcon={<TranslateIcon />}
+        endIcon={
+          <Typography variant="caption" sx={{
+            bgcolor: 'primary.light',
+            color: 'white',
+            px: 0.8,
+            py: 0.2,
+            borderRadius: 1,
+            fontWeight: 'bold',
+            ml: 0.5
+          }}>
+            {currentLanguage.toUpperCase()}
+          </Typography>
+        }
         sx={{
-          textTransform: 'none',
-          fontWeight: 500,
-          borderRadius: 1,
+          color: 'text.primary',
+          borderRadius: 2,
           px: 2,
-          bgcolor: 'rgba(255,255,255,0.08)',
+          py: 1,
+          bgcolor: 'background.paper',
+          border: '1px solid',
+          borderColor: 'divider',
           '&:hover': {
-            bgcolor: 'rgba(255,255,255,0.12)',
+            bgcolor: 'background.subtle',
+            borderColor: 'primary.main',
           }
         }}
       >
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <Typography variant="caption" sx={{ lineHeight: 1, opacity: 0.8 }}>
-            Language
-          </Typography>
-          <Typography variant="body2" sx={{ lineHeight: 1, fontWeight: 600 }}>
-            {currentLangInfo.nativeName}
-          </Typography>
-        </Box>
+        <Typography variant="body2" fontWeight="600" sx={{ display: { xs: 'none', sm: 'block' } }}>
+          {currentLangInfo.nativeName}
+        </Typography>
       </Button>
+
       <Menu
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
         PaperProps={{
+          elevation: 3,
           sx: {
             mt: 1.5,
-            borderRadius: 2,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-            minWidth: 200
+            borderRadius: 3,
+            minWidth: 180,
+            overflow: 'hidden',
+            border: '1px solid',
+            borderColor: 'divider',
           }
         }}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        <Box sx={{ px: 2, py: 1, borderBottom: `1px solid ${theme.palette.divider}` }}>
-          <Typography variant="subtitle2" color="text.secondary">
-            Select Language
-          </Typography>
-        </Box>
-        {languages.map((language) => (
-          <MenuItem
-            key={language.code}
-            onClick={() => handleLanguageChange(language.code)}
-            selected={language.code === currentLanguage}
-            sx={{
-              py: 1.5,
-              px: 2,
-              borderRadius: 1,
-              mx: 0.5,
-              mb: 0.5,
-              '&:last-child': { mb: 0 }
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 36 }}>
-              {language.code === currentLanguage && (
-                <CheckIcon color="primary" fontSize="small" />
+        <AnimatePresence>
+          {languages.map((lang) => (
+            <MenuItem
+              key={lang.code}
+              onClick={() => handleLanguageSelect(lang.code)}
+              selected={currentLanguage === lang.code}
+              sx={{
+                py: 1.5,
+                px: 2,
+                gap: 1.5,
+                '&.Mui-selected': {
+                  bgcolor: 'primary.light',
+                  color: 'white',
+                  '&:hover': { bgcolor: 'primary.main' }
+                },
+                '&:hover': {
+                  bgcolor: 'background.subtle',
+                }
+              }}
+              component={motion.li}
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 5 }}
+            >
+              <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                <Typography variant="body2" fontWeight="600">
+                  {lang.nativeName}
+                </Typography>
+                <Typography variant="caption" color={currentLanguage === lang.code ? 'inherit' : 'text.secondary'} sx={{ opacity: 0.8 }}>
+                  {lang.name}
+                </Typography>
+              </Box>
+              {currentLanguage === lang.code && (
+                <CheckIcon fontSize="small" />
               )}
-            </ListItemIcon>
-            <ListItemText>
-              <Typography variant="body2" fontWeight={language.code === currentLanguage ? 600 : 400}>
-                {language.nativeName}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {language.name}
-              </Typography>
-            </ListItemText>
-          </MenuItem>
-        ))}
+            </MenuItem>
+          ))}
+        </AnimatePresence>
       </Menu>
-    </>
+    </Box>
   );
 };
 

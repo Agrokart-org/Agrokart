@@ -1,24 +1,24 @@
 import axios from 'axios';
 import { auth } from '../config/firebase';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail
+import {
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signOut,
+    sendPasswordResetEmail
 } from 'firebase/auth';
 
 // Dynamic API URL detection for mobile and web
 const getApiUrl = () => {
-  // Check if running in Capacitor (mobile app)
-  if (window.Capacitor) {
+    // Check if running in Capacitor (mobile app)
+    if (window.Capacitor) {
+        return 'http://192.168.43.196:5000/api';
+    }
+    // Check if running on localhost (web development)
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:5000/api';
+    }
+    // Default for mobile or other environments
     return 'http://192.168.43.196:5000/api';
-  }
-  // Check if running on localhost (web development)
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:5000/api';
-  }
-  // Default for mobile or other environments
-  return 'http://192.168.43.196:5000/api';
 };
 
 const API_URL = getApiUrl();
@@ -32,22 +32,22 @@ const authService = {
             // Use Firebase authentication
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-            
+
             // Get the Firebase ID token
             const idToken = await user.getIdToken();
-            
+
             console.log('Firebase login successful');
-            
+
             // Store user data in localStorage
             localStorage.setItem('firebaseToken', idToken);
             localStorage.setItem('userEmail', email);
             localStorage.setItem('isLoggedIn', 'true');
-            
+
             // Get user data from backend using Firebase token
             const response = await axios.get(`${API_URL}/auth/me`, {
                 headers: { 'firebase-auth-token': idToken }
             });
-            
+
             return {
                 token: idToken,
                 user: response.data
@@ -95,16 +95,16 @@ const authService = {
             // Check if user is logged in with Firebase
             const currentUser = auth.currentUser;
             if (!currentUser) return null;
-            
+
             // Get the Firebase ID token
             const idToken = await currentUser.getIdToken();
             console.log('Getting current user with Firebase token');
-            
+
             // Get user data from backend using Firebase token
             const response = await axios.get(`${API_URL}/auth/me`, {
                 headers: { 'firebase-auth-token': idToken }
             });
-            
+
             console.log('Current user data:', response.data);
             return response.data;
         } catch (error) {
@@ -137,15 +137,15 @@ const authService = {
             // Create user with Firebase Authentication
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const firebaseUser = userCredential.user;
-            
+
             // Update Firebase user profile with name
             await firebaseUser.updateProfile({
                 displayName: name
             });
-            
+
             // Get the Firebase ID token
             const idToken = await firebaseUser.getIdToken();
-            
+
             // Register user in our backend with Firebase UID
             const response = await axios.post(`${API_URL}/auth/register`, {
                 name,
@@ -170,10 +170,61 @@ const authService = {
             };
         } catch (error) {
             console.error('Firebase registration failed:', error.message);
+
+            // Handle existing user case (Account exists, try to login and add role/register backend)
+            if (error.code === 'auth/email-already-in-use') {
+                try {
+                    console.log('🔄 Email in use. Attempting to sign in with provided credentials...');
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    const firebaseUser = userCredential.user;
+
+                    // Update Firebase user profile with name
+                    await firebaseUser.updateProfile({
+                        displayName: name
+                    });
+
+                    const idToken = await firebaseUser.getIdToken();
+
+                    // Register/Update user in backend with Firebase UID
+                    console.log('📤 Registering/Updating existing user in backend');
+                    const response = await axios.post(`${API_URL}/auth/register`, {
+                        name,
+                        email,
+                        phone,
+                        firebaseUid: firebaseUser.uid
+                    }, {
+                        headers: { 'firebase-auth-token': idToken }
+                    });
+
+                    console.log('Registration/Update successful:', response.data);
+
+                    // Store Firebase token and user data
+                    localStorage.setItem('firebaseToken', idToken);
+                    localStorage.setItem('userEmail', email);
+                    localStorage.setItem('userName', name);
+                    localStorage.setItem('isLoggedIn', 'true');
+
+                    return {
+                        token: idToken,
+                        user: response.data
+                    };
+                } catch (loginError) {
+                    console.error('❌ Failed to sign in existing user:', loginError);
+                    if (loginError.code === 'auth/wrong-password') {
+                        throw { message: 'An account with this email exists, but the password provided is incorrect. Please log in or use a different email.' };
+                    }
+                    if (loginError.response) {
+                        // Backend error
+                        throw { message: 'Registration failed: ' + (loginError.response.data?.message || loginError.message) };
+                    }
+                    throw { message: 'This email is already registered. Please login.' };
+                }
+            }
+
             throw { message: 'Failed to register. ' + error.message };
         }
     },
-    
+
     // Reset password using Firebase
     resetPassword: async (email) => {
         try {

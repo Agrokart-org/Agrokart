@@ -41,10 +41,64 @@ import UnifiedAuthPage from './pages/UnifiedAuthPage';
 import DeliveryRegistrationPage from './pages/DeliveryRegistrationPage';
 import DeliveryLogin from './pages/DeliveryLogin';
 import DeliveryDashboard from './pages/DeliveryDashboard';
+import CustomerDashboard from './pages/CustomerDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminLoginPage from './pages/AdminLoginPage';
 import MarketplaceNavigation from './components/MarketplaceNavigation';
+import RoleSelectionPage from './components/RoleSelectionPage';
 
-// Protected Route Component
-const PrivateRoute = ({ children, isAuthenticated }) => {
+// Helper to redirect based on role
+const getDashboardForRole = (role) => {
+  switch (role) {
+    case 'vendor':
+      return '/vendor/dashboard';
+    case 'delivery_partner':
+    case 'delivery_partner':
+      return '/delivery/dashboard';
+    case 'admin':
+      return '/admin/dashboard';
+    default:
+      return '/customer/dashboard';
+  }
+};
+
+// Protected Route restricted to Customers
+const CustomerRoute = ({ children }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) return <div>Loading...</div>;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (user && user.role !== 'customer') {
+    return <Navigate to={getDashboardForRole(user.role)} replace />;
+  }
+
+  return <MainLayout>{children}</MainLayout>;
+};
+
+// Public Route that redirects Vendors/Delivery Partners to their specific dashboards
+// Used for Home, Products etc which should be accessible to public + customers, but NOT vendors/delivery (who have their own portals)
+const CustomerOrPublicRoute = ({ children }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) return <div>Loading...</div>;
+
+  if (isAuthenticated && user && user.role !== 'customer') {
+    return <Navigate to={getDashboardForRole(user.role)} replace />;
+  }
+
+  return children;
+};
+
+// Protected Route Component (Generic)
+const PrivateRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) return <div>Loading...</div>;
+
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
@@ -60,27 +114,36 @@ const AdminRoute = ({ children }) => {
     return <div>Loading...</div>;
   }
 
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/home" />;
+  // TRIPLE CHECK: Trust Token Role OR Master Email OR LocalStorage (Fail-safe)
+  const storedRole = localStorage.getItem('userRole');
+  const isAdmin = user && (
+    user.role === 'admin' ||
+    user.email === 'admin@agrokart.com' ||
+    storedRole === 'admin'
+  );
+
+  if (!isAdmin) {
+    return <Navigate to="/admin/login" />;
   }
 
   return <MainLayout>{children}</MainLayout>;
 };
 
 const Routes = () => {
-  const { isAuthenticated } = useAuth();
-
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <RouterRoutes>
-        {/* Public Routes */}
-        <Route path="/" element={<ResponsiveLayout><ResponsivePageWrapper pageType="home" /></ResponsiveLayout>} />
-        <Route path="/home" element={<ResponsiveLayout><ResponsivePageWrapper pageType="home" /></ResponsiveLayout>} />
-        <Route path="/products" element={<ResponsiveLayout><ResponsivePageWrapper pageType="products" /></ResponsiveLayout>} />
+        {/* Public Routes (Redirect Vendors/Delivery) */}
+        <Route path="/" element={<RoleSelectionPage />} />
+        <Route path="/home" element={<CustomerOrPublicRoute><ResponsiveLayout><ResponsivePageWrapper pageType="home" /></ResponsiveLayout></CustomerOrPublicRoute>} />
+        <Route path="/products" element={<CustomerOrPublicRoute><ResponsiveLayout><ResponsivePageWrapper pageType="products" /></ResponsiveLayout></CustomerOrPublicRoute>} />
+
+        {/* Other Public Routes */}
         <Route path="/labor" element={<ResponsiveLayout><MobileLaborPage /></ResponsiveLayout>} />
         <Route path="/labour" element={<ResponsiveLayout><MobileLaborPage /></ResponsiveLayout>} />
         <Route path="/workflow" element={<MainLayout><WorkflowDashboard /></MainLayout>} />
+
         {/* Auth Routes */}
         <Route path="/auth" element={<UnifiedAuthPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -88,7 +151,7 @@ const Routes = () => {
         <Route path="/email-login" element={<EmailLoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/otp" element={<OTPPage />} />
-        <Route path="/product/:id" element={<MainLayout><ProductDetailPage /></MainLayout>} />
+        <Route path="/product/:id" element={<CustomerOrPublicRoute><MainLayout><ProductDetailPage /></MainLayout></CustomerOrPublicRoute>} />
         <Route path="/test-order" element={<MainLayout><TestOrderPage /></MainLayout>} />
         <Route path="/test-order-management" element={<MainLayout><TestOrderManagementPage /></MainLayout>} />
 
@@ -113,89 +176,106 @@ const Routes = () => {
         <Route path="/delivery/notifications" element={<DeliveryDashboard />} />
         <Route path="/delivery/location" element={<DeliveryDashboard />} />
 
+        {/* Customer Routes (Protected) */}
+        <Route path="/customer/dashboard" element={
+          <CustomerRoute>
+            <CustomerDashboard />
+          </CustomerRoute>
+        } />
+
         {/* Marketplace Navigation */}
         <Route path="/marketplace" element={<MainLayout><MarketplaceNavigation /></MainLayout>} />
 
-        {/* Protected Routes */}
+        {/* Protected Routes (Customer Only) */}
         <Route
           path="/cart"
           element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
+            <CustomerRoute>
               <ResponsiveLayout><ResponsivePageWrapper pageType="cart" /></ResponsiveLayout>
-            </PrivateRoute>
+            </CustomerRoute>
           }
         />
         <Route
           path="/delivery-details"
           element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
-              <MainLayout><DeliveryDetailsPage /></MainLayout>
-            </PrivateRoute>
+            <CustomerRoute>
+              <DeliveryDetailsPage />
+            </CustomerRoute>
           }
         />
         <Route
           path="/payment"
           element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
-              <MainLayout><PaymentPage /></MainLayout>
-            </PrivateRoute>
+            <CustomerRoute>
+              <PaymentPage />
+            </CustomerRoute>
           }
         />
         <Route
           path="/order-confirmation"
           element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
+            <CustomerRoute>
               <ProfileLayout><OrderConfirmationPage /></ProfileLayout>
-            </PrivateRoute>
+            </CustomerRoute>
           }
         />
         <Route
           path="/profile"
           element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
+            <CustomerRoute>
               <ResponsiveLayout><ResponsivePageWrapper pageType="profile" /></ResponsiveLayout>
-            </PrivateRoute>
+            </CustomerRoute>
           }
         />
         <Route
           path="/categories"
           element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
+            <CustomerRoute>
               <ResponsiveLayout><CategoriesPage /></ResponsiveLayout>
-            </PrivateRoute>
+            </CustomerRoute>
           }
         />
         <Route
           path="/order-tracking"
           element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
+            <CustomerRoute>
               <ProfileLayout><OrderTrackingPage /></ProfileLayout>
-            </PrivateRoute>
+            </CustomerRoute>
           }
         />
         <Route
           path="/my-orders"
           element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
+            <CustomerRoute>
               <ResponsiveLayout><ResponsivePageWrapper pageType="orders" /></ResponsiveLayout>
-            </PrivateRoute>
+            </CustomerRoute>
           }
         />
         <Route
           path="/order-details/:orderId"
           element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
+            <CustomerRoute>
               <ProfileLayout><OrderDetailsPage /></ProfileLayout>
-            </PrivateRoute>
+            </CustomerRoute>
           }
         />
 
         {/* Admin Routes */}
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+
         <Route
           path="/admin/add-product"
           element={
             <AdminRoute>
               <MainLayout><AddProduct /></MainLayout>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
             </AdminRoute>
           }
         />

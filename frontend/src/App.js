@@ -13,6 +13,7 @@ import AIChatbot from './components/AIChatbot';
 import WorkflowProvider from './components/WorkflowManager';
 import SplashScreen from './components/SplashScreen';
 import RoleSelectionPage from './components/RoleSelectionPage';
+import DeliveryLogin from './pages/DeliveryLogin';
 import UnifiedAuthPage from './pages/UnifiedAuthPage';
 import { useAuth } from './context/AuthContext';
 import MobileServices from './services/mobileServices';
@@ -33,17 +34,17 @@ const AppContent = () => {
       try {
         // Initialize mobile services
         await MobileServices.initialize();
-        
+
         // Set status bar style for mobile
         if (Capacitor.isNativePlatform()) {
           await StatusBar.setStyle({ style: Style.Light });
           await StatusBar.setBackgroundColor({ color: '#4CAF50' });
-          
+
           // Setup app state listeners
           CapacitorApp.addListener('appStateChange', ({ isActive }) => {
             console.log('App state changed. Is active:', isActive);
           });
-          
+
           // Handle back button
           CapacitorApp.addListener('backButton', ({ canGoBack }) => {
             if (!canGoBack) {
@@ -53,7 +54,7 @@ const AppContent = () => {
             }
           });
         }
-        
+
         setMobileInitialized(true);
         console.log('🚀 Mobile app initialized successfully');
       } catch (error) {
@@ -61,7 +62,7 @@ const AppContent = () => {
         setMobileInitialized(true); // Continue anyway
       }
     };
-    
+
     initializeMobile();
   }, []);
 
@@ -73,6 +74,7 @@ const AppContent = () => {
     '/vendor/register',
     '/delivery/login',
     '/delivery/register',
+    '/admin/login',
     '/auth' // unified auth if ever used directly
   ]);
   const shouldBypassRoleGate = authBypassPaths.has(location.pathname);

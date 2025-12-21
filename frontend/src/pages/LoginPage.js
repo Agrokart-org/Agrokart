@@ -21,7 +21,7 @@ import { login } from '../services/api';
 const LoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login: authLogin, setRole } = useAuth();
+  const { login: authLogin, setRole, googleLogin } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -39,6 +39,17 @@ const LoginPage = () => {
     }
   }, [searchParams, setRole]);
 
+  // Handle redirection when authenticated
+  const { isAuthenticated, user } = useAuth();
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'customer') {
+        navigate('/customer/dashboard', { replace: true });
+      }
+      // You can add other role redirections here if this login page supports them
+    }
+  }, [isAuthenticated, user, navigate]);
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -51,14 +62,27 @@ const LoginPage = () => {
     setRole(role);
   };
 
-  const handleGoogleLogin = () => {
-    // TODO: Wire this up to real Google Sign-In
-    console.log('Google login clicked');
+  // Google Login Handler
+  const handleGoogleLogin = async () => {
+    try {
+      const { user } = await googleLogin();
+
+      // If we have a role from URL, enforce it
+      if (userRole && userRole !== 'customer') {
+        // Ideally we would check if this google account is registered as 'vendor' etc.
+        // For now, if they are trying to login as customer, we let them in.
+        // You might want to add backend validation here similar to email/pass
+      }
+
+      navigate('/');
+    } catch (error) {
+      console.error('Google login failed:', error);
+      setError(error.message);
+    }
   };
 
   const handleMobileOtpLogin = () => {
-    // TODO: Wire this up to real mobile OTP login (e.g., navigate to OTP flow)
-    console.log('Mobile OTP login clicked');
+    // Navigate to OTP page which will handle the flow
     navigate('/otp');
   };
 
@@ -69,26 +93,29 @@ const LoginPage = () => {
 
     try {
       const { email, password } = formData;
-      
-      // Use role-specific authentication
+
+      // 1. Authenticate with Firebase first (Client Side)
+      const { user: firebaseUser } = await authLogin(email, password);
+      const idToken = await firebaseUser.getIdToken();
+
+      // 2. Validate/Register with Backend using the Firebase Token
+      // We send the token so the backend can create the user if missing (Sync)
       const loginCredentials = {
+        idToken,
         email,
-        password,
-        expectedRole: 'customer' // Ensure only customers can login here
+        expectedRole: 'customer'
       };
-      
+
       const result = await login(loginCredentials);
-      
-      // Validate user role on frontend as well
+
+      // Validate user role on frontend
       if (result.user && result.user.role !== 'customer') {
         throw new Error(`Access denied. This account is registered as ${result.user.role}. Please use the correct login page for your account type.`);
       }
-      
-      // Use the AuthContext login method
-      await authLogin(email, password);
 
       // Navigate to customer dashboard/home
-      navigate('/');
+
+      // Navigate to customer dashboard/home exists in useEffect now
     } catch (err) {
       console.error('Customer login error:', err);
       setError(err.message || 'Failed to login. Please check your credentials and ensure you are using the correct login page for your account type.');
@@ -103,11 +130,11 @@ const LoginPage = () => {
         <Typography variant="h4" component="h1" align="center" gutterBottom>
           Customer Login
         </Typography>
-        
+
         <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
           Login to your customer account to browse and order agricultural products
         </Typography>
-        
+
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}

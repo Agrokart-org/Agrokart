@@ -48,35 +48,89 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login with email and password (for customers)
+// Unified Login Endpoint (Handles both Email/Password and Firebase Token)
 router.post('/login', async (req, res) => {
   try {
-    const { email, password, expectedRole } = req.body;
-    
+    const { email, password, expectedRole, idToken } = req.body;
+
+    // Case 1: Firebase Token Login (Social Login / Token Sync)
+    if (idToken) {
+      // Verify Firebase token
+      const decodedToken = await firebaseAuth.verifyIdToken(idToken);
+      const { uid, email: tokenEmail } = decodedToken;
+
+      console.log('Firebase token verified:', { uid, email: tokenEmail });
+
+      // Find user in our database
+      let user = await User.findOne({ email: tokenEmail });
+
+      // If user doesn't exist in our database but exists in Firebase, create them
+      if (!user) {
+        // Get user details from Firebase
+        const firebaseUser = await firebaseAuth.getUser(uid);
+
+        // Create new user in our database
+        user = new User({
+          name: firebaseUser.displayName || tokenEmail.split('@')[0],
+          email: tokenEmail,
+          firebaseUid: uid,
+          phone: firebaseUser.phoneNumber,
+          role: 'customer' // Default role
+        });
+
+        await user.save();
+        console.log('Created new user from Firebase auth:', { id: user._id, email: tokenEmail });
+      }
+
+      console.log('✅ Login successful for user:', { id: user._id, email: user.email, role: user.role });
+
+      // Validate role if expectedRole is provided (Security Check)
+      if (expectedRole && user.role !== expectedRole) {
+        console.warn('❌ Role mismatch in token login - Expected:', expectedRole, 'Found:', user.role);
+        return res.status(403).json({
+          message: `Access denied. This account is registered as ${user.role}, not ${expectedRole}.`,
+          userRole: user.role
+        });
+      }
+
+      return res.json({
+        message: 'Login successful',
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          phone: user.phone
+        },
+        token: 'customer-jwt-token'
+      });
+    }
+
+    // Case 2: Email/Password Login (Legacy/Standard)
     console.log('🔄 Customer login attempt:', { email, expectedRole });
-    
+
     if (!email) {
       return res.status(400).json({ message: 'Email is required' });
     }
-    
+
     // Find user in database
     const user = await User.findOne({ email });
-    
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials. No account found with this email.' });
     }
-    
+
     // Validate user role if expectedRole is specified
     if (expectedRole && user.role !== expectedRole) {
       console.log('❌ Role mismatch - Expected:', expectedRole, 'Found:', user.role);
-      return res.status(403).json({ 
+      return res.status(403).json({
         message: `Access denied. This account is registered as ${user.role}, not ${expectedRole}. Please use the correct login page for your account type.`,
         userRole: user.role
       });
     }
-    
+
     console.log('✅ Customer login successful:', { id: user._id, email: user.email, role: user.role });
-    
+
     res.json({
       message: 'Login successful',
       user: {
@@ -88,63 +142,10 @@ router.post('/login', async (req, res) => {
       },
       token: 'customer-jwt-token' // In a real app, generate a proper JWT
     });
-    
+
   } catch (error) {
-    console.error('Customer login error:', error);
+    console.error('Login error:', error);
     res.status(500).json({ message: 'Server error', details: error.message });
-  }
-});
-
-// Login with Firebase token
-router.post('/login', async (req, res) => {
-  try {
-    const { idToken } = req.body;
-    
-    if (!idToken) {
-      return res.status(400).json({ message: 'Firebase ID token is required' });
-    }
-
-    // Verify Firebase token
-    const decodedToken = await firebaseAuth.verifyIdToken(idToken);
-    const { uid, email } = decodedToken;
-    
-    console.log('Firebase token verified:', { uid, email });
-
-    // Find user in our database
-    let user = await User.findOne({ email });
-    
-    // If user doesn't exist in our database but exists in Firebase, create them
-    if (!user) {
-      // Get user details from Firebase
-      const firebaseUser = await firebaseAuth.getUser(uid);
-      
-      // Create new user in our database
-      user = new User({
-        name: firebaseUser.displayName || email.split('@')[0],
-        email: email,
-        firebaseUid: uid,
-        phone: firebaseUser.phoneNumber,
-        role: 'customer' // Default role
-      });
-      
-      await user.save();
-      console.log('Created new user from Firebase auth:', { id: user._id, email });
-    }
-
-    console.log('✅ Login successful for user:', { id: user._id, email: user.email, role: user.role });
-
-    res.json({
-      message: 'Login successful',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -158,7 +159,7 @@ router.get('/me', async (req, res) => {
     }
 
     const user = await User.findOne({ email: req.user.email });
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -174,7 +175,7 @@ router.get('/me', async (req, res) => {
 router.post('/verify-token', async (req, res) => {
   try {
     const { idToken } = req.body;
-    
+
     if (!idToken) {
       return res.status(400).json({ message: 'Firebase ID token is required' });
     }
@@ -182,14 +183,14 @@ router.post('/verify-token', async (req, res) => {
     // Verify Firebase token
     const decodedToken = await firebaseAuth.verifyIdToken(idToken);
     const { uid, email } = decodedToken;
-    
+
     // Find user in our database
     let user = await User.findOne({ email });
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found in database' });
     }
-    
+
     res.json({
       message: 'Token verified',
       user: {

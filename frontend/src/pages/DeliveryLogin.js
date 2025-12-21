@@ -11,7 +11,8 @@ import {
   Alert,
   Divider,
   InputAdornment,
-  IconButton
+  IconButton,
+  Stack
 } from '@mui/material';
 import {
   LocalShipping as DeliveryIcon,
@@ -20,7 +21,8 @@ import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   ArrowBack as ArrowBackIcon,
-  DirectionsCar as VehicleIcon
+  DirectionsCar as VehicleIcon,
+  PhoneIphone as PhoneIphoneIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -36,7 +38,7 @@ const DeliveryLogin = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { login, setRole, updateUser, setIsAuthenticated } = useAuth();
+  const { login, setRole, updateUser, setIsAuthenticated, setShowRoleSelection, googleLogin } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,6 +64,34 @@ const DeliveryLogin = () => {
     return true;
   };
 
+  // Google Login Handler
+  const handleGoogleLogin = async () => {
+    try {
+      const { user } = await googleLogin();
+
+      // Enforce Delivery Role
+      updateUser({
+        ...user,
+        role: 'delivery_partner'
+      });
+      setRole('delivery_partner');
+
+      navigate('/delivery/dashboard');
+    } catch (error) {
+      console.error('Google login failed:', error);
+      setError(error.message);
+    }
+  };
+
+  const handleMobileOtpLogin = () => {
+    navigate('/otp');
+  };
+
+  const handleBack = () => {
+    setShowRoleSelection(true);
+    navigate('/');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -78,7 +108,7 @@ const DeliveryLogin = () => {
       // Step 1: Try Firebase authentication first
       let firebaseUser = null;
       let firebaseIdToken = null;
-      
+
       try {
         const userCredential = await signInWithEmailAndPassword(
           auth,
@@ -102,7 +132,7 @@ const DeliveryLogin = () => {
           firebaseUid: firebaseUser?.uid
         });
         console.log('✅ Backend delivery partner authentication successful');
-        
+
         // Additional frontend validation
         if (backendResponse.user && backendResponse.user.role !== 'delivery_partner') {
           throw new Error(`Access denied. This account is registered as ${backendResponse.user.role}. Please use the ${backendResponse.user.role === 'customer' ? 'customer' : 'vendor'} login page.`);
@@ -138,7 +168,7 @@ const DeliveryLogin = () => {
       localStorage.setItem('isLoggedIn', 'true');
 
       console.log('✅ Delivery partner login successful, navigating to delivery dashboard...');
-      
+
       // Navigate to delivery dashboard
       navigate('/delivery/dashboard', { replace: true });
 
@@ -163,7 +193,7 @@ const DeliveryLogin = () => {
         {/* Back Button */}
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/')}
+          onClick={handleBack}
           sx={{ mb: 3 }}
         >
           Back to Home
@@ -172,9 +202,9 @@ const DeliveryLogin = () => {
         <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box sx={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
+            <Box sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
               justifyContent: 'center',
               width: 80,
               height: 80,
@@ -199,6 +229,48 @@ const DeliveryLogin = () => {
           )}
 
           <form onSubmit={handleSubmit}>
+            {/* Social / alternate login options */}
+            <Stack spacing={1.5} sx={{ mb: 3 }}>
+              <Button
+                type="button"
+                fullWidth
+                variant="outlined"
+                startIcon={
+                  // Use branded multi-color Google "G" logo
+                  <Box
+                    component="img"
+                    src="https://developers.google.com/identity/images/g-logo.png"
+                    alt="Google logo"
+                    sx={{ width: 18, height: 18 }}
+                  />
+                }
+                onClick={handleGoogleLogin}
+                sx={{
+                  py: 1.1,
+                  fontWeight: 600,
+                  borderRadius: 2
+                }}
+              >
+                Sign in with Google
+              </Button>
+              <Button
+                type="button"
+                fullWidth
+                variant="outlined"
+                startIcon={<PhoneIphoneIcon />}
+                onClick={handleMobileOtpLogin}
+                sx={{
+                  py: 1.1,
+                  fontWeight: 600,
+                  borderRadius: 2
+                }}
+              >
+                Login with Mobile OTP
+              </Button>
+            </Stack>
+
+            <Divider sx={{ mb: 2 }}>OR</Divider>
+
             <TextField
               fullWidth
               label="Email Address"
@@ -255,8 +327,8 @@ const DeliveryLogin = () => {
               size="large"
               type="submit"
               disabled={loading}
-              sx={{ 
-                mt: 3, 
+              sx={{
+                mt: 3,
                 mb: 2,
                 height: 48,
                 background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
@@ -320,30 +392,7 @@ const DeliveryLogin = () => {
             </Box>
           </form>
 
-          {/* Features Preview */}
-          <Box sx={{ mt: 4, p: 3, bgcolor: 'grey.50', borderRadius: 2 }}>
-            <Typography variant="h6" gutterBottom fontWeight="bold" color="primary.main">
-              Delivery Partner Benefits
-            </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
-              <Box>
-                <Typography variant="body2" fontWeight="medium">✓ Flexible Working Hours</Typography>
-                <Typography variant="caption" color="text.secondary">Choose your own schedule</Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="medium">✓ Competitive Earnings</Typography>
-                <Typography variant="caption" color="text.secondary">Earn more with bonuses</Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="medium">✓ Route Optimization</Typography>
-                <Typography variant="caption" color="text.secondary">Smart delivery planning</Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" fontWeight="medium">✓ Real-time Tracking</Typography>
-                <Typography variant="caption" color="text.secondary">Live GPS navigation</Typography>
-              </Box>
-            </Box>
-          </Box>
+
         </Paper>
       </Box>
     </Container>

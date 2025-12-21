@@ -25,7 +25,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { deliveryRegister, deliveryUploadDocuments } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import RegistrationSuccessModal from '../components/RegistrationSuccessModal';
 
@@ -57,14 +57,14 @@ const DeliveryRegistrationPage = () => {
     password: '',
     confirmPassword: '',
     phone: location.state.phone || '',
-    
+
     // Vehicle Information
     vehicleType: '',
     vehicleNumber: '',
     licenseNumber: '',
     aadharNumber: '',
     serviceRadius: 10,
-    
+
     // Documents
     documents: {
       drivingLicense: null,
@@ -79,14 +79,14 @@ const DeliveryRegistrationPage = () => {
     password: '',
     confirmPassword: '',
     phone: '',
-    
+
     // Vehicle Information
     vehicleType: '',
     vehicleNumber: '',
     licenseNumber: '',
     aadharNumber: '',
     serviceRadius: 10,
-    
+
     // Documents
     documents: {
       drivingLicense: null,
@@ -127,14 +127,32 @@ const DeliveryRegistrationPage = () => {
 
   const validateStep = (step) => {
     switch (step) {
-      case 0:
-        return formData.name && formData.email && formData.password && 
-               formData.confirmPassword && formData.phone && 
-               formData.password === formData.confirmPassword;
-      case 1:
-        return formData.vehicleType && formData.vehicleNumber && 
-               formData.licenseNumber && formData.aadharNumber;
-      case 2:
+      case 0: // Personal Details
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^\d{10}$/;
+
+        const isEmailValid = emailRegex.test(formData.email);
+        const isPhoneValid = phoneRegex.test(formData.phone);
+        const isPasswordMatch = formData.password === formData.confirmPassword;
+        const areFieldsFilled = formData.name && formData.email && formData.password &&
+          formData.confirmPassword && formData.phone;
+
+        if (!areFieldsFilled) return false;
+        if (!isEmailValid) {
+          // Optional: You could set specific error messages here if you wanted more granular feedback
+          return false;
+        }
+        if (!isPhoneValid) return false;
+        return isPasswordMatch;
+
+      case 1: // Vehicle Information
+        const aadharRegex = /^\d{12}$/;
+        const isAadharValid = aadharRegex.test(formData.aadharNumber);
+
+        return formData.vehicleType && formData.vehicleNumber &&
+          formData.licenseNumber && formData.aadharNumber && isAadharValid;
+
+      case 2: // Documents
         return Object.values(formData.documents).every(doc => doc !== null);
       default:
         return true;
@@ -160,7 +178,7 @@ const DeliveryRegistrationPage = () => {
       setError('');
 
       console.log('🔄 Starting delivery partner registration process...');
-      
+
       // Step 1: Create Firebase user for delivery partner (for consistency)
       let firebaseUid = null;
       let firebaseIdToken = null;
@@ -173,16 +191,37 @@ const DeliveryRegistrationPage = () => {
         const user = userCredential.user;
         firebaseUid = user.uid;
         firebaseIdToken = await user.getIdToken();
-        
+
         // Update profile with displayName
         await updateProfile(user, {
           displayName: formData.name
         });
-        
+
         console.log('✅ Firebase user created for delivery partner:', firebaseUid);
       } catch (firebaseError) {
         console.warn('⚠️ Firebase sign-up for delivery partner failed:', firebaseError?.code || firebaseError?.message);
-        if (auth.currentUser) {
+
+        // Handle existing user case
+        if (firebaseError.code === 'auth/email-already-in-use') {
+          try {
+            console.log('🔄 Email in use. Attempting to sign in with provided credentials...');
+            const userCredential = await signInWithEmailAndPassword(
+              auth,
+              formData.email,
+              formData.password
+            );
+            const user = userCredential.user;
+            firebaseUid = user.uid;
+            firebaseIdToken = await user.getIdToken();
+            console.log('✅ Signed in existing user successfully for delivery registration:', firebaseUid);
+          } catch (loginError) {
+            console.error('❌ Failed to sign in existing user:', loginError);
+            if (loginError.code === 'auth/wrong-password') {
+              throw new Error('An account with this email exists, but the password provided is incorrect. Please correct it or log in first.');
+            }
+            throw new Error('This email is already registered. Please log in to your existing account to become a delivery partner.');
+          }
+        } else if (auth.currentUser) {
           firebaseUid = auth.currentUser.uid;
           firebaseIdToken = await auth.currentUser.getIdToken();
           console.log('ℹ️ Using existing Firebase session for delivery partner:', firebaseUid);
@@ -190,7 +229,7 @@ const DeliveryRegistrationPage = () => {
           throw new Error(firebaseError?.message || 'Failed to create Firebase account');
         }
       }
-      
+
       // Step 2: Register with backend
       const registrationData = {
         name: formData.name,
@@ -209,13 +248,13 @@ const DeliveryRegistrationPage = () => {
         ...registrationData,
         firebaseUid: firebaseUid ? 'Present' : 'Missing'
       });
-      
+
       const response = await deliveryRegister(registrationData);
       console.log('✅ Delivery partner backend registration successful:', response);
 
       // Step 3: Upload documents if any
       const authToken = response.token || response.user?.token || firebaseIdToken;
-      
+
       const formDataObj = new FormData();
       Object.keys(formData.documents).forEach(key => {
         if (formData.documents[key]) {
@@ -251,13 +290,13 @@ const DeliveryRegistrationPage = () => {
         email: formData.email,
         role: 'delivery_partner'
       });
-      
+
       // Store in localStorage
       localStorage.setItem('user', JSON.stringify(deliveryUser));
       localStorage.setItem('userRole', 'delivery_partner');
       localStorage.setItem('authToken', authToken || '');
       console.log('✅ Delivery partner user data stored');
-      
+
       setSuccess('Delivery partner registration successful!');
       setShowSuccessModal(true);
 
@@ -296,6 +335,8 @@ const DeliveryRegistrationPage = () => {
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 required
+                error={formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)}
+                helperText={formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? "Invalid email format" : ""}
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -303,8 +344,14 @@ const DeliveryRegistrationPage = () => {
                 fullWidth
                 label="Phone"
                 value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
+                onChange={(e) => {
+                  // Only allow digits
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 10) handleInputChange('phone', val);
+                }}
                 required
+                error={formData.phone && formData.phone.length !== 10}
+                helperText={formData.phone && formData.phone.length !== 10 ? "Phone number must be exactly 10 digits" : ""}
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -312,8 +359,14 @@ const DeliveryRegistrationPage = () => {
                 fullWidth
                 label="Aadhar Number"
                 value={formData.aadharNumber}
-                onChange={(e) => handleInputChange('aadharNumber', e.target.value)}
+                onChange={(e) => {
+                  // Only allow digits
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 12) handleInputChange('aadharNumber', val);
+                }}
                 required
+                error={formData.aadharNumber && formData.aadharNumber.length !== 12}
+                helperText={formData.aadharNumber && formData.aadharNumber.length !== 12 ? "Aadhar number must be exactly 12 digits" : ""}
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -478,7 +531,7 @@ const DeliveryRegistrationPage = () => {
           >
             Back
           </Button>
-          
+
           {activeStep === steps.length - 1 ? (
             <Button
               variant="contained"
@@ -498,7 +551,7 @@ const DeliveryRegistrationPage = () => {
           )}
         </Box>
       </Paper>
-      
+
       {/* Registration Success Modal */}
       <RegistrationSuccessModal
         open={showSuccessModal}

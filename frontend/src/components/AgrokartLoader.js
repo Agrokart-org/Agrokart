@@ -3,8 +3,8 @@ import { Box, Typography, Fade, CircularProgress } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import AgrokartLogo from './AgrokartLogo';
 
-const AgrokartLoader = ({ 
-  message = 'Loading...', 
+const AgrokartLoader = ({
+  message = 'Loading...',
   size = 'medium',
   variant = 'full', // 'full', 'inline', 'overlay'
   showProgress = true,
@@ -17,7 +17,7 @@ const AgrokartLoader = ({
 
   useEffect(() => {
     setShowContent(true);
-    
+
     if (showProgress) {
       const timer = setInterval(() => {
         setProgress((prevProgress) => {
@@ -45,25 +45,25 @@ const AgrokartLoader = ({
   const getSizeConfig = () => {
     switch (size) {
       case 'small':
-        return { 
-          logoSize: 60, 
-          iconSize: 24, 
+        return {
+          logoSize: 60,
+          iconSize: 24,
           fontSize: '0.875rem',
           spacing: 2,
           circularSize: 32
         };
       case 'large':
-        return { 
-          logoSize: 120, 
-          iconSize: 48, 
+        return {
+          logoSize: 120,
+          iconSize: 48,
           fontSize: '1.25rem',
           spacing: 4,
           circularSize: 64
         };
       default: // medium
-        return { 
-          logoSize: 80, 
-          iconSize: 32, 
+        return {
+          logoSize: 80,
+          iconSize: 32,
           fontSize: '1rem',
           spacing: 3,
           circularSize: 48
@@ -100,40 +100,14 @@ const AgrokartLoader = ({
         }}
       >
         {/* Agrokart Logo */}
-        <AgrokartLogo 
-          width={config.logoSize} 
-          height={config.logoSize * 0.6} 
-          variant="full" 
+        <AgrokartLogo
+          width={config.logoSize}
+          height={config.logoSize * 0.6}
+          variant="full"
           color="multicolor"
         />
-        
-        {/* Animated Ring */}
-        <Box
-          sx={{
-            position: 'absolute',
-            width: config.logoSize + 20,
-            height: config.logoSize + 20,
-            borderRadius: '50%',
-            border: `2px solid ${theme.palette.primary.main}20`,
-            animation: 'rotate 4s linear infinite',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: -2,
-              left: -2,
-              right: -2,
-              bottom: -2,
-              borderRadius: '50%',
-              border: '2px solid transparent',
-              borderTopColor: theme.palette.primary.main,
-              animation: 'rotate 2s linear infinite reverse',
-            },
-            '@keyframes rotate': {
-              '0%': { transform: 'rotate(0deg)' },
-              '100%': { transform: 'rotate(360deg)' }
-            }
-          }}
-        />
+
+
       </Box>
     </Box>
   );
@@ -219,7 +193,7 @@ const AgrokartLoader = ({
           p: 1
         }}
       >
-        <CircularProgress 
+        <CircularProgress
           size={config.circularSize}
           thickness={4}
           sx={{
@@ -229,8 +203,8 @@ const AgrokartLoader = ({
             }
           }}
         />
-        <Typography 
-          variant="body2" 
+        <Typography
+          variant="body2"
           color="text.secondary"
           sx={{ fontSize: config.fontSize }}
         >
@@ -261,7 +235,7 @@ const AgrokartLoader = ({
           }}
         >
           {showLogo && <AnimatedLogo />}
-          
+
           <Typography
             variant="h6"
             sx={{
@@ -324,7 +298,7 @@ const AgrokartLoader = ({
         />
 
         {showLogo && <AnimatedLogo />}
-        
+
         <Typography
           variant="h4"
           sx={{

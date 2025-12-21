@@ -11,7 +11,8 @@ import {
   Alert,
   Divider,
   InputAdornment,
-  IconButton
+  IconButton,
+  Stack
 } from '@mui/material';
 import {
   Business as VendorIcon,
@@ -19,7 +20,8 @@ import {
   Lock as LockIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  PhoneIphone as PhoneIphoneIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -35,7 +37,7 @@ const VendorLogin = () => {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { login, setRole, updateUser, setIsAuthenticated } = useAuth();
+  const { login, setRole, updateUser, setIsAuthenticated, setShowRoleSelection, googleLogin } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -54,11 +56,40 @@ const VendorLogin = () => {
       setError('All fields are required');
       return false;
     }
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    if (!/\S+@\S+\.\S/.test(formData.email)) {
       setError('Please enter a valid email address');
       return false;
     }
     return true;
+  };
+
+  // Google Login Handler
+  const handleGoogleLogin = async () => {
+    try {
+      const { user } = await googleLogin();
+
+      // Enforce Vendor Role
+      // In a real app, you'd check if this user is a registered vendor in backend
+      updateUser({
+        ...user,
+        role: 'vendor'
+      });
+      setRole('vendor');
+
+      navigate('/vendor/dashboard');
+    } catch (error) {
+      console.error('Google login failed:', error);
+      setError(error.message);
+    }
+  };
+
+  const handleMobileOtpLogin = () => {
+    navigate('/otp');
+  };
+
+  const handleBack = () => {
+    setShowRoleSelection(true);
+    navigate('/');
   };
 
   const handleSubmit = async (e) => {
@@ -77,7 +108,7 @@ const VendorLogin = () => {
       // Step 1: Try Firebase authentication first
       let firebaseUser = null;
       let firebaseIdToken = null;
-      
+
       try {
         const userCredential = await signInWithEmailAndPassword(
           auth,
@@ -101,7 +132,7 @@ const VendorLogin = () => {
           firebaseUid: firebaseUser?.uid
         });
         console.log('✅ Backend vendor authentication successful');
-        
+
         // Additional frontend validation
         if (backendResponse.user && backendResponse.user.role !== 'vendor') {
           throw new Error(`Access denied. This account is registered as ${backendResponse.user.role}. Please use the ${backendResponse.user.role === 'customer' ? 'customer' : 'delivery partner'} login page.`);
@@ -135,7 +166,7 @@ const VendorLogin = () => {
       localStorage.setItem('isLoggedIn', 'true');
 
       console.log('✅ Vendor login successful, navigating to vendor dashboard...');
-      
+
       // Navigate to vendor dashboard
       navigate('/vendor/dashboard', { replace: true });
 
@@ -160,7 +191,7 @@ const VendorLogin = () => {
         {/* Back Button */}
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/')}
+          onClick={handleBack}
           sx={{ mb: 3 }}
         >
           Back to Home
@@ -169,9 +200,9 @@ const VendorLogin = () => {
         <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box sx={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
+            <Box sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
               justifyContent: 'center',
               width: 80,
               height: 80,
@@ -196,6 +227,48 @@ const VendorLogin = () => {
           )}
 
           <form onSubmit={handleSubmit}>
+            {/* Social / alternate login options */}
+            <Stack spacing={1.5} sx={{ mb: 3 }}>
+              <Button
+                type="button"
+                fullWidth
+                variant="outlined"
+                startIcon={
+                  // Use branded multi-color Google "G" logo
+                  <Box
+                    component="img"
+                    src="https://developers.google.com/identity/images/g-logo.png"
+                    alt="Google logo"
+                    sx={{ width: 18, height: 18 }}
+                  />
+                }
+                onClick={handleGoogleLogin}
+                sx={{
+                  py: 1.1,
+                  fontWeight: 600,
+                  borderRadius: 2
+                }}
+              >
+                Sign in with Google
+              </Button>
+              <Button
+                type="button"
+                fullWidth
+                variant="outlined"
+                startIcon={<PhoneIphoneIcon />}
+                onClick={handleMobileOtpLogin}
+                sx={{
+                  py: 1.1,
+                  fontWeight: 600,
+                  borderRadius: 2
+                }}
+              >
+                Login with Mobile OTP
+              </Button>
+            </Stack>
+
+            <Divider sx={{ mb: 2 }}>OR</Divider>
+
             <TextField
               fullWidth
               label="Email Address"
@@ -252,8 +325,8 @@ const VendorLogin = () => {
               size="large"
               type="submit"
               disabled={loading}
-              sx={{ 
-                mt: 3, 
+              sx={{
+                mt: 3,
                 mb: 2,
                 height: 48,
                 background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',

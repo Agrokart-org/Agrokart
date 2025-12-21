@@ -1,13 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  signInWithEmailAndPassword, 
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
-  updateProfile
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  PhoneAuthProvider
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import AgrokartLoader from '../components/AgrokartLoader';
 
 const AuthContext = createContext(null);
 
@@ -34,7 +40,7 @@ export const AuthProvider = ({ children }) => {
           name: currentUser.displayName || currentUser.email.split('@')[0],
           email: currentUser.email,
           phone: currentUser.phoneNumber,
-          role: savedRole || 'customer'
+          role: localStorage.getItem('userRole') || 'customer'
         });
         setIsAuthenticated(true);
         setShowRoleSelection(false); // Hide role selection if user is logged in
@@ -52,7 +58,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Firebase register with email and password
-  const register = async (userData) => {
+  const register = useCallback(async (userData) => {
     console.log('🔄 AuthContext register function called with:', {
       email: userData.email,
       name: userData.name,
@@ -65,14 +71,14 @@ export const AuthProvider = ({ children }) => {
         console.error('❌ Firebase Auth is not initialized:', auth);
         throw new Error('Firebase authentication is not available');
       }
-      
+
       console.log('⏳ Attempting to create user with Firebase Authentication');
       // Create user with Firebase Authentication
       let userCredential;
       try {
         userCredential = await createUserWithEmailAndPassword(
-          auth, 
-          userData.email, 
+          auth,
+          userData.email,
           userData.password
         );
         const user = userCredential.user;
@@ -90,9 +96,9 @@ export const AuthProvider = ({ children }) => {
           throw createUserError;
         }
       }
-      
+
       const user = userCredential.user;
-      
+
       console.log('⏳ Updating user profile with name');
       // Update profile with name
       try {
@@ -104,7 +110,7 @@ export const AuthProvider = ({ children }) => {
         console.error('⚠️ Error updating profile:', profileError);
         // Continue despite profile update error
       }
-      
+
       // Store role in localStorage
       if (userData.role) {
         try {
@@ -116,7 +122,7 @@ export const AuthProvider = ({ children }) => {
           // Continue despite localStorage error
         }
       }
-      
+
       console.log('✅ Firebase registration successful:', user.email);
       return { success: true, user };
     } catch (error) {
@@ -125,20 +131,20 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Firebase login with email and password
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      
+
       // Store role in localStorage
       if (userRole) {
         localStorage.setItem('userRole', userRole);
       }
-      
+
       console.log('Firebase login successful:', user.email);
       return { success: true, user };
     } catch (error) {
@@ -147,10 +153,101 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userRole]);
+
+  // Google Login
+  const googleLogin = useCallback(async () => {
+    setLoading(true);
+    try {
+      console.log('Initiating Google Login...');
+      alert('Clicking Google Login...'); // Visual confirmation
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      alert('Popup finished'); // Visual confirmation
+      const user = result.user;
+
+      // Store role in localStorage if exists
+      if (userRole) {
+        localStorage.setItem('userRole', userRole);
+      }
+
+      console.log('✅ Google login successful:', user.email);
+      return { success: true, user };
+    } catch (error) {
+      console.error('❌ Google login error:', error.code, error.message);
+      alert(`Google Login Error: ${error.message}`); // Show error to user
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [userRole]);
+
+  // Send OTP
+  const sendOtp = useCallback(async (phoneNumber, recaptchaContainerId) => {
+    try {
+      console.log('📱 Sending OTP to:', phoneNumber);
+
+      // Initialize RecaptchaVerifier
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerId, {
+          'size': 'invisible',
+          'callback': (response) => {
+            console.log('Recaptcha verified');
+          }
+        });
+      }
+
+      const appVerifier = window.recaptchaVerifier;
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+
+      // Store confirmation result in window to verify later
+      window.confirmationResult = confirmationResult;
+
+      console.log('✅ OTP sent successfully');
+      return { success: true, confirmationResult };
+    } catch (error) {
+      console.error('❌ Error sending OTP:', error);
+      // Reset recaptcha if error
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+      }
+      throw error;
+    }
+  }, []);
+
+  // Verify OTP
+  const verifyOtp = useCallback(async (otpCode) => {
+    setLoading(true);
+    try {
+      if (!window.confirmationResult) {
+        throw new Error('No OTP request found. Please request OTP first.');
+      }
+
+      const result = await window.confirmationResult.confirm(otpCode);
+      const user = result.user;
+
+      // Store role
+      if (userRole) {
+        localStorage.setItem('userRole', userRole);
+      }
+
+      console.log('✅ OTP Verified:', user.phoneNumber);
+      return { success: true, user };
+    } catch (error) {
+      console.error('❌ OTP Verification error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [userRole]);
+
+
+
+
 
   // Firebase password reset
-  const resetPassword = async (email) => {
+  const resetPassword = useCallback(async (email) => {
     try {
       await sendPasswordResetEmail(auth, email);
       return { success: true };
@@ -158,10 +255,10 @@ export const AuthProvider = ({ children }) => {
       console.error('Firebase password reset error:', error);
       throw error;
     }
-  };
+  }, []);
 
   // Firebase logout
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await signOut(auth);
       localStorage.removeItem('userRole');
@@ -174,39 +271,37 @@ export const AuthProvider = ({ children }) => {
       console.error('Firebase logout error:', error);
       throw error;
     }
-  };
+  }, []);
 
   // Set user role (used during role selection)
-  const setRole = (role) => {
+  const setRole = useCallback((role) => {
     localStorage.setItem('userRole', role);
     setUserRole(role);
-  };
+  }, []);
 
   // Role selection helper used by RoleSelectionPage
-  const selectRole = (role) => {
+  const selectRole = useCallback((role) => {
     setRole(role);
-    setShowRoleSelection(false);
-  };
+    // Don't hide role selection here - let the route implementation handle visibility
+    // This prevents showing the 'home' page if the user navigates back to '/' without logging in
+    // setShowRoleSelection(false); 
+  }, [setRole]);
 
   // Update user data (used after registration)
-  const updateUser = (userData) => {
+  const updateUser = useCallback((userData) => {
     setUser(userData);
-  };
+  }, []);
 
   // Set authentication status
-  const setAuthenticationStatus = (status) => {
+  const setAuthenticationStatus = useCallback((status) => {
     setIsAuthenticated(status);
-  };
+  }, []);
 
-  const hideRoleSelection = () => {
+  const hideRoleSelection = useCallback(() => {
     setShowRoleSelection(false);
-  };
+  }, []);
 
-  const getToken = () => {
-    return localStorage.getItem('token');
-  };
-
-  const value = {
+  const value = React.useMemo(() => ({
     isAuthenticated,
     user,
     userRole,
@@ -223,15 +318,33 @@ export const AuthProvider = ({ children }) => {
     logout,
     register,
     resetPassword,
+    googleLogin,
+    sendOtp,
+    verifyOtp,
     getCurrentUser: () => auth.currentUser,
     isUserAuthenticated: () => !!auth.currentUser,
     // Legacy API compatibility
     authLogin: (credentials) => login(credentials.email, credentials.password),
     authRegister: (userData) => register(userData)
-  };
+  }), [
+    isAuthenticated,
+    user,
+    userRole,
+    loading,
+    showRoleSelection,
+    setRole,
+    selectRole,
+    updateUser,
+    setAuthenticationStatus,
+    hideRoleSelection,
+    login,
+    logout,
+    register,
+    resetPassword
+  ]);
 
   if (loading) {
-    return <div>Loading...</div>; // You can replace this with a proper loading component
+    return <AgrokartLoader message="Connecting with Agrokart app..." />;
   }
 
   return (

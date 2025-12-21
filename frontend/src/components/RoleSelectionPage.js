@@ -50,7 +50,7 @@ const RoleSelectionPage = () => {
     },
     {
       id: 'vendor',
-      title: 'Vendor/Farmer',
+      title: 'Vendor',
       subtitle: 'Sell Your Products',
       description: 'Register your business, manage inventory and sell agricultural products',
       icon: VendorIcon,
@@ -102,7 +102,7 @@ const RoleSelectionPage = () => {
                   <AgrokartLogo size="large" />
                 </Box>
               </Zoom>
-              
+
               <Typography
                 variant="h3"
                 fontWeight="bold"
@@ -117,7 +117,7 @@ const RoleSelectionPage = () => {
               >
                 Welcome to Agrokart
               </Typography>
-              
+
               <Typography
                 variant="h5"
                 color="text.secondary"
@@ -125,14 +125,8 @@ const RoleSelectionPage = () => {
               >
                 Choose how you want to use Agrokart
               </Typography>
-              
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{ maxWidth: 600, mx: 'auto' }}
-              >
-                Most people start as a customer/farmer to order fertilizers. You can also continue as a vendor or delivery partner.
-              </Typography>
+
+
             </Box>
 
             {/* Role Selection Cards */}
@@ -140,7 +134,7 @@ const RoleSelectionPage = () => {
               {roles.map((role, index) => {
                 const IconComponent = role.icon;
                 const isSelected = selectedRole === role.id;
-                
+
                 return (
                   <Grid item xs={12} md={4} key={role.id}>
                     <Zoom in={showAnimation} timeout={1000 + (index * 200)}>
@@ -153,7 +147,7 @@ const RoleSelectionPage = () => {
                           background: isSelected ? role.gradient : 'white',
                           color: isSelected ? 'white' : 'inherit',
                           transform: isSelected ? 'scale(1.03)' : 'scale(1)',
-                          boxShadow: isSelected 
+                          boxShadow: isSelected
                             ? `0 20px 40px ${alpha(role.color, 0.3)}`
                             : '0 4px 20px rgba(0,0,0,0.1)',
                           '&:hover': {
@@ -171,24 +165,24 @@ const RoleSelectionPage = () => {
                               width: 80,
                               height: 80,
                               borderRadius: '50%',
-                              background: isSelected 
-                                ? 'rgba(255,255,255,0.2)' 
+                              background: isSelected
+                                ? 'rgba(255,255,255,0.2)'
                                 : alpha(role.color, 0.1),
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               mx: 'auto',
                               mb: 3,
-                              border: isSelected 
+                              border: isSelected
                                 ? '2px solid rgba(255,255,255,0.3)'
                                 : `2px solid ${alpha(role.color, 0.2)}`
                             }}
                           >
-                            <IconComponent 
-                              sx={{ 
-                                fontSize: 40, 
-                                color: isSelected ? 'white' : role.color 
-                              }} 
+                            <IconComponent
+                              sx={{
+                                fontSize: 40,
+                                color: isSelected ? 'white' : role.color
+                              }}
                             />
                           </Box>
 
@@ -204,7 +198,7 @@ const RoleSelectionPage = () => {
                           {/* Subtitle */}
                           <Typography
                             variant="subtitle1"
-                            sx={{ 
+                            sx={{
                               mb: 2,
                               opacity: isSelected ? 0.9 : 0.7,
                               fontWeight: 500
@@ -216,7 +210,7 @@ const RoleSelectionPage = () => {
                           {/* Description */}
                           <Typography
                             variant="body2"
-                            sx={{ 
+                            sx={{
                               mb: 3,
                               opacity: isSelected ? 0.9 : 0.8,
                               lineHeight: 1.6
@@ -252,14 +246,14 @@ const RoleSelectionPage = () => {
                               mt: 'auto',
                               py: 1.5,
                               fontWeight: 'bold',
-                              background: isSelected 
-                                ? 'rgba(255,255,255,0.2)' 
+                              background: isSelected
+                                ? 'rgba(255,255,255,0.2)'
                                 : role.gradient,
                               color: isSelected ? 'white' : 'white',
                               border: isSelected ? '2px solid rgba(255,255,255,0.5)' : 'none',
                               '&:hover': {
-                                background: isSelected 
-                                  ? 'rgba(255,255,255,0.3)' 
+                                background: isSelected
+                                  ? 'rgba(255,255,255,0.3)'
                                   : role.gradient,
                                 transform: 'translateY(-2px)'
                               }

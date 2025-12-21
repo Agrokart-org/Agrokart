@@ -601,7 +601,7 @@ const UnifiedAuthPage = () => {
                         : (authMode === 'login' ? 'Sign In' : 'Create Account')
                       }
                     </Button>
-                    
+
                     {authMode === 'register' && (selectedRole === 'vendor' || selectedRole === 'delivery') && (
                       <Alert severity="info" sx={{ mt: 2 }}>
                         {selectedRole === 'vendor' 
