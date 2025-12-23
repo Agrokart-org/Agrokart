@@ -266,7 +266,7 @@ const OrderTrackingPage = () => {
               <Button
                 variant="contained"
                 startIcon={<HomeIcon />}
-                onClick={() => navigate('/home')}
+                onClick={() => navigate('/customer/dashboard')}
               >
                 Back to Home
               </Button>

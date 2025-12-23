@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ThemeProvider } from '@mui/material/styles';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Box,
     Container,
@@ -7,293 +7,576 @@ import {
     Typography,
     Card,
     CardContent,
-    Avatar,
-    IconButton,
+    CardMedia,
     Button,
+    IconButton,
     Chip,
-    Stack,
-    Paper,
-    Divider,
-    useEquipment
+    Rating,
+    alpha
 } from '@mui/material';
 import {
-    ArrowForward as ArrowForwardIcon,
-    Grass as CropIcon,
-    Agriculture as ToolIcon,
-    Science as FertilizerIcon,
-    PestControl as PesticideIcon,
-    WaterDrop as WaterIcon,
-    LocalFlorist as SeedsIcon,
-    FilterVintage as OrganicIcon,
-    Terrain as SoilIcon,
-    Monitor as MonitorIcon,
-    MoreHoriz as MoreHorizIcon,
-    ArrowBackIos as ArrowBackIosIcon,
-    ArrowForwardIos as ArrowForwardIosIcon
+    FavoriteBorder as FavoriteIcon,
+    Favorite as FavoriteFilled,
+    ShoppingCart as CartIcon,
+    ChevronLeft,
+    ChevronRight,
+    LocalOffer as OfferIcon,
+    Grass,
+    Spa,
+    InvertColors,
+    Grain,
+    BugReport,
+    Build,
+    Science,
+    EmojiNature,
+    Agriculture
 } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import dashboardTheme from '../theme/dashboardTheme';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
-// Mock Data
-const categories = [
-    { id: 'fertilizers', name: 'Fertilizers', icon: FertilizerIcon },
-    { id: 'seeds', name: 'Seeds', icon: SeedsIcon },
-    { id: 'pesticides', name: 'Pesticides', icon: PesticideIcon },
-    { id: 'tools', name: 'Tools', icon: ToolIcon },
-    { id: 'soil', name: 'Soil', icon: SoilIcon },
-    { id: 'organic', name: 'Organic', icon: OrganicIcon },
-    { id: 'electronics', name: 'Electronics', icon: MonitorIcon },
-    { id: 'bio', name: 'Bio Agents', icon: WaterIcon },
-    { id: 'more', name: 'More', icon: MoreHorizIcon },
-];
-
-const bannerData = [
-    { id: 1, color: '#2E7D32', title: '50% OFF on Organic Seeds', sub: 'Monsoon Special' },
-    { id: 2, color: '#FBC02D', title: 'New Farming Tools', sub: 'Heavy Duty' },
-    { id: 3, color: '#795548', title: 'Best Soil Nutrients', sub: 'For Healthy Crops' },
-];
-
-const products = [
-    { id: 1, name: 'Urea Gold', price: '₹266', off: '10% Off', image: 'https://placehold.co/150x150?text=Urea' },
-    { id: 2, name: 'DAP 18-46-0', price: '₹1,350', off: '5% Off', image: 'https://placehold.co/150x150?text=DAP' },
-    { id: 3, name: 'Tomato Seeds', price: '₹450', off: '20% Off', image: 'https://placehold.co/150x150?text=Seeds' },
-    { id: 4, name: 'Neem Oil', price: '₹299', off: '15% Off', image: 'https://placehold.co/150x150?text=Neem' },
-    { id: 5, name: 'Sprayer Pump', price: '₹1,200', off: '30% Off', image: 'https://placehold.co/150x150?text=Pump' },
-    { id: 6, name: 'Potash', price: '₹800', off: '12% Off', image: 'https://placehold.co/150x150?text=Potash' },
-];
+// Data moved inside component for translation
 
 const CustomerDashboard = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
-    const [activeBanner, setActiveBanner] = useState(0);
+    const [currentBanner, setCurrentBanner] = useState(0);
+    const [wishlist, setWishlist] = useState([]);
 
-    const handleNextBanner = () => {
-        setActiveBanner((prev) => (prev + 1) % bannerData.length);
+    // Banner data
+    const banners = [
+        {
+            id: 1,
+            title: t('dashboard.banners.sale.title'),
+            subtitle: t('dashboard.banners.sale.subtitle'),
+            image: 'linear-gradient(135deg, #2E7D32 0%, #66BB6A 100%)',
+            cta: t('dashboard.banners.sale.cta')
+        },
+        {
+            id: 2,
+            title: t('dashboard.banners.organic.title'),
+            subtitle: t('dashboard.banners.organic.subtitle'),
+            image: 'linear-gradient(135deg, #388E3C 0%, #81C784 100%)',
+            cta: t('dashboard.banners.organic.cta')
+        },
+        {
+            id: 3,
+            title: t('dashboard.banners.bulk.title'),
+            subtitle: t('dashboard.banners.bulk.subtitle'),
+            image: 'linear-gradient(135deg, #43A047 0%, #A5D6A7 100%)',
+            cta: t('dashboard.banners.bulk.cta')
+        }
+    ];
+
+    // Categories
+    const categories = [
+        { id: 1, name: t('dashboard.categories.npk'), icon: <Agriculture sx={{ fontSize: 32 }} />, color: '#2E7D32' },
+        { id: 2, name: t('dashboard.categories.organic'), icon: <Spa sx={{ fontSize: 30 }} />, color: '#388E3C' },
+        { id: 3, name: t('dashboard.categories.urea'), icon: <InvertColors sx={{ fontSize: 30 }} />, color: '#0288D1' },
+        { id: 4, name: t('dashboard.categories.seeds'), icon: <Grain sx={{ fontSize: 30 }} />, color: '#F57F17' },
+        { id: 5, name: t('dashboard.categories.pesticides'), icon: <BugReport sx={{ fontSize: 30 }} />, color: '#D32F2F' },
+        { id: 6, name: t('dashboard.categories.tools'), icon: <Build sx={{ fontSize: 28 }} />, color: '#5D4037' },
+        { id: 7, name: t('dashboard.categories.micro'), icon: <Science sx={{ fontSize: 30 }} />, color: '#7B1FA2' },
+        { id: 8, name: t('dashboard.categories.bio'), icon: <EmojiNature sx={{ fontSize: 32 }} />, color: '#388E3C' }
+    ];
+
+    // Products data
+    const products = [
+        {
+            id: 1,
+            name: `${t('dashboard.categories.npk')} 19-19-19`,
+            weight: '50kg',
+            image: 'https://via.placeholder.com/200x200/2E7D32/FFFFFF?text=NPK',
+            price: 1299,
+            originalPrice: 1599,
+            discount: 19,
+            rating: 4.5,
+            reviews: 234,
+            category: t('dashboard.categories.npk'),
+            inStock: true
+        },
+        {
+            id: 2,
+            name: `${t('dashboard.categories.organic')} Vermicompost`,
+            weight: '40kg',
+            image: 'https://via.placeholder.com/200x200/388E3C/FFFFFF?text=Organic',
+            price: 899,
+            originalPrice: 1199,
+            discount: 25,
+            rating: 4.7,
+            reviews: 456,
+            category: t('dashboard.categories.organic'),
+            inStock: true
+        },
+        {
+            id: 3,
+            name: `${t('dashboard.categories.urea')} Premium`,
+            weight: '50kg',
+            image: 'https://via.placeholder.com/200x200/43A047/FFFFFF?text=Urea',
+            price: 799,
+            originalPrice: 999,
+            discount: 20,
+            rating: 4.3,
+            reviews: 189,
+            category: t('dashboard.categories.urea'),
+            inStock: true
+        },
+        {
+            id: 4,
+            name: 'DAP Fertilizer', // Keeping explicit names for some
+            weight: '50kg',
+            image: 'https://via.placeholder.com/200x200/66BB6A/FFFFFF?text=DAP',
+            price: 1499,
+            originalPrice: 1799,
+            discount: 17,
+            rating: 4.6,
+            reviews: 312,
+            category: t('dashboard.categories.npk'),
+            inStock: true
+        },
+        {
+            id: 5,
+            name: 'Neem Cake Organic',
+            weight: '25kg',
+            image: 'https://via.placeholder.com/200x200/81C784/FFFFFF?text=Neem',
+            price: 649,
+            originalPrice: 849,
+            discount: 24,
+            rating: 4.8,
+            reviews: 567,
+            category: t('dashboard.categories.organic'),
+            inStock: true
+        },
+        {
+            id: 6,
+            name: 'Potash Fertilizer',
+            weight: '50kg',
+            image: 'https://via.placeholder.com/200x200/A5D6A7/FFFFFF?text=Potash',
+            price: 1199,
+            originalPrice: 1499,
+            discount: 20,
+            rating: 4.4,
+            reviews: 223,
+            category: t('dashboard.categories.npk'),
+            inStock: true
+        },
+        {
+            id: 7,
+            name: 'Zinc Sulphate',
+            weight: '10kg',
+            image: 'https://via.placeholder.com/200x200/2E7D32/FFFFFF?text=Zinc',
+            price: 399,
+            originalPrice: 499,
+            discount: 20,
+            rating: 4.5,
+            reviews: 145,
+            category: t('dashboard.categories.micro'),
+            inStock: true
+        },
+        {
+            id: 8,
+            name: 'Bio NPK Fertilizer',
+            weight: '20kg',
+            image: 'https://via.placeholder.com/200x200/388E3C/FFFFFF?text=BioNPK',
+            price: 899,
+            originalPrice: 1099,
+            discount: 18,
+            rating: 4.7,
+            reviews: 289,
+            category: t('dashboard.categories.bio'),
+            inStock: true
+        }
+    ];
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1
+            }
+        }
     };
 
-    const handlePrevBanner = () => {
-        setActiveBanner((prev) => (prev - 1 + bannerData.length) % bannerData.length);
+    const itemVariants = {
+        hidden: { y: 20, opacity: 0 },
+        visible: {
+            y: 0,
+            opacity: 1
+        }
+    };
+
+    // Auto-rotate banner
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentBanner((prev) => (prev + 1) % banners.length);
+        }, 5000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const handleWishlist = (productId) => {
+        setWishlist(prev =>
+            prev.includes(productId)
+                ? prev.filter(id => id !== productId)
+                : [...prev, productId]
+        );
+    };
+
+    const nextBanner = () => {
+        setCurrentBanner((prev) => (prev + 1) % banners.length);
+    };
+
+    const prevBanner = () => {
+        setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length);
     };
 
     return (
-        <ThemeProvider theme={dashboardTheme}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#F1F3F6' }}>
-
-                {/* 1. White Categories Strip (Flipkart Style) */}
-                <Paper elevation={1} sx={{ bgcolor: 'white', py: 2, mb: 1, borderRadius: 0 }}>
-                    <Container maxWidth="xl">
-                        <Stack
-                            direction="row"
-                            spacing={4}
-                            sx={{
-                                overflowX: 'auto',
-                                pb: 0.5,
-                                justifyContent: { md: 'center', xs: 'flex-start' }, // Center on desktop, scroll on mobile
-                                '&::-webkit-scrollbar': { display: 'none' } // Hide scrollbar
-                            }}
+        <Box sx={{ bgcolor: '#f1f3f6', minHeight: '100vh', pb: 4 }}>
+            <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
+                {/* Banner Carousel */}
+                <Box
+                    sx={{
+                        position: 'relative',
+                        height: { xs: 200, sm: 280, md: 350 },
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                        mb: 3,
+                        mt: 2
+                    }}
+                >
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={currentBanner}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.5 }}
+                            style={{ height: '100%' }}
                         >
-                            {categories.map((cat) => (
-                                <Box
-                                    key={cat.id}
-                                    onClick={() => navigate(`/products?category=${cat.name}`)}
-                                    sx={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        cursor: 'pointer',
-                                        minWidth: 70,
-                                        '&:hover .MuiTypography-root': { color: '#2E7D32' }
-                                    }}
-                                >
-                                    <Avatar
-                                        sx={{
-                                            width: 60,
-                                            height: 60,
-                                            bgcolor: 'white',
-                                            border: '1px solid #e0e0e0',
-                                            color: '#2E7D32',
-                                            mb: 1,
-                                            transition: 'transform 0.2s',
-                                            '&:hover': { transform: 'scale(1.1)' }
-                                        }}
-                                    >
-                                        <cat.icon fontSize="large" />
-                                    </Avatar>
-                                    <Typography variant="body2" fontWeight="600" color="textSecondary" sx={{ fontSize: '0.85rem' }}>
-                                        {cat.name}
-                                    </Typography>
-                                </Box>
-                            ))}
-                        </Stack>
-                    </Container>
-                </Paper>
-
-                {/* 2. Hero Carousel (Full Width with Arrows) */}
-                <Box sx={{ position: 'relative', mb: 2, bgcolor: 'white', p: 1 }}>
-                    <Container maxWidth="xl" disableGutters>
-                        <Box sx={{
-                            position: 'relative',
-                            height: { xs: 180, md: 280 },
-                            overflow: 'hidden',
-                            borderRadius: 0
-                        }}>
-                            {/* Slide Content */}
-                            <motion.div
-                                key={activeBanner}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ duration: 0.5 }}
-                                style={{ height: '100%' }}
-                            >
-                                <Box sx={{
+                            <Box
+                                sx={{
                                     height: '100%',
-                                    width: '100%',
-                                    bgcolor: bannerData[activeBanner].color,
+                                    background: banners[currentBanner].image,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     color: 'white',
-                                    textAlign: 'center'
-                                }}>
-                                    <Box>
-                                        <Typography variant="h3" fontWeight="800" sx={{ mb: 1, fontSize: { xs: '1.5rem', md: '3rem' } }}>
-                                            {bannerData[activeBanner].title}
-                                        </Typography>
-                                        <Typography variant="h6">{bannerData[activeBanner].sub}</Typography>
-                                        <Button
-                                            variant="contained"
-                                            sx={{ mt: 3, bgcolor: 'white', color: 'black', fontWeight: 'bold' }}
-                                        >
-                                            Check Now
-                                        </Button>
-                                    </Box>
+                                    textAlign: 'center',
+                                    px: 3
+                                }}
+                            >
+                                <Box>
+                                    <Typography variant="h3" fontWeight="700" sx={{ mb: 1, fontSize: { xs: '1.5rem', md: '3rem' } }}>
+                                        {banners[currentBanner].title}
+                                    </Typography>
+                                    <Typography variant="h6" sx={{ mb: 3, fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
+                                        {banners[currentBanner].subtitle}
+                                    </Typography>
+                                    <Button
+                                        variant="contained"
+                                        size="large"
+                                        sx={{
+                                            bgcolor: 'white',
+                                            color: '#2E7D32',
+                                            fontWeight: 700,
+                                            px: 4,
+                                            '&:hover': { bgcolor: '#f5f5f5' }
+                                        }}
+                                    >
+                                        {banners[currentBanner].cta}
+                                    </Button>
                                 </Box>
-                            </motion.div>
+                            </Box>
+                        </motion.div>
+                    </AnimatePresence>
 
-                            {/* Arrows */}
-                            <IconButton
-                                onClick={handlePrevBanner}
-                                sx={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', bgcolor: 'white', '&:hover': { bgcolor: 'white' } }}
-                            >
-                                <ArrowBackIosIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                                onClick={handleNextBanner}
-                                sx={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', bgcolor: 'white', '&:hover': { bgcolor: 'white' } }}
-                            >
-                                <ArrowForwardIosIcon fontSize="small" />
-                            </IconButton>
-                        </Box>
-                    </Container>
+                    {/* Navigation Arrows */}
+                    <IconButton
+                        onClick={prevBanner}
+                        sx={{
+                            position: 'absolute',
+                            left: 16,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            bgcolor: 'rgba(255,255,255,0.9)',
+                            '&:hover': { bgcolor: 'white' }
+                        }}
+                    >
+                        <ChevronLeft />
+                    </IconButton>
+                    <IconButton
+                        onClick={nextBanner}
+                        sx={{
+                            position: 'absolute',
+                            right: 16,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            bgcolor: 'rgba(255,255,255,0.9)',
+                            '&:hover': { bgcolor: 'white' }
+                        }}
+                    >
+                        <ChevronRight />
+                    </IconButton>
+
+                    {/* Dots */}
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            bottom: 16,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            display: 'flex',
+                            gap: 1
+                        }}
+                    >
+                        {banners.map((_, index) => (
+                            <Box
+                                key={index}
+                                onClick={() => setCurrentBanner(index)}
+                                sx={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    bgcolor: index === currentBanner ? 'white' : 'rgba(255,255,255,0.5)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s'
+                                }}
+                            />
+                        ))}
+                    </Box>
                 </Box>
 
-                {/* 3. Product Rails Layout (Flipkart Style) */}
-                <Container maxWidth="xl" sx={{ pb: 4 }}>
-
-                    {/* Section 1: Best of Agriculture (Box Layout) */}
-                    <Paper sx={{ mb: 2, borderRadius: 1, overflow: 'hidden' }}>
-                        <Box sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            p: 2,
-                            borderBottom: '1px solid #f0f0f0',
-                            backgroundImage: 'linear-gradient(90deg, #2E7D32 0%, #a5d6a7 100%)',
-                            color: 'white'
-                        }}>
-                            <Box>
-                                <Typography variant="h6" fontWeight="bold">Best of Agriculture</Typography>
-                                <Typography variant="caption" sx={{ opacity: 0.9 }}>Best Devices & Tools</Typography>
-                            </Box>
-                            <Button
-                                variant="contained"
-                                sx={{ bgcolor: 'white', color: '#2E7D32', textTransform: 'none', fontWeight: 'bold' }}
-                                endIcon={<ArrowForwardIcon />}
-                            >
-                                View All
-                            </Button>
-                        </Box>
-
-                        {/* Horizontal Scroll Container */}
-                        <Box sx={{ display: 'flex', overflowX: 'auto', p: 2, gap: 2, '&::-webkit-scrollbar': { height: 6 } }}>
-                            {products.map((product) => (
+                <Box sx={{ mb: 3, p: 1, position: 'relative', zIndex: 1 }}>
+                    <Grid container spacing={2} justifyContent="center" component={motion.div} variants={containerVariants} initial="hidden" animate="visible">
+                        {categories.map((category) => (
+                            <Grid item xs={4} sm={3} md={2} lg={1.5} key={category.id} component={motion.div} variants={itemVariants}>
                                 <Box
-                                    key={product.id}
                                     sx={{
-                                        minWidth: 200,
-                                        p: 2,
-                                        border: '1px solid #f0f0f0',
-                                        borderRadius: 2,
                                         textAlign: 'center',
                                         cursor: 'pointer',
-                                        '&:hover': { boxShadow: 3 }
+                                        transition: 'transform 0.2s',
+                                        '&:hover': { transform: 'translateY(-4px)' },
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center'
                                     }}
                                 >
                                     <Box
-                                        component="img"
-                                        src={product.image}
-                                        alt={product.name}
-                                        sx={{ height: 120, objectFit: 'contain', mb: 2 }}
-                                    />
-                                    <Typography variant="body2" fontWeight="500">{product.name}</Typography>
-                                    <Typography variant="body2" color="success.main" fontWeight="bold">{product.off}</Typography>
-                                    <Typography variant="body2" color="text.secondary">{product.price}</Typography>
-                                </Box>
-                            ))}
-                        </Box>
-                    </Paper>
-
-                    {/* Section 2: Featured Brands (Grid Layout) */}
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                        {[1, 2, 3].map((item) => (
-                            <Grid item xs={12} md={4} key={item}>
-                                <Paper sx={{ p: 0, borderRadius: 1, overflow: 'hidden', cursor: 'pointer' }}>
-                                    <Box sx={{ height: 200, bgcolor: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Typography variant="h5" color="text.secondary">Promotional Banner {item}</Typography>
+                                        sx={{
+                                            width: 70,
+                                            height: 70,
+                                            borderRadius: '20px',
+                                            bgcolor: alpha(category.color, 0.1),
+                                            color: category.color,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            mb: 1.5,
+                                            transition: 'all 0.3s ease',
+                                            boxShadow: `0 0 15px ${alpha(category.color, 0.3)}`,
+                                            '&:hover': {
+                                                bgcolor: category.color,
+                                                color: 'white',
+                                                boxShadow: `0 0 25px ${alpha(category.color, 0.6)}`,
+                                                transform: 'translateY(-2px)'
+                                            }
+                                        }}
+                                    >
+                                        {category.icon}
                                     </Box>
-                                </Paper>
+                                    <Typography
+                                        variant="caption"
+                                        sx={{
+                                            fontSize: '0.85rem',
+                                            fontWeight: 600,
+                                            color: '#374151',
+                                            display: 'block',
+                                            lineHeight: 1.2
+                                        }}
+                                    >
+                                        {category.name}
+                                    </Typography>
+                                </Box>
                             </Grid>
                         ))}
                     </Grid>
+                </Box>
 
-                    {/* Section 3: Recommended for You */}
-                    <Paper sx={{ mb: 2, borderRadius: 1 }}>
-                        <Box sx={{ p: 2, borderBottom: '1px solid #f0f0f0' }}>
-                            <Typography variant="h6" fontWeight="bold">Recommended for You</Typography>
-                            <Typography variant="caption" color="text.secondary">Based on your interest</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', overflowX: 'auto', p: 2, gap: 2 }}>
-                            {[...products].reverse().map((product) => (
-                                <Box
-                                    key={product.id}
+                {/* Best Deals Section */}
+                <Box sx={{ mb: 3 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h5" fontWeight="700">
+                            {t('dashboard.sections.bestDeals')}
+                        </Typography>
+                        <Button sx={{ color: '#2E7D32', fontWeight: 600 }}>{t('dashboard.sections.viewAll')}</Button>
+                    </Box>
+
+                    <Grid container spacing={2} component={motion.div} variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+                        {products.map((product) => (
+                            <Grid item xs={6} sm={4} md={3} lg={2.4} key={product.id} component={motion.div} variants={itemVariants}>
+                                <Card
                                     sx={{
-                                        minWidth: 180,
-                                        p: 1.5,
-                                        border: '1px solid #f0f0f0',
-                                        borderRadius: 2,
-                                        textAlign: 'center',
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
                                         cursor: 'pointer',
-                                        '&:hover': { boxShadow: 2, borderColor: '#2E7D32' }
+                                        transition: 'all 0.3s',
+                                        '&:hover': {
+                                            transform: 'translateY(-4px)',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                                        }
                                     }}
                                 >
-                                    <Box
-                                        component="img"
-                                        src={product.image}
-                                        alt={product.name}
-                                        sx={{ height: 100, objectFit: 'contain', mb: 1.5 }}
-                                    />
-                                    <Typography variant="body2" fontWeight="500" noWrap>{product.name}</Typography>
-                                    <Typography variant="body2" fontWeight="bold">{product.price}</Typography>
-                                    <Typography variant="caption" color="text.secondary">Free Delivery</Typography>
-                                </Box>
-                            ))}
-                        </Box>
-                    </Paper>
+                                    <Box sx={{ position: 'relative' }}>
+                                        <CardMedia
+                                            component="img"
+                                            height="180"
+                                            image={product.image}
+                                            alt={product.name}
+                                            sx={{ objectFit: 'cover' }}
+                                        />
+                                        <IconButton
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleWishlist(product.id);
+                                            }}
+                                            sx={{
+                                                position: 'absolute',
+                                                top: 8,
+                                                right: 8,
+                                                bgcolor: 'white',
+                                                '&:hover': { bgcolor: '#f5f5f5' }
+                                            }}
+                                            size="small"
+                                        >
+                                            {wishlist.includes(product.id) ? (
+                                                <FavoriteFilled sx={{ color: '#e91e63' }} />
+                                            ) : (
+                                                <FavoriteIcon />
+                                            )}
+                                        </IconButton>
+                                        {product.discount > 0 && (
+                                            <Chip
+                                                label={`${product.discount}% OFF`}
+                                                size="small"
+                                                sx={{
+                                                    position: 'absolute',
+                                                    bottom: 8,
+                                                    left: 8,
+                                                    bgcolor: '#2E7D32',
+                                                    color: 'white',
+                                                    fontWeight: 700,
+                                                    fontSize: '0.7rem'
+                                                }}
+                                            />
+                                        )}
+                                    </Box>
+                                    <CardContent sx={{ flexGrow: 1, p: 1.5 }}>
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                fontWeight: 500,
+                                                mb: 0.5,
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                minHeight: 40
+                                            }}
+                                        >
+                                            {product.name}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                                            {product.weight}
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                                            <Rating value={product.rating} precision={0.5} size="small" readOnly />
+                                            <Typography variant="caption" color="text.secondary">
+                                                ({product.reviews})
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 1 }}>
+                                            <Typography variant="h6" fontWeight="700">
+                                                ₹{product.price}
+                                            </Typography>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{ textDecoration: 'line-through', color: 'text.secondary' }}
+                                            >
+                                                ₹{product.originalPrice}
+                                            </Typography>
+                                        </Box>
+                                        <Button
+                                            fullWidth
+                                            variant="contained"
+                                            size="small"
+                                            startIcon={<CartIcon />}
+                                            sx={{
+                                                bgcolor: '#2E7D32',
+                                                textTransform: 'none',
+                                                fontWeight: 600,
+                                                '&:hover': { bgcolor: '#1B5E20' }
+                                            }}
+                                        >
+                                            Add to Cart
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        ))}
+                    </Grid>
+                </Box>
 
-                </Container>
-            </Box>
-        </ThemeProvider>
+                {/* Top Rated Section */}
+                <Box sx={{ mb: 3 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h5" fontWeight="700">
+                            {t('dashboard.sections.topRated')}
+                        </Typography>
+                        <Button sx={{ color: '#2E7D32', fontWeight: 600 }}>{t('dashboard.sections.viewAll')}</Button>
+                    </Box>
+
+                    <Grid container spacing={2} component={motion.div} variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+                        {products.filter(p => p.rating >= 4.5).slice(0, 5).map((product) => (
+                            <Grid item xs={6} sm={4} md={3} lg={2.4} key={product.id} component={motion.div} variants={itemVariants}>
+                                <Card
+                                    sx={{
+                                        height: '100%',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s',
+                                        '&:hover': {
+                                            transform: 'translateY(-4px)',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                                        }
+                                    }}
+                                >
+                                    <CardMedia
+                                        component="img"
+                                        height="180"
+                                        image={product.image}
+                                        alt={product.name}
+                                    />
+                                    <CardContent sx={{ p: 1.5 }}>
+                                        <Typography variant="body2" fontWeight="500" sx={{ mb: 0.5, minHeight: 40 }}>
+                                            {product.name}
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                                            <Rating value={product.rating} precision={0.5} size="small" readOnly />
+                                            <Typography variant="caption" color="text.secondary">
+                                                ({product.reviews})
+                                            </Typography>
+                                        </Box>
+                                        <Typography variant="h6" fontWeight="700" color="#2E7D32">
+                                            ₹{product.price}
+                                        </Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        ))}
+                    </Grid>
+                </Box>
+            </Container>
+        </Box>
     );
 };
 

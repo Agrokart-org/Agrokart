@@ -39,20 +39,20 @@ export const login = async (credentials) => {
       },
       body: JSON.stringify(credentials),
     });
-    
+
     const result = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(result.message || 'Login failed');
     }
-    
+
     // Validate user role if specified
     if (credentials.expectedRole) {
       if (result.user && result.user.role !== credentials.expectedRole) {
         throw new Error(`Access denied. This account is registered as ${result.user.role}, not ${credentials.expectedRole}.`);
       }
     }
-    
+
     return result;
   } catch (error) {
     // Mock login for demo purposes
@@ -107,18 +107,18 @@ export const vendorLogin = async (credentials) => {
       },
       body: JSON.stringify(credentials),
     });
-    
+
     const result = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(result.message || 'Vendor login failed');
     }
-    
+
     // Validate that the user is actually a vendor
     if (result.user && result.user.role !== 'vendor') {
       throw new Error(`Access denied. This account is registered as ${result.user.role}, not vendor. Please use the correct login page for your account type.`);
     }
-    
+
     return result;
   } catch (error) {
     throw new Error(error.message || 'Vendor login failed. Please check your credentials.');
@@ -134,18 +134,18 @@ export const deliveryLogin = async (credentials) => {
       },
       body: JSON.stringify(credentials),
     });
-    
+
     const result = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(result.message || 'Delivery partner login failed');
     }
-    
+
     // Validate that the user is actually a delivery partner
     if (result.user && result.user.role !== 'delivery_partner') {
       throw new Error(`Access denied. This account is registered as ${result.user.role}, not delivery partner. Please use the correct login page for your account type.`);
     }
-    
+
     return result;
   } catch (error) {
     throw new Error(error.message || 'Delivery partner login failed. Please check your credentials.');
@@ -797,6 +797,7 @@ export const deliveryUploadDocuments = async (formData, firebaseToken) => {
   return response.json();
 };
 
+
 export const getDeliveryDashboard = async (firebaseToken) => {
   const response = await fetch(`${API_BASE_URL}/delivery/dashboard`, {
     headers: {
@@ -811,6 +812,46 @@ export const getDeliveryDashboard = async (firebaseToken) => {
 
   return response.json();
 };
+
+// Payment API functions
+export const createPaymentOrder = async (amount, token) => {
+  console.log('API: Creating payment order for amount:', amount);
+  const response = await fetch(`${API_BASE_URL}/payment/create-order`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-auth-token': token
+    },
+    body: JSON.stringify({ amount })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Failed to create payment order');
+  }
+
+  return response.json();
+};
+
+export const verifyPayment = async (data, token) => {
+  console.log('API: Verifying payment');
+  const response = await fetch(`${API_BASE_URL}/payment/verify-payment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-auth-token': token
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Payment verification failed');
+  }
+
+  return response.json();
+};
+
 
 export const getAvailableAssignments = async (token) => {
   const response = await fetch(`${API_BASE_URL}/delivery/assignments/available`, {

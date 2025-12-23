@@ -239,7 +239,7 @@ const MobileOrdersPage = () => {
             </Typography>
             <Button
               variant="contained"
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/customer/dashboard')}
               sx={{
                 bgcolor: '#4CAF50',
                 '&:hover': { bgcolor: '#45a049' },

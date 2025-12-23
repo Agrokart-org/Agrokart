@@ -129,7 +129,7 @@ const MyOrdersPage = () => {
         </Alert>
         <Button
           variant="contained"
-          onClick={() => navigate('/home')}
+          onClick={() => navigate('/customer/dashboard')}
         >
           Back to Home
         </Button>
@@ -159,7 +159,7 @@ const MyOrdersPage = () => {
           </Typography>
           <Button
             variant="contained"
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/customer/dashboard')}
           >
             Start Shopping
           </Button>

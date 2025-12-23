@@ -18,7 +18,7 @@ import ProductsPage from '../pages/ProductsPage';
 
 const ResponsivePageWrapper = ({ pageType, ...props }) => {
   const isMobile = isMobileDevice();
-  
+
   if (!isMobile) {
     // Desktop/Web versions
     switch (pageType) {
@@ -39,7 +39,7 @@ const ResponsivePageWrapper = ({ pageType, ...props }) => {
         return <HomePage {...props} />;
     }
   }
-  
+
   // Mobile versions
   switch (pageType) {
     case 'home':
@@ -51,7 +51,7 @@ const ResponsivePageWrapper = ({ pageType, ...props }) => {
     case 'profile':
       return <MobileProfilePage {...props} />;
     case 'products':
-      return <MobileProductsPage {...props} />;
+      return <ProductsPage {...props} />;
     case 'labor':
     case 'labour':
       return <MobileLaborPage {...props} />;

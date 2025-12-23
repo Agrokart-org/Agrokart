@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -78,6 +78,11 @@ const AppContent = () => {
     '/auth' // unified auth if ever used directly
   ]);
   const shouldBypassRoleGate = authBypassPaths.has(location.pathname);
+
+  // For authenticated customers, skip role selection and go to dashboard
+  if (isAuthenticated && location.pathname === '/') {
+    return <Navigate to="/customer/dashboard" replace />;
+  }
 
   // For new/unauthenticated users, show role selection on normal entry points,
   // but not when they explicitly navigate to a login/register route.

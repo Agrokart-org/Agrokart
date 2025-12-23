@@ -22,11 +22,11 @@ const RoleBasedRoute = ({ children, allowedRoles = [] }) => {
       case 'delivery_partner':
         return <Navigate to="/delivery/dashboard" />;
       case 'customer':
-        return <Navigate to="/home" />;
+        return <Navigate to="/customer/dashboard" />;
       case 'admin':
         return <Navigate to="/admin/dashboard" />;
       default:
-        return <Navigate to="/home" />;
+        return <Navigate to="/customer/dashboard" />;
     }
   }
 

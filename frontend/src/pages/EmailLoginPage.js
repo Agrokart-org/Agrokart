@@ -48,7 +48,8 @@ const EmailLoginPage = () => {
         localStorage.setItem('userName', user.email.split('@')[0]);
         localStorage.setItem('isLoggedIn', 'true');
       }
-      navigate('/home');
+      // Redirect customers to their dashboard
+      navigate('/customer/dashboard');
     } catch (err) {
       console.error('Authentication error:', err);
       console.error('Error code:', err.code);

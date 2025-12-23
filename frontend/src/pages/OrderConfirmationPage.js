@@ -39,6 +39,7 @@ import {
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { createOrder } from '../services/api';
+import { auth } from '../config/firebase'; // Direct auth access needed
 
 const OrderConfirmationPage = () => {
   const navigate = useNavigate();
@@ -106,9 +107,23 @@ const OrderConfirmationPage = () => {
 
 
 
-      if (!token) {
-        console.log('OrderConfirmationPage: No authentication token');
-        setOrderError('Authentication required to create order');
+      // Retrieve token with fallback
+      let authToken = token;
+      if (!authToken && auth.currentUser) {
+        try {
+          authToken = await auth.currentUser.getIdToken();
+          console.log('OrderConfirmationPage: Retrieved fresh token from firebase');
+        } catch (e) {
+          console.error('Failed to get fresh token', e);
+        }
+      }
+      if (!authToken) {
+        authToken = localStorage.getItem('firebaseToken');
+      }
+
+      if (!authToken) {
+        console.log('OrderConfirmationPage: No authentication token available');
+        setOrderError('Authentication required to create order. Please login again.');
         return;
       }
 
@@ -172,9 +187,9 @@ const OrderConfirmationPage = () => {
 
         // Send order to backend
         console.log('OrderConfirmationPage: Sending order to backend...');
-        const response = await createOrder(orderData, token);
+        const response = await createOrder(orderData, authToken);
         console.log('OrderConfirmationPage: Backend response:', response);
-        
+
         console.log('OrderConfirmationPage: Checking response for _id:', response._id);
         console.log('OrderConfirmationPage: Response keys:', Object.keys(response));
 
@@ -308,9 +323,9 @@ const OrderConfirmationPage = () => {
         <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
           Thank you for choosing KrushiDoot
         </Typography>
-        <Chip 
-          label={`Order ID: ${orderId}`} 
-          color="primary" 
+        <Chip
+          label={`Order ID: ${orderId}`}
+          color="primary"
           size="large"
           sx={{ fontSize: '1rem', py: 2, px: 1 }}
         />
@@ -345,10 +360,10 @@ const OrderConfirmationPage = () => {
       </Box>
 
       {/* Invoice/Bill */}
-      <Paper 
+      <Paper
         ref={billRef}
         className="print-content"
-        sx={{ 
+        sx={{
           p: 4,
           mb: 4,
           '@media print': {

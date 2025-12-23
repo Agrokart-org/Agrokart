@@ -24,17 +24,21 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [showRoleSelection, setShowRoleSelection] = useState(true);
 
+  const [token, setToken] = useState(localStorage.getItem('authToken'));
+
   useEffect(() => {
-    // Check for Firebase auth state and localStorage role
     const savedRole = localStorage.getItem('userRole');
     if (savedRole) {
       setUserRole(savedRole);
     }
 
-    // Set up Firebase auth state listener
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         // User is signed in
+        const idToken = await currentUser.getIdToken();
+        localStorage.setItem('authToken', idToken);
+        setToken(idToken);
+
         setUser({
           id: currentUser.uid,
           name: currentUser.displayName || currentUser.email.split('@')[0],
@@ -43,19 +47,33 @@ export const AuthProvider = ({ children }) => {
           role: localStorage.getItem('userRole') || 'customer'
         });
         setIsAuthenticated(true);
-        setShowRoleSelection(false); // Hide role selection if user is logged in
+        setShowRoleSelection(false);
       } else {
         // User is signed out
+        localStorage.removeItem('authToken');
+        setToken(null);
         setUser(null);
         setIsAuthenticated(false);
-        setShowRoleSelection(true); // Show unified auth page for new users
+        setShowRoleSelection(true);
       }
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
+
+  // Refresh token helper
+  const refreshToken = useCallback(async () => {
+    if (auth.currentUser) {
+      const idToken = await auth.currentUser.getIdToken(true);
+      localStorage.setItem('authToken', idToken);
+      setToken(idToken);
+      return idToken;
+    }
+    return null;
+  }, []);
+
+  // ... (keep usage of other functions like register, login etc.)
 
   // Firebase register with email and password
   const register = useCallback(async (userData) => {
@@ -66,67 +84,29 @@ export const AuthProvider = ({ children }) => {
     });
     setLoading(true);
     try {
-      // Check if Firebase auth is properly initialized
       if (!auth) {
-        console.error('❌ Firebase Auth is not initialized:', auth);
         throw new Error('Firebase authentication is not available');
       }
 
-      console.log('⏳ Attempting to create user with Firebase Authentication');
-      // Create user with Firebase Authentication
-      let userCredential;
-      try {
-        userCredential = await createUserWithEmailAndPassword(
-          auth,
-          userData.email,
-          userData.password
-        );
-        const user = userCredential.user;
-        console.log('✅ User created successfully:', user.uid);
-      } catch (createUserError) {
-        console.error('❌ Error creating user:', createUserError.code, createUserError.message);
-        // Check for specific Firebase errors
-        if (createUserError.code === 'auth/email-already-in-use') {
-          throw new Error('Email is already in use. Please use a different email or try logging in.');
-        } else if (createUserError.code === 'auth/network-request-failed') {
-          throw new Error('Network error. Please check your internet connection and try again.');
-        } else if (createUserError.code === 'auth/weak-password') {
-          throw new Error('Password is too weak. Please use a stronger password.');
-        } else {
-          throw createUserError;
-        }
-      }
-
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        userData.email,
+        userData.password
+      );
       const user = userCredential.user;
 
-      console.log('⏳ Updating user profile with name');
-      // Update profile with name
-      try {
-        await updateProfile(user, {
-          displayName: userData.name
-        });
-        console.log('✅ User profile updated successfully');
-      } catch (profileError) {
-        console.error('⚠️ Error updating profile:', profileError);
-        // Continue despite profile update error
-      }
+      await updateProfile(user, {
+        displayName: userData.name
+      });
 
-      // Store role in localStorage
       if (userData.role) {
-        try {
-          console.log('⏳ Storing user role in localStorage:', userData.role);
-          localStorage.setItem('userRole', userData.role);
-          setUserRole(userData.role);
-        } catch (storageError) {
-          console.error('⚠️ Error storing user role in localStorage:', storageError);
-          // Continue despite localStorage error
-        }
+        localStorage.setItem('userRole', userData.role);
+        setUserRole(userData.role);
       }
 
-      console.log('✅ Firebase registration successful:', user.email);
       return { success: true, user };
     } catch (error) {
-      console.error('❌ Firebase registration error:', error.code || 'unknown', error.message, error);
+      console.error('❌ Firebase registration error:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -139,16 +119,12 @@ export const AuthProvider = ({ children }) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Store role in localStorage
       if (userRole) {
         localStorage.setItem('userRole', userRole);
       }
-
-      console.log('Firebase login successful:', user.email);
       return { success: true, user };
     } catch (error) {
-      console.error('Firebase login error:', error.code, error.message);
+      console.error('Firebase login error:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -159,23 +135,15 @@ export const AuthProvider = ({ children }) => {
   const googleLogin = useCallback(async () => {
     setLoading(true);
     try {
-      console.log('Initiating Google Login...');
-      alert('Clicking Google Login...'); // Visual confirmation
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      alert('Popup finished'); // Visual confirmation
       const user = result.user;
-
-      // Store role in localStorage if exists
       if (userRole) {
         localStorage.setItem('userRole', userRole);
       }
-
-      console.log('✅ Google login successful:', user.email);
       return { success: true, user };
     } catch (error) {
-      console.error('❌ Google login error:', error.code, error.message);
-      alert(`Google Login Error: ${error.message}`); // Show error to user
+      console.error('❌ Google login error:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -185,29 +153,16 @@ export const AuthProvider = ({ children }) => {
   // Send OTP
   const sendOtp = useCallback(async (phoneNumber, recaptchaContainerId) => {
     try {
-      console.log('📱 Sending OTP to:', phoneNumber);
-
-      // Initialize RecaptchaVerifier
       if (!window.recaptchaVerifier) {
         window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerId, {
           'size': 'invisible',
-          'callback': (response) => {
-            console.log('Recaptcha verified');
-          }
+          'callback': () => { }
         });
       }
-
-      const appVerifier = window.recaptchaVerifier;
-      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-
-      // Store confirmation result in window to verify later
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
       window.confirmationResult = confirmationResult;
-
-      console.log('✅ OTP sent successfully');
       return { success: true, confirmationResult };
     } catch (error) {
-      console.error('❌ Error sending OTP:', error);
-      // Reset recaptcha if error
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear();
         window.recaptchaVerifier = null;
@@ -220,31 +175,17 @@ export const AuthProvider = ({ children }) => {
   const verifyOtp = useCallback(async (otpCode) => {
     setLoading(true);
     try {
-      if (!window.confirmationResult) {
-        throw new Error('No OTP request found. Please request OTP first.');
-      }
-
+      if (!window.confirmationResult) throw new Error('No OTP request found.');
       const result = await window.confirmationResult.confirm(otpCode);
       const user = result.user;
-
-      // Store role
-      if (userRole) {
-        localStorage.setItem('userRole', userRole);
-      }
-
-      console.log('✅ OTP Verified:', user.phoneNumber);
+      if (userRole) localStorage.setItem('userRole', userRole);
       return { success: true, user };
     } catch (error) {
-      console.error('❌ OTP Verification error:', error);
       throw error;
     } finally {
       setLoading(false);
     }
   }, [userRole]);
-
-
-
-
 
   // Firebase password reset
   const resetPassword = useCallback(async (email) => {
@@ -252,7 +193,6 @@ export const AuthProvider = ({ children }) => {
       await sendPasswordResetEmail(auth, email);
       return { success: true };
     } catch (error) {
-      console.error('Firebase password reset error:', error);
       throw error;
     }
   }, []);
@@ -262,37 +202,31 @@ export const AuthProvider = ({ children }) => {
     try {
       await signOut(auth);
       localStorage.removeItem('userRole');
+      localStorage.removeItem('authToken');
       setUserRole(null);
+      setToken(null);
       setIsAuthenticated(false);
       setUser(null);
       setShowRoleSelection(true);
       return { success: true };
     } catch (error) {
-      console.error('Firebase logout error:', error);
       throw error;
     }
   }, []);
 
-  // Set user role (used during role selection)
   const setRole = useCallback((role) => {
     localStorage.setItem('userRole', role);
     setUserRole(role);
   }, []);
 
-  // Role selection helper used by RoleSelectionPage
   const selectRole = useCallback((role) => {
     setRole(role);
-    // Don't hide role selection here - let the route implementation handle visibility
-    // This prevents showing the 'home' page if the user navigates back to '/' without logging in
-    // setShowRoleSelection(false); 
   }, [setRole]);
 
-  // Update user data (used after registration)
   const updateUser = useCallback((userData) => {
     setUser(userData);
   }, []);
 
-  // Set authentication status
   const setAuthenticationStatus = useCallback((status) => {
     setIsAuthenticated(status);
   }, []);
@@ -304,6 +238,7 @@ export const AuthProvider = ({ children }) => {
   const value = React.useMemo(() => ({
     isAuthenticated,
     user,
+    token, // Expose token
     userRole,
     loading,
     showRoleSelection,
@@ -321,14 +256,15 @@ export const AuthProvider = ({ children }) => {
     googleLogin,
     sendOtp,
     verifyOtp,
+    refreshToken, // Expose refresh token function
     getCurrentUser: () => auth.currentUser,
     isUserAuthenticated: () => !!auth.currentUser,
-    // Legacy API compatibility
     authLogin: (credentials) => login(credentials.email, credentials.password),
     authRegister: (userData) => register(userData)
   }), [
     isAuthenticated,
     user,
+    token,
     userRole,
     loading,
     showRoleSelection,
@@ -340,7 +276,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     register,
-    resetPassword
+    resetPassword,
+    refreshToken
   ]);
 
   if (loading) {

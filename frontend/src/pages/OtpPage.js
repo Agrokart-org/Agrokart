@@ -88,7 +88,8 @@ const OtpPage = () => {
       } else if (userRole === 'delivery_partner') {
         navigate('/delivery/dashboard');
       } else {
-        navigate('/home');
+        // Default to customer dashboard for customers
+        navigate('/customer/dashboard');
       }
 
     } catch (err) {

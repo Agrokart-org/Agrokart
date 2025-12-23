@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -19,16 +19,29 @@ import {
   ArrowForward as ArrowIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AgrokartLogo from './AgrokartLogo';
 
 const RoleSelectionPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { selectRole } = useAuth();
+  const { selectRole, isAuthenticated, user } = useAuth();
   // No default selection to avoid confusion – user explicitly picks a role
   const [selectedRole, setSelectedRole] = useState(null);
   const [showAnimation, setShowAnimation] = useState(true);
+
+  // Redirect authenticated customers directly to dashboard (skip marketplace page)
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'customer') {
+      navigate('/customer/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // If authenticated customer, don't show this page
+  if (isAuthenticated && user?.role === 'customer') {
+    return <Navigate to="/customer/dashboard" replace />;
+  }
 
   const roles = [
     {

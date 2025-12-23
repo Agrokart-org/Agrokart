@@ -109,10 +109,17 @@ const MainLayout = ({ children }) => {
 
           {/* 1. Logo & Home */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }} onClick={() => navigate('/home')}>
-              <Avatar sx={{ bgcolor: '#effcf1', color: '#2E7D32', fontWeight: '900', width: 32, height: 32 }}>A</Avatar>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }} onClick={() => {
+              const userRole = localStorage.getItem('userRole');
+              if (userRole === 'customer') {
+                navigate('/customer/dashboard');
+              } else {
+                navigate('/home');
+              }
+            }}>
+              <Avatar sx={{ bgcolor: '#F3E8FF', background: 'linear-gradient(135deg, #8B5CF6 0%, #F97316 100%)', color: 'white', fontWeight: '900', width: 32, height: 32 }}>A</Avatar>
               <Typography variant="h5" fontWeight="800" sx={{ letterSpacing: -0.5, display: { xs: 'none', sm: 'block' } }}>
-                <span style={{ color: '#2E7D32' }}>Agro</span><span style={{ color: '#FBC02D' }}>kart</span>
+                <span style={{ color: '#8B5CF6' }}>Agro</span><span style={{ color: '#F97316' }}>kart</span>
               </Typography>
             </Box>
           </Box>

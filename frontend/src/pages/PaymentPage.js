@@ -7,29 +7,23 @@ import {
   Grid,
   Paper,
   Button,
-  TextField,
   Radio,
   RadioGroup,
   FormControlLabel,
   FormControl,
-  FormLabel,
-  Divider,
   Card,
   CardContent,
-  CardMedia,
   IconButton,
   useTheme,
-  useMediaQuery,
   Alert,
   Snackbar,
   Stack,
   alpha,
-  CircularProgress
+  CircularProgress,
+  Divider
 } from '@mui/material';
 import {
-  CreditCard as CreditCardIcon,
-  AccountBalance as BankIcon,
-  PhoneAndroid as UpiIcon,
+  AccountBalanceWallet as WalletIcon,
   LocalAtm as CashIcon,
   ArrowBack as ArrowBackIcon,
   Payment as PaymentIcon,
@@ -37,129 +31,174 @@ import {
   LocalShipping as ShippingIcon,
   Support as SupportIcon,
   VerifiedUser as VerifiedUserIcon,
-  Agriculture as AgricultureIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
-import MainLayout from '../components/layout/MainLayout';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { createPaymentOrder, verifyPayment } from '../services/api';
 
 const PaymentPage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { cart, getCartTotal } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [cardDetails, setCardDetails] = useState({
-    cardNumber: '',
-    cardName: '',
-    expiryDate: '',
-    cvv: ''
-  });
-  const [upiId, setUpiId] = useState('');
+  const { user, token } = useAuth();
+
+  const [paymentMethod, setPaymentMethod] = useState('online');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [upiError, setUpiError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [error, setError] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const subtotal = getCartTotal();
   const deliveryFee = subtotal > 5000 ? 0 : 200;
   const total = subtotal + deliveryFee;
 
-  const handleCardChange = (field) => (event) => {
-    let value = event.target.value;
-    
-    // Format card number with spaces
-    if (field === 'cardNumber') {
-      value = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
-    }
-    
-    // Format expiry date
-    if (field === 'expiryDate') {
-      value = value.replace(/\D/g, '');
-      if (value.length >= 2) {
-        value = value.slice(0, 2) + '/' + value.slice(2, 4);
-      }
-    }
-
-    setCardDetails({
-      ...cardDetails,
-      [field]: value
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
     });
   };
 
-  const handlePaymentMethodChange = (event) => {
-    setPaymentMethod(event.target.value);
-  };
-
   const handlePayment = async () => {
+    setIsProcessing(true);
     try {
-      // Validate payment details based on method
-      if (paymentMethod === 'card' && !validateCardDetails()) {
-        setError('Please fill in all card details correctly.');
+      if (paymentMethod === 'cod') {
+        // Handle COD directly
+        proceedToOrderCreation('cod');
         return;
       }
 
-      if (paymentMethod === 'upi' && (!upiId || !upiId.includes('@'))) {
-        setError('Please enter a valid UPI ID.');
+      // Handle Online Payment (Razorpay)
+      // 0. CHECK CONFIGURATION
+      const razorpayKey = process.env.REACT_APP_RAZORPAY_KEY_ID;
+      if (!razorpayKey || razorpayKey === 'rzp_test_PLACEHOLDER') {
+        console.error('Razorpay key is missing or invalid');
+        setSnackbar({
+          open: true,
+          message: 'Payment system configuration error (Missing Key). Please contact support.',
+          severity: 'error'
+        });
+        setIsProcessing(false);
         return;
       }
 
-      // Store payment method for order creation
-      localStorage.setItem('paymentMethod', paymentMethod);
+      const res = await loadRazorpayScript();
 
-      // Store payment details if needed
-      if (paymentMethod === 'card') {
-        localStorage.setItem('paymentDetails', JSON.stringify({
-          method: 'card',
-          last4: cardDetails.cardNumber.slice(-4),
-          cardName: cardDetails.cardName
-        }));
-      } else if (paymentMethod === 'upi') {
-        localStorage.setItem('paymentDetails', JSON.stringify({
-          method: 'upi',
-          upiId: upiId
-        }));
-      } else {
-        localStorage.setItem('paymentDetails', JSON.stringify({
-          method: 'cod'
-        }));
+      if (!res) {
+        setSnackbar({ open: true, message: 'Razorpay SDK failed to load. Are you online?', severity: 'error' });
+        setIsProcessing(false);
+        return;
       }
 
-      // Show payment success state
-      setPaymentSuccess(true);
-      setError('');
+      // 1. Create Order on Backend
+      const order = await createPaymentOrder(total, token);
 
-      // Store cart items in localStorage before navigation
-      localStorage.setItem('orderCartItems', JSON.stringify(cart));
-      console.log('PaymentPage: Cart items stored for order confirmation:', cart);
+      if (!order || !order.id) {
+        setSnackbar({ open: true, message: 'Server error. Are you online?', severity: 'error' });
+        setIsProcessing(false);
+        return;
+      }
 
-      // Simulate payment processing delay
-      setTimeout(() => {
-        // Navigate to order confirmation (cart will be cleared there after order creation)
-        navigate('/order-confirmation');
-      }, 1500);
+      // 2. Initialize Razorpay Options
+      const options = {
+        key: razorpayKey, // Use the validated key
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Agrokart',
+        description: 'Fertilizer Purchase',
+        image: '/logo192.png', // Ensure this exists or use a URL
+        order_id: order.id,
+        handler: async function (response) {
+          // 3. Verify Payment
+          try {
+            const verification = await verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            }, token);
+
+            if (verification.status === 'success') {
+              proceedToOrderCreation('online');
+            } else {
+              setSnackbar({ open: true, message: 'Payment verification failed', severity: 'error' });
+              setIsProcessing(false);
+            }
+          } catch (error) {
+            console.error('Verification Error:', error);
+            setSnackbar({ open: true, message: 'Payment verification failed', severity: 'error' });
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: user?.name || '',
+          email: user?.email || '',
+          contact: user?.phone || ''
+        },
+        theme: {
+          color: theme.palette.primary.main
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+          }
+        }
+      };
+
+      try {
+        const paymentObject = new window.Razorpay(options);
+
+        // Handle Razorpay modal close and failures
+        paymentObject.on('payment.failed', function (response) {
+          console.error('Razorpay Payment Failed:', response.error);
+          setSnackbar({
+            open: true,
+            message: response.error.description || 'Payment Failed. Please try again.',
+            severity: 'error'
+          });
+          setIsProcessing(false);
+        });
+
+        paymentObject.open();
+      } catch (razorpayError) {
+        console.error('Razorpay Initialization Error:', razorpayError);
+        setSnackbar({
+          open: true,
+          message: 'Failed to initialize payment gateway. Please try again.',
+          severity: 'error'
+        });
+        setIsProcessing(false);
+      }
 
     } catch (error) {
-      console.error('Payment error:', error);
-      setError('Payment failed. Please try again.');
-      setPaymentSuccess(false);
+      console.error('Payment Error:', error);
+      // Ensure we don't show a generic alert, use Snackbar
+      setSnackbar({ open: true, message: error.message || 'Payment processing failed', severity: 'error' });
+      setIsProcessing(false);
     }
+  };
+
+  const proceedToOrderCreation = (method) => {
+    // Store payment info for OrderConfirmationPage
+    localStorage.setItem('paymentMethod', method);
+
+    // We don't clear the cart here; OrderConfirmationPage handles the actual API call to create the internal order
+    // and then clears the cart. 
+    // NOTE: Ideally, the verification backend step should also create the order to ensure atomicity,
+    // but keeping with the existing architecture where OrderConfirmationPage creates the order.
+
+    localStorage.setItem('orderCartItems', JSON.stringify(cart));
+
+    setPaymentSuccess(true);
+    setTimeout(() => {
+      navigate('/order-confirmation');
+    }, 1500);
   };
 
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
-  };
-
-  const validateCardDetails = () => {
-    if (paymentMethod === 'card') {
-      return (
-        cardDetails.cardNumber.length === 16 &&
-        cardDetails.cardName.trim() !== '' &&
-        cardDetails.expiryDate.match(/^(0[1-9]|1[0-2])\/([0-9]{2})$/) &&
-        cardDetails.cvv.length === 3
-      );
-    }
-    return true;
   };
 
   const features = [
@@ -183,7 +222,7 @@ const PaymentPage = () => {
   // Show payment success screen
   if (paymentSuccess) {
     return (
-      <MainLayout>
+      <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh', py: 4 }}>
         <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center' }}>
           <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
           <Typography variant="h4" gutterBottom color="success.main">
@@ -196,50 +235,63 @@ const PaymentPage = () => {
             <CircularProgress color="primary" />
           </Box>
         </Container>
-      </MainLayout>
+      </Box>
     );
   }
 
   return (
-    <MainLayout>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconButton onClick={() => navigate(-1)} color="primary">
-            <ArrowBackIcon />
+    <Box sx={{ bgcolor: '#f5f5f5', minHeight: '100vh', py: 4 }}>
+      <Container maxWidth="lg">
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            mb: 3,
+            bgcolor: '#e8f5e9',
+            borderRadius: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          }}
+        >
+          <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#f1f8e9' } }}>
+            <ArrowBackIcon color="primary" />
           </IconButton>
-          <Typography variant="h4" component="h1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AgricultureIcon color="primary" />
+          <Typography variant="h5" component="h1" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 700, color: '#2E7D32' }}>
+            <PaymentIcon />
             Secure Payment
           </Typography>
-        </Box>
+        </Paper>
 
         <Grid container spacing={4}>
           {/* Order Summary */}
           <Grid item xs={12} md={4}>
-            <Paper 
-              sx={{ 
-                p: 3, 
-                position: 'sticky', 
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                position: 'sticky',
                 top: 20,
-                background: `linear-gradient(45deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.primary.light, 0.1)})`,
-                borderRadius: 2
+                bgcolor: '#e8f5e9',
+                borderRadius: 3,
+                border: '1px solid #c8e6c9'
               }}
             >
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <VerifiedUserIcon color="primary" />
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600, color: '#2E7D32' }}>
+                <VerifiedUserIcon />
                 Order Summary
               </Typography>
               <Stack spacing={2}>
                 {cart.map((item) => (
-                  <Box 
-                    key={item.cartItemId} 
-                    sx={{ 
-                      display: 'flex', 
+                  <Box
+                    key={item.cartItemId}
+                    sx={{
+                      display: 'flex',
                       justifyContent: 'space-between',
                       p: 1,
                       borderRadius: 1,
                       '&:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.05)
+                        bgcolor: 'rgba(46, 125, 50, 0.05)'
                       }
                     }}
                   >
@@ -278,216 +330,155 @@ const PaymentPage = () => {
 
           {/* Payment Form */}
           <Grid item xs={12} md={8}>
-            <Paper 
-              sx={{ 
-                p: 3, 
+            <Paper
+              elevation={0}
+              sx={{
+                p: 4,
                 mb: 3,
-                background: `linear-gradient(45deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.primary.light, 0.1)})`,
-                borderRadius: 2
+                bgcolor: 'white',
+                borderRadius: 3
               }}
             >
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600, mb: 3 }}>
                 <PaymentIcon color="primary" />
                 Select Payment Method
               </Typography>
               <FormControl component="fieldset" sx={{ width: '100%' }}>
                 <RadioGroup
                   value={paymentMethod}
-                  onChange={handlePaymentMethodChange}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
                 >
-                  <Card 
-                    sx={{ 
-                      mb: 2, 
-                      border: paymentMethod === 'card' ? `2px solid ${theme.palette.primary.main}` : 'none',
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      mb: 2.5,
+                      border: paymentMethod === 'online' ? '2px solid #2E7D32' : '1px solid #e0e0e0',
+                      bgcolor: paymentMethod === 'online' ? '#f1f8e9' : 'white',
+                      borderRadius: 2,
+                      transition: 'all 0.2s',
                       '&:hover': {
-                        border: `2px solid ${theme.palette.primary.main}`,
-                        cursor: 'pointer'
+                        bgcolor: '#f1f8e9',
+                        borderColor: '#2E7D32',
+                        cursor: 'pointer',
+                        transform: 'translateY(-2px)'
                       }
                     }}
-                    onClick={() => setPaymentMethod('card')}
+                    onClick={() => setPaymentMethod('online')}
                   >
-                    <CardContent>
+                    <CardContent sx={{ pb: '16px !important', display: 'flex', alignItems: 'center' }}>
                       <FormControlLabel
-                        value="card"
-                        control={<Radio />}
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <CreditCardIcon color="primary" />
-                            <Typography>Credit/Debit Card</Typography>
-                          </Box>
-                        }
+                        value="online"
+                        control={<Radio sx={{ color: '#2E7D32', '&.Mui-checked': { color: '#2E7D32' } }} />}
+                        label=""
+                        sx={{ mr: 1, ml: 0 }}
                       />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                        <Box sx={{ bgcolor: 'white', p: 1, borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                          <WalletIcon color="primary" />
+                        </Box>
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight="700" color={paymentMethod === 'online' ? 'primary.main' : 'text.primary'}>
+                            Pay Online
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Cards, UPI, Netbanking (Powered by Razorpay)
+                          </Typography>
+                        </Box>
+                      </Box>
                     </CardContent>
                   </Card>
 
-                  <Card 
-                    sx={{ 
-                      mb: 2,
-                      border: paymentMethod === 'upi' ? `2px solid ${theme.palette.primary.main}` : 'none',
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      border: paymentMethod === 'cod' ? '2px solid #2E7D32' : '1px solid #e0e0e0',
+                      bgcolor: paymentMethod === 'cod' ? '#f1f8e9' : 'white',
+                      borderRadius: 2,
+                      transition: 'all 0.2s',
                       '&:hover': {
-                        border: `2px solid ${theme.palette.primary.main}`,
-                        cursor: 'pointer'
-                      }
-                    }}
-                    onClick={() => setPaymentMethod('upi')}
-                  >
-                    <CardContent>
-                      <FormControlLabel
-                        value="upi"
-                        control={<Radio />}
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <BankIcon color="primary" />
-                            <Typography>UPI</Typography>
-                          </Box>
-                        }
-                      />
-                    </CardContent>
-                  </Card>
-
-                  <Card 
-                    sx={{ 
-                      border: paymentMethod === 'cod' ? `2px solid ${theme.palette.primary.main}` : 'none',
-                      '&:hover': {
-                        border: `2px solid ${theme.palette.primary.main}`,
-                        cursor: 'pointer'
+                        bgcolor: '#f1f8e9',
+                        borderColor: '#2E7D32',
+                        cursor: 'pointer',
+                        transform: 'translateY(-2px)'
                       }
                     }}
                     onClick={() => setPaymentMethod('cod')}
                   >
-                    <CardContent>
+                    <CardContent sx={{ pb: '16px !important', display: 'flex', alignItems: 'center' }}>
                       <FormControlLabel
                         value="cod"
-                        control={<Radio />}
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <CashIcon color="primary" />
-                            <Typography>Cash on Delivery</Typography>
-                          </Box>
-                        }
+                        control={<Radio sx={{ color: '#2E7D32', '&.Mui-checked': { color: '#2E7D32' } }} />}
+                        label=""
+                        sx={{ mr: 1, ml: 0 }}
                       />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                        <Box sx={{ bgcolor: 'white', p: 1, borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                          <CashIcon color="primary" />
+                        </Box>
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight="700" color={paymentMethod === 'cod' ? 'primary.main' : 'text.primary'}>
+                            Cash on Delivery
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Pay cash when order is delivered
+                          </Typography>
+                        </Box>
+                      </Box>
                     </CardContent>
                   </Card>
                 </RadioGroup>
               </FormControl>
 
-              {paymentMethod === 'card' && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Card Details
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Card Number"
-                        value={cardDetails.cardNumber}
-                        onChange={handleCardChange('cardNumber')}
-                        inputProps={{ maxLength: 16 }}
-                        placeholder="1234 5678 9012 3456"
-                        InputProps={{
-                          startAdornment: <CreditCardIcon color="action" sx={{ mr: 1 }} />
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Name on Card"
-                        value={cardDetails.cardName}
-                        onChange={handleCardChange('cardName')}
-                        placeholder="John Doe"
-                      />
-                    </Grid>
-                    <Grid item xs={6}>
-                      <TextField
-                        fullWidth
-                        label="Expiry Date"
-                        value={cardDetails.expiryDate}
-                        onChange={handleCardChange('expiryDate')}
-                        placeholder="MM/YY"
-                        inputProps={{ maxLength: 5 }}
-                      />
-                    </Grid>
-                    <Grid item xs={6}>
-                      <TextField
-                        fullWidth
-                        label="CVV"
-                        value={cardDetails.cvv}
-                        onChange={handleCardChange('cvv')}
-                        type="password"
-                        inputProps={{ maxLength: 3 }}
-                      />
-                    </Grid>
-                  </Grid>
-                </Box>
-              )}
-
-              {paymentMethod === 'upi' && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    UPI Details
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    label="UPI ID"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    placeholder="example@upi"
-                    InputProps={{
-                      startAdornment: <BankIcon color="action" sx={{ mr: 1 }} />
-                    }}
-                  />
-                  <Alert severity="info" sx={{ mt: 2 }}>
-                    Pay using any UPI app like Google Pay, PhonePe, or Paytm
-                  </Alert>
-                </Box>
-              )}
-
-              {paymentMethod === 'cod' && (
-                <Alert severity="info" sx={{ mt: 3 }}>
-                  Pay with cash when your order is delivered to your farm
-                </Alert>
-              )}
+              <Box sx={{ mt: 4 }}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <PaymentIcon />}
+                  onClick={handlePayment}
+                  disabled={isProcessing}
+                  sx={{
+                    py: 1.8,
+                    fontSize: '1.2rem',
+                    fontWeight: 'bold',
+                    bgcolor: '#2E7D32',
+                    boxShadow: '0 4px 12px rgba(46, 125, 50, 0.4)',
+                    '&:hover': {
+                      bgcolor: '#1B5E20',
+                      boxShadow: '0 6px 16px rgba(46, 125, 50, 0.6)',
+                      transform: 'translateY(-1px)'
+                    }
+                  }}
+                >
+                  {isProcessing ? 'Processing Payment...' : `Pay ₹${total}`}
+                </Button>
+                <Typography variant="caption" display="block" textAlign="center" sx={{ mt: 2, color: 'text.secondary' }}>
+                  <SecurityIcon sx={{ fontSize: 14, verticalAlign: 'middle', mr: 0.5 }} />
+                  Secure SSL Payment. Your data is protected.
+                </Typography>
+              </Box>
             </Paper>
-
-            <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              size="large"
-              startIcon={<PaymentIcon />}
-              onClick={handlePayment}
-              disabled={!validateCardDetails()}
-              sx={{
-                py: 1.5,
-                fontSize: '1.1rem',
-                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-                '&:hover': {
-                  background: `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
-                }
-              }}
-            >
-              Pay ₹{total}
-            </Button>
 
             {/* Features Section */}
             <Grid container spacing={2} sx={{ mt: 4 }}>
               {features.map((feature, index) => (
                 <Grid item xs={12} md={4} key={index}>
-                  <Paper 
-                    sx={{ 
-                      p: 2, 
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
                       textAlign: 'center',
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: 1,
+                      bgcolor: 'white',
+                      borderRadius: 3,
                       '&:hover': {
                         transform: 'translateY(-4px)',
                         transition: 'transform 0.2s ease-in-out',
-                        boxShadow: theme.shadows[4]
+                        boxShadow: 2
                       }
                     }}
                   >
@@ -505,7 +496,7 @@ const PaymentPage = () => {
 
         <Snackbar
           open={snackbar.open}
-          autoHideDuration={3000}
+          autoHideDuration={4000}
           onClose={handleCloseSnackbar}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
@@ -514,8 +505,8 @@ const PaymentPage = () => {
           </Alert>
         </Snackbar>
       </Container>
-    </MainLayout>
+    </Box>
   );
 };
 
-export default PaymentPage; 
+export default PaymentPage;

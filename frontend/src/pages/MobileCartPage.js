@@ -23,7 +23,7 @@ import { useCart } from '../context/CartContext';
 const MobileCartPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { cartItems, updateQuantity, removeFromCart, getTotalPrice, cartCount } = useCart();
+  const { cart, updateQuantity, removeFromCart, getCartTotal, cartCount } = useCart();
 
   if (cartCount === 0) {
     return (
@@ -47,7 +47,7 @@ const MobileCartPage = () => {
         </Typography>
         <Button
           variant="contained"
-          onClick={() => navigate('/home')}
+          onClick={() => navigate('/customer/dashboard')}
           sx={{
             bgcolor: '#4CAF50',
             '&:hover': { bgcolor: '#45a049' },
@@ -72,7 +72,7 @@ const MobileCartPage = () => {
 
       {/* Cart Items */}
       <Box sx={{ px: 2, py: 1 }}>
-        {cartItems.map((item) => (
+        {cart.map((item) => (
           <Card key={item.id} sx={{ mb: 1.5, borderRadius: 2, boxShadow: 1 }}>
             <CardContent sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', gap: 2 }}>
@@ -190,27 +190,27 @@ const MobileCartPage = () => {
           <Typography variant="h6" fontWeight="bold" gutterBottom>
             Price Details
           </Typography>
-          
+
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="body2">Price ({cartCount} items)</Typography>
-            <Typography variant="body2">₹{getTotalPrice()}</Typography>
+            <Typography variant="body2">₹{getCartTotal()}</Typography>
           </Box>
-          
+
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="body2">Delivery Charges</Typography>
             <Typography variant="body2" sx={{ color: '#4CAF50' }}>
               FREE
             </Typography>
           </Box>
-          
+
           <Divider sx={{ my: 1 }} />
-          
+
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h6" fontWeight="bold">
               Total Amount
             </Typography>
             <Typography variant="h6" fontWeight="bold" sx={{ color: '#4CAF50' }}>
-              ₹{getTotalPrice()}
+              ₹{getCartTotal()}
             </Typography>
           </Box>
 

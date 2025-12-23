@@ -2,18 +2,62 @@
   "app": {
     "name": "KrushiDoot",
     "tagline": "Your trusted partner for quality fertilizers",
-    "welcome": "Welcome to KrushiDoot! 🌾 Your trusted partner for quality fertilizers. We're here to help your crops grow better and increase your harvest. Let's make farming easier together!"
+    "welcome": "Welcome to KrushiDoot! 🌾 Your trusted partner for quality fertilizers. We're here to help your crops grow better and increase your harvest. Let's make farming easier together!",
+    "deliveryLoc": "Deliver to",
+    "search": "Search products..."
   },
   "navigation": {
     "home": "Home",
-    "myOrders": "My Orders",
-    "support": "Support",
-    "logout": "Logout",
-    "login": "Login",
+    "products": "Products",
+    "labour": "Labour Management",
     "cart": "Cart",
+    "myOrders": "My Orders",
+    "wishlist": "Wishlist",
     "profile": "Profile",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "help": "Help & Support",
+    "logout": "Logout",
+    "account": "Account",
+    "login": "Login",
     "becomeASeller": "Become a Seller",
-    "more": "More"
+    "more": "More",
+    "support": "Support"
+  },
+  "dashboard": {
+    "banners": {
+      "sale": {
+        "title": "Mega Fertilizer Sale",
+        "subtitle": "Up to 40% OFF on all NPK Fertilizers",
+        "cta": "Shop Now"
+      },
+      "organic": {
+        "title": "Organic Products",
+        "subtitle": "Best Quality Organic Fertilizers",
+        "cta": "Explore"
+      },
+      "bulk": {
+        "title": "Bulk Orders",
+        "subtitle": "Special Discounts on Bulk Purchase",
+        "cta": "Get Quote"
+      }
+    },
+    "categories": {
+      "npk": "NPK Fertilizers",
+      "organic": "Organic",
+      "urea": "Urea",
+      "seeds": "Seeds",
+      "pesticides": "Pesticides",
+      "tools": "Tools",
+      "micro": "Micronutrients",
+      "bio": "Bio-Fertilizers"
+    },
+    "sections": {
+      "bestDeals": "Best Deals on Fertilizers",
+      "viewAll": "View All",
+      "topRated": "Top Rated Products",
+      "addToCart": "Add to Cart"
+    }
   },
   "homepage": {
     "heroTitle": "Quality Fertilizers for Better Harvest",

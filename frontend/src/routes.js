@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme';
 import { useAuth } from './context/AuthContext';
 import MainLayout from './components/layout/MainLayout';
+import CustomerLayout from './components/layout/CustomerLayout';
 import ProfileLayout from './components/layout/ProfileLayout';
 import ResponsiveLayout from './components/layout/ResponsiveLayout';
 import ResponsivePageWrapper from './components/ResponsivePageWrapper';
@@ -46,6 +47,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminLoginPage from './pages/AdminLoginPage';
 import MarketplaceNavigation from './components/MarketplaceNavigation';
 import RoleSelectionPage from './components/RoleSelectionPage';
+import LabourManagement from './pages/LabourManagement';
 
 // Helper to redirect based on role
 const getDashboardForRole = (role) => {
@@ -62,8 +64,22 @@ const getDashboardForRole = (role) => {
   }
 };
 
+// Component to handle /home redirect to customer dashboard (with sidebar)
+const HomeRedirect = () => {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) return <div>Loading...</div>;
+
+  if (isAuthenticated && user?.role === 'customer') {
+    return <Navigate to="/customer/dashboard" replace />;
+  }
+
+  // For unauthenticated users or other roles, redirect to login
+  return <Navigate to="/login" replace />;
+};
+
 // Protected Route restricted to Customers
-const CustomerRoute = ({ children }) => {
+const CustomerRoute = ({ children, useSidebar = false }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) return <div>Loading...</div>;
@@ -74,6 +90,11 @@ const CustomerRoute = ({ children }) => {
 
   if (user && user.role !== 'customer') {
     return <Navigate to={getDashboardForRole(user.role)} replace />;
+  }
+
+  // Use CustomerLayout with sidebar for dashboard, MainLayout for other pages
+  if (useSidebar) {
+    return <CustomerLayout>{children}</CustomerLayout>;
   }
 
   return <MainLayout>{children}</MainLayout>;
@@ -135,9 +156,30 @@ const Routes = () => {
       <CssBaseline />
       <RouterRoutes>
         {/* Public Routes (Redirect Vendors/Delivery) */}
-        <Route path="/" element={<RoleSelectionPage />} />
-        <Route path="/home" element={<CustomerOrPublicRoute><ResponsiveLayout><ResponsivePageWrapper pageType="home" /></ResponsiveLayout></CustomerOrPublicRoute>} />
-        <Route path="/products" element={<CustomerOrPublicRoute><ResponsiveLayout><ResponsivePageWrapper pageType="products" /></ResponsiveLayout></CustomerOrPublicRoute>} />
+        {/* Root route - redirect authenticated customers to dashboard, show role selection for others */}
+        <Route
+          path="/"
+          element={
+            <CustomerOrPublicRoute>
+              {({ isAuthenticated, user }) => {
+                if (isAuthenticated && user?.role === 'customer') {
+                  return <Navigate to="/customer/dashboard" replace />;
+                }
+                return <RoleSelectionPage />;
+              }}
+            </CustomerOrPublicRoute>
+          }
+        />
+        {/* Redirect /home to customer dashboard (with sidebar) for authenticated customers, or to login for others */}
+        <Route path="/home" element={<HomeRedirect />} />
+        <Route
+          path="/products"
+          element={
+            <CustomerRoute useSidebar={true}>
+              <ResponsivePageWrapper pageType="products" />
+            </CustomerRoute>
+          }
+        />
 
         {/* Other Public Routes */}
         <Route path="/labor" element={<ResponsiveLayout><MobileLaborPage /></ResponsiveLayout>} />
@@ -151,7 +193,7 @@ const Routes = () => {
         <Route path="/email-login" element={<EmailLoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/otp" element={<OTPPage />} />
-        <Route path="/product/:id" element={<CustomerOrPublicRoute><MainLayout><ProductDetailPage /></MainLayout></CustomerOrPublicRoute>} />
+        <Route path="/product/:id" element={<CustomerOrPublicRoute><CustomerLayout><ProductDetailPage /></CustomerLayout></CustomerOrPublicRoute>} />
         <Route path="/test-order" element={<MainLayout><TestOrderPage /></MainLayout>} />
         <Route path="/test-order-management" element={<MainLayout><TestOrderManagementPage /></MainLayout>} />
 
@@ -178,27 +220,31 @@ const Routes = () => {
 
         {/* Customer Routes (Protected) */}
         <Route path="/customer/dashboard" element={
-          <CustomerRoute>
+          <CustomerRoute useSidebar={true}>
             <CustomerDashboard />
           </CustomerRoute>
         } />
 
-        {/* Marketplace Navigation */}
-        <Route path="/marketplace" element={<MainLayout><MarketplaceNavigation /></MainLayout>} />
+        <Route path="/customer/labour" element={
+          <CustomerRoute useSidebar={true}>
+            <LabourManagement />
+          </CustomerRoute>
+        } />
+
 
         {/* Protected Routes (Customer Only) */}
         <Route
           path="/cart"
           element={
-            <CustomerRoute>
-              <ResponsiveLayout><ResponsivePageWrapper pageType="cart" /></ResponsiveLayout>
+            <CustomerRoute useSidebar={true}>
+              <ResponsivePageWrapper pageType="cart" />
             </CustomerRoute>
           }
         />
         <Route
           path="/delivery-details"
           element={
-            <CustomerRoute>
+            <CustomerRoute useSidebar={true}>
               <DeliveryDetailsPage />
             </CustomerRoute>
           }
@@ -206,7 +252,7 @@ const Routes = () => {
         <Route
           path="/payment"
           element={
-            <CustomerRoute>
+            <CustomerRoute useSidebar={true}>
               <PaymentPage />
             </CustomerRoute>
           }
@@ -214,40 +260,40 @@ const Routes = () => {
         <Route
           path="/order-confirmation"
           element={
-            <CustomerRoute>
-              <ProfileLayout><OrderConfirmationPage /></ProfileLayout>
+            <CustomerRoute useSidebar={true}>
+              <OrderConfirmationPage />
             </CustomerRoute>
           }
         />
         <Route
           path="/profile"
           element={
-            <CustomerRoute>
-              <ResponsiveLayout><ResponsivePageWrapper pageType="profile" /></ResponsiveLayout>
+            <CustomerRoute useSidebar={true}>
+              <ResponsivePageWrapper pageType="profile" />
             </CustomerRoute>
           }
         />
         <Route
           path="/categories"
           element={
-            <CustomerRoute>
-              <ResponsiveLayout><CategoriesPage /></ResponsiveLayout>
+            <CustomerRoute useSidebar={true}>
+              <CategoriesPage />
             </CustomerRoute>
           }
         />
         <Route
           path="/order-tracking"
           element={
-            <CustomerRoute>
-              <ProfileLayout><OrderTrackingPage /></ProfileLayout>
+            <CustomerRoute useSidebar={true}>
+              <OrderTrackingPage />
             </CustomerRoute>
           }
         />
         <Route
           path="/my-orders"
           element={
-            <CustomerRoute>
-              <ResponsiveLayout><ResponsivePageWrapper pageType="orders" /></ResponsiveLayout>
+            <CustomerRoute useSidebar={true}>
+              <ResponsivePageWrapper pageType="orders" />
             </CustomerRoute>
           }
         />
