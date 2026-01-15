@@ -33,24 +33,31 @@ export const AuthProvider = ({ children }) => {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      console.log('🔥 AuthStateChanged:', currentUser ? `User ${currentUser.email}` : 'No User');
+
       if (currentUser) {
         // User is signed in
         const idToken = await currentUser.getIdToken();
         localStorage.setItem('authToken', idToken);
         setToken(idToken);
 
+        const currentRole = localStorage.getItem('userRole') || 'customer';
+        console.log('👤 Setting user in context. Role:', currentRole);
+
         setUser({
           id: currentUser.uid,
           name: currentUser.displayName || currentUser.email.split('@')[0],
           email: currentUser.email,
           phone: currentUser.phoneNumber,
-          role: localStorage.getItem('userRole') || 'customer'
+          role: currentRole
         });
         setIsAuthenticated(true);
         setShowRoleSelection(false);
       } else {
         // User is signed out
+        console.log('👋 User signed out, clearing state');
         localStorage.removeItem('authToken');
+        localStorage.removeItem('userRole'); // Clear role
         setToken(null);
         setUser(null);
         setIsAuthenticated(false);
@@ -223,6 +230,36 @@ export const AuthProvider = ({ children }) => {
     setRole(role);
   }, [setRole]);
 
+  /* 
+   * Update User Profile (Name, Photo)
+   * Note: Email update requires re-authentication, so it's handled separately or restricted.
+   */
+  const updateUserProfile = useCallback(async (profileData) => {
+    setLoading(true);
+    try {
+      if (!auth.currentUser) throw new Error('No authenticated user found');
+
+      const updates = {};
+      if (profileData.name) updates.displayName = profileData.name;
+      if (profileData.photoURL) updates.photoURL = profileData.photoURL;
+
+      // Update Firebase Profile
+      await updateProfile(auth.currentUser, updates);
+
+      // Update Local State
+      const updatedUser = { ...user, ...profileData };
+      if (profileData.name) updatedUser.name = profileData.name;
+
+      setUser(updatedUser);
+      return { success: true, user: updatedUser };
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   const updateUser = useCallback((userData) => {
     setUser(userData);
   }, []);
@@ -246,7 +283,8 @@ export const AuthProvider = ({ children }) => {
     setShowRoleSelection,
     setRole,
     selectRole,
-    updateUser,
+    updateUser, // Legacy local update
+    updateUserProfile, // New Firebase update
     setIsAuthenticated: setAuthenticationStatus,
     hideRoleSelection,
     login,
@@ -271,6 +309,7 @@ export const AuthProvider = ({ children }) => {
     setRole,
     selectRole,
     updateUser,
+    updateUserProfile,
     setAuthenticationStatus,
     hideRoleSelection,
     login,

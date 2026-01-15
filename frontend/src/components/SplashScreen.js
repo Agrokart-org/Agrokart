@@ -11,7 +11,7 @@ const SplashScreen = ({ onComplete }) => {
   useEffect(() => {
     // Start logo animation immediately
     setShowLogo(true);
-    
+
     // Show text after logo appears
     const textTimer = setTimeout(() => {
       setShowText(true);
@@ -110,7 +110,7 @@ const SplashScreen = ({ onComplete }) => {
                   `
                 }}
               />
-              
+
               {/* Logo Icon/Text */}
               <Typography
                 variant="h2"
@@ -156,7 +156,7 @@ const SplashScreen = ({ onComplete }) => {
                     kart
                   </Typography>
                 </Box>
-                
+
                 <Typography
                   variant="subtitle1"
                   sx={{

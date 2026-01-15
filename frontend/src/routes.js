@@ -49,6 +49,7 @@ import MarketplaceNavigation from './components/MarketplaceNavigation';
 import RoleSelectionPage from './components/RoleSelectionPage';
 import LabourManagement from './pages/LabourManagement';
 
+
 // Helper to redirect based on role
 const getDashboardForRole = (role) => {
   switch (role) {
@@ -82,13 +83,22 @@ const HomeRedirect = () => {
 const CustomerRoute = ({ children, useSidebar = false }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
+  console.log('🛡️ CustomerRoute Check:', {
+    isAuthenticated,
+    loading,
+    userRole: user?.role,
+    path: window.location.pathname
+  });
+
   if (loading) return <div>Loading...</div>;
 
   if (!isAuthenticated) {
+    console.warn('⛔ CustomerRoute: Not authenticated, redirecting to /login');
     return <Navigate to="/login" />;
   }
 
   if (user && user.role !== 'customer') {
+    console.warn(`⛔ CustomerRoute: Role mismatch (${user.role}), redirecting...`);
     return <Navigate to={getDashboardForRole(user.role)} replace />;
   }
 
@@ -150,6 +160,17 @@ const AdminRoute = ({ children }) => {
   return <MainLayout>{children}</MainLayout>;
 };
 
+// Component to handle root route logic
+const RootRedirect = () => {
+  const { isAuthenticated, user } = useAuth();
+
+  if (isAuthenticated && user?.role === 'customer') {
+    return <Navigate to="/customer/dashboard" replace />;
+  }
+
+  return <RoleSelectionPage />;
+};
+
 const Routes = () => {
   return (
     <ThemeProvider theme={theme}>
@@ -161,12 +182,7 @@ const Routes = () => {
           path="/"
           element={
             <CustomerOrPublicRoute>
-              {({ isAuthenticated, user }) => {
-                if (isAuthenticated && user?.role === 'customer') {
-                  return <Navigate to="/customer/dashboard" replace />;
-                }
-                return <RoleSelectionPage />;
-              }}
+              <RootRedirect />
             </CustomerOrPublicRoute>
           }
         />
@@ -282,7 +298,7 @@ const Routes = () => {
           }
         />
         <Route
-          path="/order-tracking"
+          path="/customer/tracking/:orderId"
           element={
             <CustomerRoute useSidebar={true}>
               <OrderTrackingPage />
@@ -300,7 +316,7 @@ const Routes = () => {
         <Route
           path="/order-details/:orderId"
           element={
-            <CustomerRoute>
+            <CustomerRoute useSidebar={true}>
               <ProfileLayout><OrderDetailsPage /></ProfileLayout>
             </CustomerRoute>
           }

@@ -51,7 +51,7 @@ const ResponsivePageWrapper = ({ pageType, ...props }) => {
     case 'profile':
       return <MobileProfilePage {...props} />;
     case 'products':
-      return <ProductsPage {...props} />;
+      return <MobileProductsPage {...props} />;
     case 'labor':
     case 'labour':
       return <MobileLaborPage {...props} />;

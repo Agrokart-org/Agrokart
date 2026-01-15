@@ -35,3 +35,9 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Smooth Marker Animation */
+.smooth-marker {
+  transition: all 1s linear;
+  will-change: transform;
+}

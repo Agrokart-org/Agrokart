@@ -34,7 +34,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 
+import { mockProducts } from '../data/mockProducts';
+
 // Data moved inside component for translation
+
+// Banner Images
+import bannerSale from '../assets/banner_sale_field.png';
+import bannerOrganic from '../assets/banner_organic_harvest.png';
+import bannerBulk from '../assets/banner_bulk_supply.png';
 
 const CustomerDashboard = () => {
     const { t } = useTranslation();
@@ -48,24 +55,29 @@ const CustomerDashboard = () => {
             id: 1,
             title: t('dashboard.banners.sale.title'),
             subtitle: t('dashboard.banners.sale.subtitle'),
-            image: 'linear-gradient(135deg, #2E7D32 0%, #66BB6A 100%)',
-            cta: t('dashboard.banners.sale.cta')
+            image: bannerSale,
+            cta: t('dashboard.banners.sale.cta'),
+            color: '#ffffff'
         },
         {
             id: 2,
             title: t('dashboard.banners.organic.title'),
             subtitle: t('dashboard.banners.organic.subtitle'),
-            image: 'linear-gradient(135deg, #388E3C 0%, #81C784 100%)',
-            cta: t('dashboard.banners.organic.cta')
+            image: bannerOrganic,
+            cta: t('dashboard.banners.organic.cta'),
+            color: '#ffffff'
         },
         {
             id: 3,
             title: t('dashboard.banners.bulk.title'),
             subtitle: t('dashboard.banners.bulk.subtitle'),
-            image: 'linear-gradient(135deg, #43A047 0%, #A5D6A7 100%)',
-            cta: t('dashboard.banners.bulk.cta')
+            image: bannerBulk,
+            cta: t('dashboard.banners.bulk.cta'),
+            color: '#ffffff'
         }
     ];
+
+    // ... (categories and products arrays remain the same) ...
 
     // Categories
     const categories = [
@@ -79,116 +91,23 @@ const CustomerDashboard = () => {
         { id: 8, name: t('dashboard.categories.bio'), icon: <EmojiNature sx={{ fontSize: 32 }} />, color: '#388E3C' }
     ];
 
-    // Products data
-    const products = [
-        {
-            id: 1,
-            name: `${t('dashboard.categories.npk')} 19-19-19`,
-            weight: '50kg',
-            image: 'https://via.placeholder.com/200x200/2E7D32/FFFFFF?text=NPK',
-            price: 1299,
-            originalPrice: 1599,
-            discount: 19,
-            rating: 4.5,
-            reviews: 234,
-            category: t('dashboard.categories.npk'),
-            inStock: true
-        },
-        {
-            id: 2,
-            name: `${t('dashboard.categories.organic')} Vermicompost`,
-            weight: '40kg',
-            image: 'https://via.placeholder.com/200x200/388E3C/FFFFFF?text=Organic',
-            price: 899,
-            originalPrice: 1199,
-            discount: 25,
-            rating: 4.7,
-            reviews: 456,
-            category: t('dashboard.categories.organic'),
-            inStock: true
-        },
-        {
-            id: 3,
-            name: `${t('dashboard.categories.urea')} Premium`,
-            weight: '50kg',
-            image: 'https://via.placeholder.com/200x200/43A047/FFFFFF?text=Urea',
-            price: 799,
-            originalPrice: 999,
-            discount: 20,
-            rating: 4.3,
-            reviews: 189,
-            category: t('dashboard.categories.urea'),
-            inStock: true
-        },
-        {
-            id: 4,
-            name: 'DAP Fertilizer', // Keeping explicit names for some
-            weight: '50kg',
-            image: 'https://via.placeholder.com/200x200/66BB6A/FFFFFF?text=DAP',
-            price: 1499,
-            originalPrice: 1799,
-            discount: 17,
-            rating: 4.6,
-            reviews: 312,
-            category: t('dashboard.categories.npk'),
-            inStock: true
-        },
-        {
-            id: 5,
-            name: 'Neem Cake Organic',
-            weight: '25kg',
-            image: 'https://via.placeholder.com/200x200/81C784/FFFFFF?text=Neem',
-            price: 649,
-            originalPrice: 849,
-            discount: 24,
-            rating: 4.8,
-            reviews: 567,
-            category: t('dashboard.categories.organic'),
-            inStock: true
-        },
-        {
-            id: 6,
-            name: 'Potash Fertilizer',
-            weight: '50kg',
-            image: 'https://via.placeholder.com/200x200/A5D6A7/FFFFFF?text=Potash',
-            price: 1199,
-            originalPrice: 1499,
-            discount: 20,
-            rating: 4.4,
-            reviews: 223,
-            category: t('dashboard.categories.npk'),
-            inStock: true
-        },
-        {
-            id: 7,
-            name: 'Zinc Sulphate',
-            weight: '10kg',
-            image: 'https://via.placeholder.com/200x200/2E7D32/FFFFFF?text=Zinc',
-            price: 399,
-            originalPrice: 499,
-            discount: 20,
-            rating: 4.5,
-            reviews: 145,
-            category: t('dashboard.categories.micro'),
-            inStock: true
-        },
-        {
-            id: 8,
-            name: 'Bio NPK Fertilizer',
-            weight: '20kg',
-            image: 'https://via.placeholder.com/200x200/388E3C/FFFFFF?text=BioNPK',
-            price: 899,
-            originalPrice: 1099,
-            discount: 18,
-            rating: 4.7,
-            reviews: 289,
-            category: t('dashboard.categories.bio'),
-            inStock: true
-        }
-    ];
+    // Products data from shared source
+    const products = mockProducts.map(p => ({
+        id: p._id,
+        name: p.name,
+        weight: p.unit || '1kg',
+        image: p.images?.[0] || 'https://via.placeholder.com/200',
+        price: p.price,
+        originalPrice: p.originalPrice,
+        discount: p.discount,
+        rating: p.averageRating,
+        reviews: p.ratings?.length || 0,
+        category: p.category,
+        inStock: p.stock > 0
+    }));
 
     const containerVariants = {
-        hidden: { opacity: 0 },
+        hidden: { opacity: 1 },
         visible: {
             opacity: 1,
             transition: {
@@ -198,7 +117,7 @@ const CustomerDashboard = () => {
     };
 
     const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
+        hidden: { y: 0, opacity: 1 },
         visible: {
             y: 0,
             opacity: 1
@@ -236,55 +155,128 @@ const CustomerDashboard = () => {
                 <Box
                     sx={{
                         position: 'relative',
-                        height: { xs: 200, sm: 280, md: 350 },
-                        borderRadius: 1,
+                        height: { xs: 300, sm: 400, md: 500 }, // Increased height for cinematic feel
+                        borderRadius: { xs: 2, md: 4 },
                         overflow: 'hidden',
-                        mb: 3,
-                        mt: 2
+                        mb: 4,
+                        mt: 2,
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
                     }}
                 >
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={currentBanner}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
+                            initial={{ opacity: 1, scale: 1 }}
+                            animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.5 }}
-                            style={{ height: '100%' }}
+                            transition={{ duration: 0.8 }}
+                            style={{ height: '100%', width: '100%', position: 'absolute' }}
                         >
+                            {/* Background Image */}
                             <Box
                                 sx={{
                                     height: '100%',
-                                    background: banners[currentBanner].image,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white',
-                                    textAlign: 'center',
-                                    px: 3
+                                    width: '100%',
+                                    backgroundImage: `url(${banners[currentBanner].image})`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                }}
+                            />
+
+                            {/* Overlay Gradient */}
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    background: 'linear-gradient(to right, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 100%)',
+                                }}
+                            />
+
+                            {/* Content Content - Glassmorphism Card */}
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: { xs: '50%', md: '5%' },
+                                    transform: { xs: 'translate(-50%, -50%)', md: 'translate(0, -50%)' },
+                                    width: { xs: '90%', md: '500px' },
+                                    textAlign: { xs: 'center', md: 'left' },
+                                    zIndex: 2
                                 }}
                             >
-                                <Box>
-                                    <Typography variant="h3" fontWeight="700" sx={{ mb: 1, fontSize: { xs: '1.5rem', md: '3rem' } }}>
-                                        {banners[currentBanner].title}
-                                    </Typography>
-                                    <Typography variant="h6" sx={{ mb: 3, fontSize: { xs: '0.9rem', md: '1.25rem' } }}>
-                                        {banners[currentBanner].subtitle}
-                                    </Typography>
-                                    <Button
-                                        variant="contained"
-                                        size="large"
+                                <motion.div
+                                    initial={{ opacity: 1, x: 0 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.3, duration: 0.5 }}
+                                >
+                                    <Box
                                         sx={{
-                                            bgcolor: 'white',
-                                            color: '#2E7D32',
-                                            fontWeight: 700,
-                                            px: 4,
-                                            '&:hover': { bgcolor: '#f5f5f5' }
+                                            background: 'rgba(255, 255, 255, 0.1)',
+                                            backdropFilter: 'blur(10px)',
+                                            borderRadius: 4,
+                                            p: { xs: 3, md: 5 },
+                                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                                            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
                                         }}
                                     >
-                                        {banners[currentBanner].cta}
-                                    </Button>
-                                </Box>
+                                        <Typography
+                                            variant="h2"
+                                            sx={{
+                                                mb: 2,
+                                                fontSize: { xs: '2rem', md: '3.5rem' },
+                                                fontWeight: 800,
+                                                background: 'linear-gradient(45deg, #FFFFFF 30%, #E2E8F0 90%)',
+                                                WebkitBackgroundClip: 'text',
+                                                WebkitTextFillColor: 'transparent',
+                                                lineHeight: 1.1,
+                                                letterSpacing: -0.5
+                                            }}
+                                        >
+                                            {banners[currentBanner].title}
+                                        </Typography>
+
+                                        <Typography
+                                            variant="h6"
+                                            sx={{
+                                                mb: 4,
+                                                color: 'rgba(255,255,255,0.9)',
+                                                fontSize: { xs: '1rem', md: '1.2rem' },
+                                                fontWeight: 300,
+                                                lineHeight: 1.6
+                                            }}
+                                        >
+                                            {banners[currentBanner].subtitle}
+                                        </Typography>
+
+                                        <Button
+                                            variant="contained"
+                                            size="large"
+                                            onClick={() => navigate('/products')}
+                                            sx={{
+                                                bgcolor: '#4CAF50',
+                                                color: 'white',
+                                                fontWeight: 700,
+                                                px: 4,
+                                                py: 1.5,
+                                                borderRadius: 50,
+                                                fontSize: '1.1rem',
+                                                textTransform: 'none',
+                                                boxShadow: '0 4px 15px rgba(76, 175, 80, 0.4)',
+                                                '&:hover': {
+                                                    bgcolor: '#43A047',
+                                                    transform: 'translateY(-2px)',
+                                                    boxShadow: '0 6px 20px rgba(76, 175, 80, 0.6)'
+                                                },
+                                                transition: 'all 0.3s'
+                                            }}
+                                        >
+                                            {banners[currentBanner].cta}
+                                        </Button>
+                                    </Box>
+                                </motion.div>
                             </Box>
                         </motion.div>
                     </AnimatePresence>
@@ -297,8 +289,11 @@ const CustomerDashboard = () => {
                             left: 16,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            bgcolor: 'rgba(255,255,255,0.9)',
-                            '&:hover': { bgcolor: 'white' }
+                            bgcolor: 'rgba(0,0,0,0.3)',
+                            color: 'white',
+                            backdropFilter: 'blur(5px)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            '&:hover': { bgcolor: 'rgba(0,0,0,0.5)' }
                         }}
                     >
                         <ChevronLeft />
@@ -310,8 +305,11 @@ const CustomerDashboard = () => {
                             right: 16,
                             top: '50%',
                             transform: 'translateY(-50%)',
-                            bgcolor: 'rgba(255,255,255,0.9)',
-                            '&:hover': { bgcolor: 'white' }
+                            bgcolor: 'rgba(0,0,0,0.3)',
+                            color: 'white',
+                            backdropFilter: 'blur(5px)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            '&:hover': { bgcolor: 'rgba(0,0,0,0.5)' }
                         }}
                     >
                         <ChevronRight />
@@ -321,11 +319,12 @@ const CustomerDashboard = () => {
                     <Box
                         sx={{
                             position: 'absolute',
-                            bottom: 16,
+                            bottom: 24,
                             left: '50%',
                             transform: 'translateX(-50%)',
                             display: 'flex',
-                            gap: 1
+                            gap: 1.5,
+                            zIndex: 3
                         }}
                     >
                         {banners.map((_, index) => (
@@ -333,12 +332,13 @@ const CustomerDashboard = () => {
                                 key={index}
                                 onClick={() => setCurrentBanner(index)}
                                 sx={{
-                                    width: 8,
+                                    width: index === currentBanner ? 24 : 8,
                                     height: 8,
-                                    borderRadius: '50%',
-                                    bgcolor: index === currentBanner ? 'white' : 'rgba(255,255,255,0.5)',
+                                    borderRadius: 4,
+                                    bgcolor: index === currentBanner ? '#4CAF50' : 'rgba(255,255,255,0.5)',
                                     cursor: 'pointer',
-                                    transition: 'all 0.3s'
+                                    transition: 'all 0.3s ease',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                                 }}
                             />
                         ))}
@@ -346,10 +346,34 @@ const CustomerDashboard = () => {
                 </Box>
 
                 <Box sx={{ mb: 3, p: 1, position: 'relative', zIndex: 1 }}>
-                    <Grid container spacing={2} justifyContent="center" component={motion.div} variants={containerVariants} initial="hidden" animate="visible">
+                    {/* Active Order Simulation */}
+                    <Card sx={{ mb: 4, bgcolor: '#e8f5e9', border: '1px solid #4CAF50', borderRadius: 3 }}>
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                            <Box>
+                                <Typography variant="h6" fontWeight="bold" color="#2E7D32">
+                                    Order #ORD-2024-889 is On the Way!
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    Arriving in 12 mins • Rahul Kumar (Delivery Partner)
+                                </Typography>
+                            </Box>
+                            <Button
+                                variant="contained"
+                                color="success"
+                                onClick={() => navigate('/customer/tracking/2024-889')}
+                                startIcon={<Agriculture />} // Using existing icon for now, or add LocalShipping
+                                sx={{ borderRadius: 20, px: 3 }}
+                            >
+                                Track Now
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    <Grid container spacing={2} justifyContent="center" component={motion.div} variants={containerVariants} initial="visible" animate="visible">
                         {categories.map((category) => (
                             <Grid item xs={4} sm={3} md={2} lg={1.5} key={category.id} component={motion.div} variants={itemVariants}>
                                 <Box
+                                    onClick={() => navigate(`/products?category=${encodeURIComponent(category.name)}`)}
                                     sx={{
                                         textAlign: 'center',
                                         cursor: 'pointer',
@@ -410,8 +434,8 @@ const CustomerDashboard = () => {
                         <Button sx={{ color: '#2E7D32', fontWeight: 600 }}>{t('dashboard.sections.viewAll')}</Button>
                     </Box>
 
-                    <Grid container spacing={2} component={motion.div} variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-                        {products.map((product) => (
+                    <Grid container spacing={2} component={motion.div} variants={containerVariants} initial="visible" whileInView="visible" viewport={{ once: true }}>
+                        {products.slice(0, 12).map((product) => (
                             <Grid item xs={6} sm={4} md={3} lg={2.4} key={product.id} component={motion.div} variants={itemVariants}>
                                 <Card
                                     sx={{
@@ -536,8 +560,8 @@ const CustomerDashboard = () => {
                         <Button sx={{ color: '#2E7D32', fontWeight: 600 }}>{t('dashboard.sections.viewAll')}</Button>
                     </Box>
 
-                    <Grid container spacing={2} component={motion.div} variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-                        {products.filter(p => p.rating >= 4.5).slice(0, 5).map((product) => (
+                    <Grid container spacing={2} component={motion.div} variants={containerVariants} initial="visible" whileInView="visible" viewport={{ once: true }}>
+                        {products.filter(p => p.rating >= 4.5).slice(0, 12).map((product) => (
                             <Grid item xs={6} sm={4} md={3} lg={2.4} key={product.id} component={motion.div} variants={itemVariants}>
                                 <Card
                                     sx={{

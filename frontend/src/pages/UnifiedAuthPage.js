@@ -38,15 +38,15 @@ const UnifiedAuthPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, register, setRole } = useAuth();
-  
+
   useEffect(() => {
     // Test Firebase auth status on component mount
     console.log('🔍 Firebase auth object:', auth);
     console.log('🔍 Current Firebase user:', auth.currentUser);
-    
+
     // Removed external network HEAD test to avoid console errors on restricted networks
   }, []);
-  
+
   // Pick initial role from URL query (?role=customer|vendor|delivery), default to customer
   const searchParams = new URLSearchParams(location.search);
   const roleParam = searchParams.get('role');
@@ -60,7 +60,7 @@ const UnifiedAuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -78,7 +78,7 @@ const UnifiedAuthPage = () => {
       icon: CustomerIcon,
       color: '#4CAF50',
       gradient: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
-      loginRoute: '/home',
+      loginRoute: '/customer/dashboard',
       registerRoute: '/register'
     },
     {
@@ -146,9 +146,9 @@ const UnifiedAuthPage = () => {
       console.log('🧪 Testing direct Firebase authentication');
       const testEmail = 'test' + Date.now() + '@example.com';
       const testPassword = 'Test123456';
-      
+
       console.log('🧪 Test credentials:', { testEmail, testPassword });
-      
+
       // Test network connectivity first
       try {
         console.log('🌐 Testing general network connectivity...');
@@ -160,11 +160,11 @@ const UnifiedAuthPage = () => {
       } catch (networkError) {
         console.error('❌ Network connectivity test failed:', networkError);
       }
-      
+
       // Test Firebase API connectivity
       try {
         console.log('🧪 Testing Firebase API connectivity...');
-        const response = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + 
+        const response = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' +
           'AIzaSyDAMtYm61y2d3YzLBoo1m4K7V1lsJI3lyY', {
           method: 'OPTIONS'
         });
@@ -176,14 +176,14 @@ const UnifiedAuthPage = () => {
       } catch (error) {
         console.error('🧪 Firebase API connectivity test failed:', error);
       }
-      
+
       // Import Firebase auth functions directly
       const { createUserWithEmailAndPassword } = await import('firebase/auth');
-      
+
       console.log('🧪 Attempting direct Firebase registration');
       const userCredential = await createUserWithEmailAndPassword(auth, testEmail, testPassword);
       console.log('🧪 Direct Firebase registration successful:', userCredential.user);
-      
+
       return { success: true, message: 'Direct Firebase test successful' };
     } catch (error) {
       console.error('🧪 Direct Firebase test failed:', error);
@@ -204,12 +204,12 @@ const UnifiedAuthPage = () => {
         console.log('🧪 Running direct Firebase test before registration');
         const testResult = await testFirebaseAuth();
         console.log('🧪 Direct Firebase test result:', testResult);
-        
+
         if (!testResult.success) {
           throw new Error('Firebase direct test failed: ' + testResult.error?.message);
         }
       }
-      
+
       if (authMode === 'login') {
         // Handle Login with Firebase
         console.log('🔍 UnifiedAuth Login attempt:', {
@@ -228,7 +228,7 @@ const UnifiedAuthPage = () => {
       } else {
         // Handle Registration
         console.log('🔄 Registration process started');
-        
+
         // Check if password meets minimum requirements
         if (formData.password.length < 6) {
           console.error('❌ Password too short during registration');
@@ -236,7 +236,7 @@ const UnifiedAuthPage = () => {
           setLoading(false);
           return;
         }
-        
+
         if (formData.password !== formData.confirmPassword) {
           console.log('❌ Passwords do not match');
           setError('Passwords do not match');
@@ -258,7 +258,7 @@ const UnifiedAuthPage = () => {
 
           setSuccess(`Redirecting to ${selectedRole} registration...`);
           setLoading(false); // Ensure loading is false
-          
+
           // Navigate immediately with router
           try {
             navigate(selectedRoleData.registerRoute, {
@@ -273,7 +273,7 @@ const UnifiedAuthPage = () => {
           } catch (navigationError) {
             console.error('❌ Navigation error:', navigationError);
           }
-          
+
           // Strong hard-redirect fallback shortly after
           setTimeout(() => {
             const target = `${window.location.origin}${selectedRoleData.registerRoute}`;
@@ -315,11 +315,11 @@ const UnifiedAuthPage = () => {
             });
           } catch (registerError) {
             console.error('❌ Register function error:', registerError);
-            
+
             // Handle specific Firebase error codes
             let errorMessage = 'Registration failed. Please try again.';
             if (registerError.code) {
-              switch(registerError.code) {
+              switch (registerError.code) {
                 case 'auth/email-already-in-use':
                   errorMessage = 'This email is already registered. Please login instead.';
                   break;
@@ -338,7 +338,7 @@ const UnifiedAuthPage = () => {
             } else if (registerError.message) {
               errorMessage = registerError.message;
             }
-            
+
             setError(errorMessage);
             setLoading(false);
             return;
@@ -381,7 +381,7 @@ const UnifiedAuthPage = () => {
                   <AgrokartLogo size="large" />
                 </Box>
               </Zoom>
-              
+
               <Typography
                 variant="h3"
                 fontWeight="bold"
@@ -395,7 +395,7 @@ const UnifiedAuthPage = () => {
               >
                 Welcome to Agrokart
               </Typography>
-              
+
               <Typography variant="h6" color="text.secondary">
                 Three-Sided Agricultural Marketplace
               </Typography>
@@ -416,7 +416,7 @@ const UnifiedAuthPage = () => {
                     {roles.map((role) => {
                       const IconComponent = role.icon;
                       const isSelected = selectedRole === role.id;
-                      
+
                       return (
                         <Grid item xs={12} key={role.id}>
                           <Card
@@ -503,9 +503,9 @@ const UnifiedAuthPage = () => {
                   >
                     {authMode === 'login' ? 'Sign In' : 'Create Account'}
                   </Typography>
-                  
+
                   <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                    {authMode === 'login' 
+                    {authMode === 'login'
                       ? `Sign in to your ${selectedRoleData.title.toLowerCase()} account`
                       : `Create a new ${selectedRoleData.title.toLowerCase()} account`
                     }
@@ -596,15 +596,15 @@ const UnifiedAuthPage = () => {
                         }
                       }}
                     >
-                      {loading 
-                        ? (authMode === 'login' ? 'Signing In...' : 'Creating Account...') 
+                      {loading
+                        ? (authMode === 'login' ? 'Signing In...' : 'Creating Account...')
                         : (authMode === 'login' ? 'Sign In' : 'Create Account')
                       }
                     </Button>
 
                     {authMode === 'register' && (selectedRole === 'vendor' || selectedRole === 'delivery') && (
                       <Alert severity="info" sx={{ mt: 2 }}>
-                        {selectedRole === 'vendor' 
+                        {selectedRole === 'vendor'
                           ? 'Vendors need additional business verification. You\'ll be redirected to complete registration.'
                           : 'Delivery partners need vehicle verification. You\'ll be redirected to complete registration.'
                         }

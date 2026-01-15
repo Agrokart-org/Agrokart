@@ -33,6 +33,9 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import CustomerSidebar from './CustomerSidebar';
+import LogoImage from '../../assets/logo_green_no_bg.png';
+
+import Footer from './Footer';
 
 const CustomerLayout = ({ children }) => {
   const theme = useTheme();
@@ -118,24 +121,18 @@ const CustomerLayout = ({ children }) => {
               }}
               onClick={() => navigate('/customer/dashboard')}
             >
-              {/* Logo Icon 'A' */}
+              {/* Logo Icon */}
               <Box
+                component="img"
+                src={LogoImage}
+                alt="Agrokart Logo"
                 sx={{
                   width: 44,
                   height: 44,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #8B5CF6 0%, #F97316 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: 900,
-                  fontSize: '1.8rem',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.2)'
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.3))'
                 }}
-              >
-                A
-              </Box>
+              />
               {/* Logo Text */}
               <Typography variant="h5" component="div" sx={{ fontWeight: 900, letterSpacing: 0.5, lineHeight: 1 }}>
                 <span style={{ color: '#C084FC', textShadow: '0px 2px 2px rgba(0,0,0,0.3)' }}>Agro</span><span style={{ color: '#FB923C', textShadow: '0px 2px 2px rgba(0,0,0,0.3)' }}>kart</span>
@@ -354,7 +351,10 @@ const CustomerLayout = ({ children }) => {
         }}
       >
         <Toolbar sx={{ minHeight: 70 }} /> {/* Spacer for Fixed AppBar */}
-        {children}
+        <Box sx={{ flex: 1 }}>
+          {children}
+        </Box>
+        <Footer />
       </Box>
     </Box >
   );

@@ -4,7 +4,8 @@ import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    updateProfile
 } from 'firebase/auth';
 
 // Dynamic API URL detection for mobile and web
@@ -139,7 +140,7 @@ const authService = {
             const firebaseUser = userCredential.user;
 
             // Update Firebase user profile with name
-            await firebaseUser.updateProfile({
+            await updateProfile(firebaseUser, {
                 displayName: name
             });
 
@@ -179,7 +180,7 @@ const authService = {
                     const firebaseUser = userCredential.user;
 
                     // Update Firebase user profile with name
-                    await firebaseUser.updateProfile({
+                    await updateProfile(firebaseUser, {
                         displayName: name
                     });
 

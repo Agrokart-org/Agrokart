@@ -1,281 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Container,
-  Paper,
-  Typography,
-  Box,
-  TextField,
-  Button,
-  Stack,
-  Grid,
-  Divider,
-  useTheme,
-  alpha,
-  CircularProgress
-} from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Container, Typography, IconButton, Paper, Fab, Zoom } from '@mui/material';
+import { ArrowBack as ArrowBackIcon, MyLocation as MyLocationIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { getOrderById } from '../services/api';
-import SearchIcon from '@mui/icons-material/Search';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import HomeIcon from '@mui/icons-material/Home';
+import TrackingMap from '../components/map/TrackingMap'; // Ensure path is correct
+import { useSocket } from '../context/SocketContext'; // Ensure path is correct
 
 const OrderTrackingPage = () => {
   const navigate = useNavigate();
-  const { orderId } = useParams();
-  const { token } = useAuth();
-  const theme = useTheme();
-  const [orderNumber, setOrderNumber] = useState(orderId || '');
-  const [orderDetails, setOrderDetails] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { orderId } = useParams(); // Get order ID from URL
+  const socket = useSocket();
 
-  // Fetch order details from API
-  const fetchOrderDetails = async (orderIdToFetch) => {
-    if (!orderIdToFetch) {
-      setError('Please enter an order ID');
-      return;
-    }
+  // State for tracking data
+  const [deliveryLocation, setDeliveryLocation] = useState(null);
+  const [pickupLocation, setPickupLocation] = useState({ lat: 18.5204, lng: 73.8567 }); // Demo defaults
+  const [dropoffLocation, setDropoffLocation] = useState({ lat: 18.5300, lng: 73.8600 }); // Demo defaults
+  const [partnerDetails, setPartnerDetails] = useState({
+    name: 'Rahul Kumar',
+    vehicleModel: 'Hero Splendor',
+    vehicleNumber: 'MH14 GC 2299',
+    photo: 'https://mui.com/static/images/avatar/2.jpg',
+    phone: '9876543210'
+  });
 
-    try {
-      setLoading(true);
-      setError('');
-      const response = await getOrderById(orderIdToFetch, token);
-      const orderData = response.data || response;
-
-      // Convert API response to tracking format
-      const trackingData = {
-        orderNumber: orderData._id,
-        status: orderData.status || orderData.orderStatus,
-        items: orderData.items,
-        totalAmount: orderData.totalAmount,
-        createdAt: orderData.createdAt,
-        deliveryAddress: orderData.deliveryAddress || 'Default delivery address'
-      };
-
-      setOrderDetails(trackingData);
-    } catch (err) {
-      console.error('Error fetching order:', err);
-      setError('Order not found. Please check your order ID.');
-      setOrderDetails(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTrackOrder = () => {
-    fetchOrderDetails(orderNumber);
-  };
-
-  // Auto-fetch order details if orderId is provided in URL
   useEffect(() => {
-    if (orderId) {
-      fetchOrderDetails(orderId);
-    }
-  }, [orderId, token]);
+    if (!socket) return;
 
-  const getOrderStatus = () => {
-    if (!orderDetails) {
-      return {
-        orderPlaced: false,
-        confirmed: false,
-        processing: false,
-        shipped: false,
-        delivered: false
-      };
-    }
+    // Join the room
+    const trackingId = orderId || '2024-889'; // Default for demo if not provided
+    socket.emit('join_tracking', trackingId);
+    console.log(`Joined tracking for order ${trackingId}`);
 
-    const status = orderDetails.status;
-    switch (status) {
-      case 'pending':
-        return {
-          orderPlaced: true,
-          confirmed: false,
-          processing: false,
-          shipped: false,
-          delivered: false
-        };
-      case 'confirmed':
-        return {
-          orderPlaced: true,
-          confirmed: true,
-          processing: false,
-          shipped: false,
-          delivered: false
-        };
-      case 'processing':
-        return {
-          orderPlaced: true,
-          confirmed: true,
-          processing: true,
-          shipped: false,
-          delivered: false
-        };
-      case 'shipped':
-      case 'out_for_delivery':
-        return {
-          orderPlaced: true,
-          confirmed: true,
-          processing: true,
-          shipped: true,
-          delivered: false
-        };
-      case 'delivered':
-        return {
-          orderPlaced: true,
-          confirmed: true,
-          processing: true,
-          shipped: true,
-          delivered: true
-        };
-      default:
-        return {
-          orderPlaced: true,
-          confirmed: false,
-          processing: false,
-          shipped: false,
-          delivered: false
-        };
-    }
-  };
+    // Listen for updates
+    const handleLocationUpdate = (data) => {
+      console.log('Received location update:', data);
+
+      const lat = parseFloat(data.latitude);
+      const lng = parseFloat(data.longitude);
+      const heading = parseFloat(data.heading);
+
+      // Only update if coordinates are valid numbers
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        setDeliveryLocation({
+          lat,
+          lng,
+          heading: Number.isFinite(heading) ? heading : 0
+        });
+      } else {
+        console.warn('Received invalid coordinates:', data);
+      }
+    };
+
+    socket.on('location_updated', handleLocationUpdate);
+
+    return () => {
+      socket.off('location_updated', handleLocationUpdate);
+      socket.emit('leave_tracking', trackingId);
+    };
+  }, [socket, orderId]);
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Paper 
-        sx={{ 
-          p: 4,
-          background: `linear-gradient(45deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.primary.light, 0.1)})`,
-          borderRadius: 2
-        }}
-      >
-        <Typography variant="h4" gutterBottom align="center">
-          Track Your Order
+    <Box sx={{ height: '100vh', width: '100vw', bgcolor: '#f5f5f5', display: 'flex', flexDirection: 'column' }}>
+      {/* Header Overlay */}
+      <Box sx={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1100,
+        p: 2,
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%)'
+      }}>
+        <IconButton onClick={() => navigate(-1)} sx={{ color: 'white', bgcolor: 'rgba(0,0,0,0.2)' }}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h6" color="white" sx={{ ml: 2, display: 'inline', fontWeight: 'bold' }}>
+          Tracking Order #{orderId || '2024-889'}
         </Typography>
+      </Box>
 
-        {/* Search Section */}
-        <Box sx={{ mb: 4 }}>
-          <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-            <TextField
-              fullWidth
-              label="Enter Order Number"
-              value={orderNumber}
-              onChange={(e) => setOrderNumber(e.target.value)}
-              error={!!error}
-              helperText={error}
-            />
-            <Button
-              variant="contained"
-              startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
-              onClick={handleTrackOrder}
-              disabled={loading}
-              sx={{ minWidth: '150px' }}
-            >
-              {loading ? 'Tracking...' : 'Track Order'}
-            </Button>
-          </Stack>
-        </Box>
-
-        {orderDetails && (
-          <>
-            {/* Order Details */}
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" gutterBottom>
-                Order Details
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Order Number
-                  </Typography>
-                  <Typography variant="body1" gutterBottom>
-                    {orderDetails.orderNumber}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Order Date
-                  </Typography>
-                  <Typography variant="body1" gutterBottom>
-                    {new Date(orderDetails.orderDate).toLocaleDateString()}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Box>
-
-            <Divider sx={{ my: 3 }} />
-
-            {/* Order Tracking */}
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" gutterBottom>
-                Order Status
-              </Typography>
-              <Stack spacing={2}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <CheckCircleIcon color="success" />
-                  <Box>
-                    <Typography variant="subtitle1">Order Placed</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Your order has been successfully placed
-                    </Typography>
-                  </Box>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <AssignmentIcon color="success" />
-                  <Box>
-                    <Typography variant="subtitle1">Order Confirmed</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      We've confirmed your order
-                    </Typography>
-                  </Box>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <InventoryIcon color="success" />
-                  <Box>
-                    <Typography variant="subtitle1">Processing</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Your order is being processed
-                    </Typography>
-                  </Box>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <LocalShippingIcon color="primary" />
-                  <Box>
-                    <Typography variant="subtitle1">Shipped</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Your order will be shipped soon
-                    </Typography>
-                  </Box>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <CheckCircleIcon color="disabled" />
-                  <Box>
-                    <Typography variant="subtitle1">Delivered</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Your order will be delivered soon
-                    </Typography>
-                  </Box>
-                </Box>
-              </Stack>
-            </Box>
-
-            {/* Action Buttons */}
-            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-              <Button
-                variant="contained"
-                startIcon={<HomeIcon />}
-                onClick={() => navigate('/customer/dashboard')}
-              >
-                Back to Home
-              </Button>
-            </Box>
-          </>
-        )}
-      </Paper>
-    </Container>
+      {/* Map Container */}
+      <Box sx={{ flex: 1, position: 'relative' }}>
+        <TrackingMap
+          deliveryLocation={deliveryLocation}
+          pickupLocation={pickupLocation}
+          dropoffLocation={dropoffLocation}
+          partnerDetails={partnerDetails}
+        />
+      </Box>
+    </Box>
   );
 };
 
-export default OrderTrackingPage; 
+export default OrderTrackingPage;

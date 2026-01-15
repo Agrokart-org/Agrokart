@@ -6,8 +6,6 @@ import {
   Box,
   Paper,
   Grid,
-  Card,
-  CardContent,
   Chip,
   Button,
   Stack,
@@ -18,13 +16,11 @@ import {
   Stepper,
   Step,
   StepLabel,
-  StepContent,
+  StepConnector,
+  stepConnectorClasses,
   Avatar,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemAvatar
+  IconButton
 } from '@mui/material';
 import {
   ArrowBack as BackIcon,
@@ -39,10 +35,39 @@ import {
   Receipt as OrderIcon,
   Phone as PhoneIcon,
   Email as EmailIcon,
-  LocationOn as LocationIcon
+  LocationOn as LocationIcon,
+  CreditCard as PaymentIcon,
+  HelpOutline as HelpIcon
 } from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
+import { styled } from '@mui/material/styles';
 import { useAuth } from '../context/AuthContext';
 import { getOrderById } from '../services/api';
+
+// Custom Animated Connector for Stepper
+const ColorlibConnector = styled(StepConnector)(({ theme }) => ({
+  [`&.${stepConnectorClasses.alternativeLabel}`]: {
+    top: 22,
+  },
+  [`&.${stepConnectorClasses.active}`]: {
+    [`& .${stepConnectorClasses.line}`]: {
+      backgroundImage:
+        `linear-gradient( 95deg,${theme.palette.secondary.main} 0%,${theme.palette.primary.main} 50%,${theme.palette.success.main} 100%)`,
+    },
+  },
+  [`&.${stepConnectorClasses.completed}`]: {
+    [`& .${stepConnectorClasses.line}`]: {
+      backgroundImage:
+        `linear-gradient( 95deg,${theme.palette.secondary.main} 0%,${theme.palette.primary.main} 50%,${theme.palette.success.main} 100%)`,
+    },
+  },
+  [`& .${stepConnectorClasses.line}`]: {
+    height: 3,
+    border: 0,
+    backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : '#eaeaf0',
+    borderRadius: 1,
+  },
+}));
 
 const OrderDetailsPage = () => {
   const { orderId } = useParams();
@@ -53,392 +78,236 @@ const OrderDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Generate dynamic tracking steps based on order status
-  const getTrackingSteps = (orderStatus) => {
-    const baseSteps = [
-      {
-        label: 'Order Placed',
-        description: 'Your order has been successfully placed',
-        icon: <OrderIcon />,
-        timestamp: order?.createdAt
-      },
-      {
-        label: 'Order Confirmed',
-        description: 'Order confirmed and being prepared',
-        icon: <CheckCircle />,
-        timestamp: order?.createdAt
-      },
-      {
-        label: 'Packed',
-        description: 'Your items have been packed and ready for dispatch',
-        icon: <PackedIcon />,
-        timestamp: null
-      },
-      {
-        label: 'Out for Delivery',
-        description: 'Your order is on the way to your location',
-        icon: <OutForDeliveryIcon />,
-        timestamp: null
-      },
-      {
-        label: 'Delivered',
-        description: 'Order delivered successfully to your address',
-        icon: <DeliveredHomeIcon />,
-        timestamp: null
-      }
-    ];
-
-    // Set timestamps based on order status
-    const now = new Date();
-    const orderDate = new Date(order?.createdAt);
-
-    switch (orderStatus) {
-      case 'pending':
-        return baseSteps.map((step, index) => ({
-          ...step,
-          completed: index === 0,
-          active: index === 0
-        }));
-      case 'confirmed':
-        return baseSteps.map((step, index) => ({
-          ...step,
-          completed: index <= 1,
-          active: index === 1,
-          timestamp: index <= 1 ? (index === 0 ? orderDate : new Date(orderDate.getTime() + 30 * 60 * 1000)) : null
-        }));
-      case 'shipped':
-        return baseSteps.map((step, index) => ({
-          ...step,
-          completed: index <= 3,
-          active: index === 3,
-          timestamp: index <= 3 ? new Date(orderDate.getTime() + index * 4 * 60 * 60 * 1000) : null
-        }));
-      case 'delivered':
-        return baseSteps.map((step, index) => ({
-          ...step,
-          completed: true,
-          active: index === 4,
-          timestamp: new Date(orderDate.getTime() + index * 4 * 60 * 60 * 1000)
-        }));
-      default:
-        return baseSteps.map((step, index) => ({
-          ...step,
-          completed: index === 0,
-          active: index === 0
-        }));
-    }
-  };
-
   useEffect(() => {
     const fetchOrderDetails = async () => {
-      if (!token) {
-        setError('Authentication required');
-        setLoading(false);
-        return;
-      }
-
+      if (!token) return;
       try {
         setLoading(true);
         const response = await getOrderById(orderId, token);
-        // Handle both API response format and mock data format
-        const orderData = response.data || response;
-        setOrder(orderData);
+        setOrder(response.data || response);
       } catch (err) {
-        console.error('Error fetching order details:', err);
+        console.error('Error:', err);
         setError('Failed to load order details');
       } finally {
         setLoading(false);
       }
     };
-
-    if (orderId) {
-      fetchOrderDetails();
-    }
+    fetchOrderDetails();
   }, [orderId, token]);
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return theme.palette.warning.main;
-      case 'confirmed': return theme.palette.info.main;
-      case 'shipped': return theme.palette.primary.main;
       case 'delivered': return theme.palette.success.main;
       case 'cancelled': return theme.palette.error.main;
-      default: return theme.palette.grey[500];
+      case 'shipped': return theme.palette.primary.main;
+      case 'processing': return theme.palette.info.main;
+      default: return theme.palette.warning.main;
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusBg = (status) => {
     switch (status) {
-      case 'pending': return <PendingIcon />;
-      case 'confirmed': return <CheckCircle />;
-      case 'shipped': return <ShippingIcon />;
-      case 'delivered': return <DeliveredIcon />;
-      case 'cancelled': return <CancelledIcon />;
-      default: return <PendingIcon />;
+      case 'delivered': return alpha(theme.palette.success.main, 0.1);
+      case 'cancelled': return alpha(theme.palette.error.main, 0.1);
+      case 'shipped': return alpha(theme.palette.primary.main, 0.1);
+      case 'processing': return alpha(theme.palette.info.main, 0.1);
+      default: return alpha(theme.palette.warning.main, 0.1);
     }
   };
 
-  const getActiveStep = (orderStatus) => {
-    switch (orderStatus) {
-      case 'pending': return 1;
-      case 'confirmed': return 2;
-      case 'shipped': return 3;
-      case 'delivered': return 4;
-      default: return 0;
-    }
+  const getTrackingSteps = (orderStatus) => {
+    const baseSteps = [
+      { label: 'Placed', icon: <OrderIcon />, date: order?.createdAt },
+      { label: 'Confirmed', icon: <CheckCircle /> },
+      { label: 'Shipped', icon: <ShippingIcon /> },
+      { label: 'Delivered', icon: <DeliveredIcon /> }
+    ];
+
+    let activeIndex = 0;
+    if (orderStatus === 'confirmed') activeIndex = 1;
+    if (orderStatus === 'shipped') activeIndex = 2;
+    if (orderStatus === 'delivered') activeIndex = 4; // All done
+
+    return baseSteps.map((step, index) => ({
+      ...step,
+      completed: index < activeIndex,
+      active: index === activeIndex
+    }));
   };
 
-  if (loading) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-          <CircularProgress />
-        </Box>
-      </Container>
-    );
-  }
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+      <CircularProgress size={60} thickness={4} sx={{ color: theme.palette.primary.main }} />
+    </Box>
+  );
 
-  if (error) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error" sx={{ mb: 4 }}>
-          {error}
-        </Alert>
-        <Button variant="contained" onClick={() => navigate('/my-orders')}>
-          Back to Orders
-        </Button>
-      </Container>
-    );
-  }
+  if (!order) return null;
 
-  if (!order) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="warning" sx={{ mb: 4 }}>
-          Order not found
-        </Alert>
-        <Button variant="contained" onClick={() => navigate('/my-orders')}>
-          Back to Orders
-        </Button>
-      </Container>
-    );
-  }
-
-  const trackingSteps = getTrackingSteps(order.status || order.orderStatus);
+  const statusColor = getStatusColor(order.status || order.orderStatus);
+  const statusBg = getStatusBg(order.status || order.orderStatus);
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="md" sx={{ py: 4, pb: 12 }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Button
-          startIcon={<BackIcon />}
-          onClick={() => navigate('/my-orders')}
-          sx={{ mb: 2 }}
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
+        <IconButton onClick={() => navigate('/my-orders')} sx={{ bgcolor: 'white', boxShadow: 1 }}>
+          <BackIcon />
+        </IconButton>
+        <Typography variant="h5" fontWeight="800">Order Details</Typography>
+      </Stack>
+
+      {/* Main Content */}
+      <Stack spacing={3} component={motion.div} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+
+        {/* Status Banner */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            borderRadius: 4,
+            bgcolor: statusBg,
+            border: `1px solid ${alpha(statusColor, 0.2)}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 2
+          }}
         >
-          Back to Orders
-        </Button>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-          Order Details
-        </Typography>
-        <Typography variant="h6" color="text.secondary">
-          Order ID: {order._id}
-        </Typography>
-      </Box>
-
-      <Grid container spacing={3}>
-        {/* Order Tracking */}
-        <Grid item xs={12} lg={8}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
-              📦 Order Tracking
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" fontWeight="600">
+              ORDER ID
             </Typography>
-
-            <Stepper orientation="vertical">
-              {trackingSteps.map((step, index) => (
-                <Step key={step.label} active={step.active} completed={step.completed}>
-                  <StepLabel
-                    icon={
-                      <Avatar
-                        sx={{
-                          bgcolor: step.completed ? theme.palette.success.main :
-                                  step.active ? theme.palette.primary.main : theme.palette.grey[300],
-                          width: 40,
-                          height: 40,
-                          border: step.active ? `3px solid ${alpha(theme.palette.primary.main, 0.3)}` : 'none'
-                        }}
-                      >
-                        {step.icon}
-                      </Avatar>
-                    }
-                  >
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        {step.label}
-                      </Typography>
-                      {step.timestamp && (
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(step.timestamp).toLocaleString('en-IN')}
-                        </Typography>
-                      )}
-                    </Box>
-                  </StepLabel>
-                  <StepContent>
-                    <Typography color="text.secondary" sx={{ mb: 2 }}>
-                      {step.description}
-                    </Typography>
-                    <Chip
-                      label={step.completed ? 'Completed' : step.active ? 'In Progress' : 'Pending'}
-                      color={step.completed ? 'success' : step.active ? 'primary' : 'default'}
-                      size="small"
-                    />
-                  </StepContent>
-                </Step>
-              ))}
-            </Stepper>
-
-            {/* Estimated Delivery */}
-            <Box sx={{ mt: 4, p: 2, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                Estimated Delivery
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                {new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </Typography>
-            </Box>
-          </Paper>
-
-          {/* Order Items */}
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
-              Order Items
+            <Typography variant="h6" fontWeight="800">
+              #{order.trackingNumber || order._id?.slice(-8).toUpperCase()}
             </Typography>
-            
-            <List>
-              {order.items?.map((item, index) => (
-                <React.Fragment key={index}>
-                  <ListItem sx={{ px: 0 }}>
-                    <ListItemAvatar>
-                      <Avatar
-                        src={item.product?.images?.[0] || '/api/placeholder/60/60'}
-                        sx={{ width: 60, height: 60 }}
-                      />
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                          {item.product?.name || item.name}
-                        </Typography>
-                      }
-                      secondary={
-                        <Box>
-                          <Typography variant="body2" color="text.secondary">
-                            Quantity: {item.quantity} {item.product?.unit || 'kg'}
-                          </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, mt: 1 }}>
-                            ₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                  {index < order.items.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Placed on {new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'long' })}
+            </Typography>
+          </Box>
+          <Chip
+            label={(order.status || order.orderStatus || 'Pending').toUpperCase()}
+            sx={{
+              bgcolor: statusColor,
+              color: 'white',
+              fontWeight: 'bold',
+              borderRadius: 2,
+              px: 1,
+              height: 32
+            }}
+          />
+        </Paper>
+
+        {/* Tracking Timeline */}
+        <Paper elevation={0} sx={{ p: 4, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+          <Typography variant="h6" fontWeight="bold" sx={{ mb: 4 }}>Order Status</Typography>
+          <Stepper alternativeLabel activeStep={order.status === 'delivered' ? 4 : order.status === 'shipped' ? 2 : 1} connector={<ColorlibConnector />}>
+            {getTrackingSteps(order.status).map((step) => (
+              <Step key={step.label}>
+                <StepLabel StepIconComponent={() => (
+                  <Avatar sx={{
+                    bgcolor: step.completed || step.active ? theme.palette.primary.main : theme.palette.grey[200],
+                    color: step.completed || step.active ? 'white' : theme.palette.grey[500],
+                    width: 40, height: 40
+                  }}>
+                    {step.icon}
+                  </Avatar>
+                )}>
+                  <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>{step.label}</Typography>
+                </StepLabel>
+              </Step>
+            ))}
+          </Stepper>
+        </Paper>
+
+        {/* Items */}
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+          <Typography variant="h6" fontWeight="bold" sx={{ mb: 3 }}>Items ordered</Typography>
+          <Stack spacing={3}>
+            {order.items?.map((item, index) => (
+              <Box key={index} sx={{ display: 'flex', gap: 2 }}>
+                <Avatar
+                  src={item.product?.images?.[0] || '/placeholder.png'}
+                  variant="rounded"
+                  sx={{ width: 80, height: 80, borderRadius: 3, bgcolor: '#f5f5f5' }}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="subtitle1" fontWeight="bold">{item.product?.name || item.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Quantity: {item.quantity} &bull; {item.product?.unit || 'Unit'}
+                  </Typography>
+                  <Typography variant="h6" color="primary.main" fontWeight="bold" sx={{ mt: 1 }}>
+                    ₹{item.price * item.quantity}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+          </Stack>
+        </Paper>
+
+        {/* Delivery & Payment Info */}
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Paper elevation={0} sx={{ p: 3, height: '100%', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main' }}>
+                  <LocationIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">Delivery Address</Typography>
+                  <Typography variant="body1" fontWeight="600" sx={{ mt: 0.5 }}>
+                    {order.deliveryAddress?.street}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {order.deliveryAddress?.city}, {order.deliveryAddress?.state} - {order.deliveryAddress?.pincode}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Paper elevation={0} sx={{ p: 3, height: '100%', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                <Avatar sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.1), color: 'secondary.main' }}>
+                  <PaymentIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">Payment Info</Typography>
+                  <Typography variant="body1" fontWeight="600" sx={{ mt: 0.5 }}>
+                    {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight="800" sx={{ mt: 0.5, color: 'success.main' }}>
+                    Total: ₹{order.totalAmount}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Paper>
+          </Grid>
         </Grid>
 
-        {/* Order Summary & Contact */}
-        <Grid item xs={12} lg={4}>
-          {/* Order Summary */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
-              Order Summary
-            </Typography>
-            
-            <Box sx={{ mb: 2 }}>
-              <Chip
-                icon={getStatusIcon(order.status || order.orderStatus)}
-                label={(order.status || order.orderStatus)?.toUpperCase()}
-                color={(order.status || order.orderStatus) === 'delivered' ? 'success' : (order.status || order.orderStatus) === 'cancelled' ? 'error' : 'primary'}
-                sx={{ mb: 2 }}
-              />
-            </Box>
+        {/* Help Section */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            bgcolor: '#f8f9fa',
+            border: '1px dashed #ced4da',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            cursor: 'pointer'
+          }}
+          onClick={() => window.open('mailto:support@agrokart.com')}
+        >
+          <HelpIcon color="action" />
+          <Typography variant="body2" fontWeight="600" color="text.secondary">
+            Need help with this order? Contact Support
+          </Typography>
+        </Paper>
 
-            <Stack spacing={2}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography>Subtotal:</Typography>
-                <Typography>₹{order.totalAmount - (order.deliveryFee || 0)}</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography>Delivery Fee:</Typography>
-                <Typography>₹{order.deliveryFee || 0}</Typography>
-              </Box>
-              <Divider />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Total:</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>₹{order.totalAmount}</Typography>
-              </Box>
-            </Stack>
-
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                <strong>Order Date:</strong> {new Date(order.createdAt).toLocaleDateString('en-IN')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                <strong>Payment Method:</strong> {order.paymentMethod || 'Cash on Delivery'}
-              </Typography>
-            </Box>
-          </Paper>
-
-          {/* Delivery Address */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-              Delivery Address
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-              <LocationIcon color="primary" sx={{ mt: 0.5 }} />
-              <Box>
-                <Typography variant="body2">
-                  {order.deliveryAddress?.street}<br />
-                  {order.deliveryAddress?.city}, {order.deliveryAddress?.state}<br />
-                  {order.deliveryAddress?.pincode}
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-
-          {/* Contact Support */}
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-              Need Help?
-            </Typography>
-            <Stack spacing={2}>
-              <Button
-                variant="outlined"
-                startIcon={<PhoneIcon />}
-                fullWidth
-                onClick={() => window.open('tel:1800-XXX-XXXX')}
-              >
-                Call Support
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<EmailIcon />}
-                fullWidth
-                onClick={() => window.open('mailto:support@krushidoot.com')}
-              >
-                Email Support
-              </Button>
-            </Stack>
-          </Paper>
-        </Grid>
-      </Grid>
+      </Stack>
     </Container>
   );
 };

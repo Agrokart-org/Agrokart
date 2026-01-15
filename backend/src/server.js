@@ -74,11 +74,19 @@ mongoose.connection.on('disconnected', () => {
   connectWithRetry();
 });
 
+// Create HTTP server
+const http = require('http');
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const { initializeSocket } = require('./services/socketService');
+const io = initializeSocket(server);
+
 // Try different ports if 5000 is in use
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0'; // Listen on all network interfaces
 
-app.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, () => {
   console.log(`Server is running on http://${HOST}:${PORT}`);
   console.log(`Local access: http://localhost:${PORT}`);
   console.log(`Network access: http://192.168.43.196:${PORT}`); // Your IP for mobile access

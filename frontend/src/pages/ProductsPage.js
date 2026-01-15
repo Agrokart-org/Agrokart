@@ -161,7 +161,7 @@ const ProductsPage = () => {
   const [searchFromNav, setSearchFromNav] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const productsPerPage = 12;
+  const productsPerPage = 1000; // Show all products (max capacity)
 
   // Effects
   useEffect(() => {
@@ -508,19 +508,7 @@ const ProductsPage = () => {
             </Grid>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
-              <Pagination
-                count={totalPages}
-                page={currentPage}
-                onChange={(_, v) => setCurrentPage(v)}
-                color="secondary"
-                size="large"
-                shape="rounded"
-              />
-            </Box>
-          )}
+          {/* Pagination Removed as per requirement to show all products */}
         </Grid>
       </Grid>
     </Container>

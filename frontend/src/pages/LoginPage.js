@@ -40,15 +40,19 @@ const LoginPage = () => {
   }, [searchParams, setRole]);
 
   // Handle redirection when authenticated
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   useEffect(() => {
     if (isAuthenticated && user) {
       if (user.role === 'customer') {
         navigate('/customer/dashboard', { replace: true });
+      } else {
+        // If logged in as non-customer (e.g. stale delivery session), logout automatically
+        // so they can login as customer
+        console.warn(`⚠️ Role mismatch on Customer Login: ${user.role}. Logging out...`);
+        logout();
       }
-      // You can add other role redirections here if this login page supports them
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, navigate, logout]);
 
   const handleChange = (e) => {
     setFormData({

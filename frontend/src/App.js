@@ -7,6 +7,7 @@ import { CartProvider } from './context/CartContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { MobileProvider } from './context/MobileContext';
 import { NotificationProvider } from './context/NotificationProvider';
+import { SocketProvider } from './context/SocketContext';
 import theme from './theme';
 import AppRoutes from './routes';
 import AIChatbot from './components/AIChatbot';
@@ -135,9 +136,11 @@ function App() {
             <LanguageProvider>
               <AuthProvider>
                 <CartProvider>
-                  <WorkflowProvider>
-                    <AppContent />
-                  </WorkflowProvider>
+                  <SocketProvider>
+                    <WorkflowProvider>
+                      <AppContent />
+                    </WorkflowProvider>
+                  </SocketProvider>
                 </CartProvider>
               </AuthProvider>
             </LanguageProvider>

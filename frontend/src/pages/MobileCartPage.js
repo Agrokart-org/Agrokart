@@ -9,16 +9,22 @@ import {
   Divider,
   Paper,
   Chip,
-  useTheme
+  useTheme,
+  Stack
 } from '@mui/material';
 import {
   Add as AddIcon,
   Remove as RemoveIcon,
-  Delete as DeleteIcon,
-  ShoppingBag as EmptyCartIcon
+  DeleteOutline as DeleteIcon,
+  ShoppingBag as EmptyCartIcon,
+  ArrowBack,
+  LocalOffer
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const MotionCard = motion(Card);
 
 const MobileCartPage = () => {
   const theme = useTheme();
@@ -33,26 +39,37 @@ const MobileCartPage = () => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: '60vh',
+          minHeight: '80vh',
           px: 3,
-          textAlign: 'center'
+          textAlign: 'center',
+          background: 'linear-gradient(135deg, #F4F7F5 0%, #E8F5E9 100%)'
         }}
       >
-        <EmptyCartIcon sx={{ fontSize: 80, color: '#ccc', mb: 2 }} />
-        <Typography variant="h6" gutterBottom sx={{ color: '#666' }}>
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+        >
+          <Box sx={{ p: 4, bgcolor: 'white', borderRadius: '50%', boxShadow: '0 8px 32px rgba(0,0,0,0.05)', mb: 3 }}>
+            <EmptyCartIcon sx={{ fontSize: 60, color: '#CFD8DC' }} />
+          </Box>
+        </motion.div>
+        <Typography variant="h5" fontWeight="800" gutterBottom sx={{ color: 'text.primary' }}>
           Your cart is empty
         </Typography>
-        <Typography variant="body2" sx={{ color: '#999', mb: 3 }}>
-          Add some fertilizers and farming supplies to get started
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4, maxWidth: 250 }}>
+          Looks like you haven't added anything to your cart yet.
         </Typography>
         <Button
           variant="contained"
-          onClick={() => navigate('/customer/dashboard')}
+          onClick={() => navigate('/products')}
+          size="large"
           sx={{
-            bgcolor: '#4CAF50',
-            '&:hover': { bgcolor: '#45a049' },
-            borderRadius: 2,
-            px: 4
+            py: 1.5,
+            px: 4,
+            borderRadius: 4,
+            fontWeight: 'bold',
+            boxShadow: '0 8px 24px rgba(46, 125, 50, 0.3)'
           }}
         >
           Start Shopping
@@ -62,191 +79,193 @@ const MobileCartPage = () => {
   }
 
   return (
-    <Box sx={{ bgcolor: '#f8f9fa', minHeight: '100vh', pb: 2 }}>
+    <Box sx={{ bgcolor: '#FFF', minHeight: '100vh', pb: 12 }}>
       {/* Header */}
-      <Box sx={{ px: 2, py: 2, bgcolor: 'white', borderBottom: '1px solid #e0e0e0' }}>
-        <Typography variant="h6" fontWeight="bold">
-          My Cart ({cartCount} items)
+      <Box sx={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        ...theme.glass(0.9),
+        borderBottom: '1px solid rgba(0,0,0,0.05)',
+        px: 2,
+        py: 1.5,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2
+      }}>
+        <IconButton onClick={() => navigate(-1)} size="small">
+          <ArrowBack />
+        </IconButton>
+        <Typography variant="h6" fontWeight="800">
+          My Cart <span style={{ color: theme.palette.primary.main }}>({cartCount})</span>
         </Typography>
       </Box>
 
       {/* Cart Items */}
-      <Box sx={{ px: 2, py: 1 }}>
-        {cart.map((item) => (
-          <Card key={item.id} sx={{ mb: 1.5, borderRadius: 2, boxShadow: 1 }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                {/* Product Image */}
-                <Box
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    bgcolor: '#f5f5f5',
-                    borderRadius: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}
-                >
-                  <img
-                    src={item.image || '/api/placeholder/80/80'}
-                    alt={item.name}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      borderRadius: 4
-                    }}
-                  />
-                </Box>
+      <Box sx={{ px: 2, pt: 2 }}>
+        <AnimatePresence>
+          {cart.map((item) => (
+            <MotionCard
+              key={item.id}
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+              sx={{
+                mb: 2,
+                borderRadius: 4,
+                border: '1px solid #F0F0F0',
+                boxShadow: 'none',
+                overflow: 'visible'
+              }}
+            >
+              <CardContent sx={{ p: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  {/* Product Image */}
+                  <Box sx={{ position: 'relative' }}>
+                    <Box
+                      component="img"
+                      src={item.image || '/api/placeholder/100/100'}
+                      alt={item.name}
+                      sx={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 3,
+                        objectFit: 'cover',
+                        bgcolor: '#F5F5F5'
+                      }}
+                    />
+                  </Box>
 
-                {/* Product Details */}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
-                    variant="body1"
-                    fontWeight="500"
-                    sx={{
-                      mb: 0.5,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical'
-                    }}
-                  >
-                    {item.name}
-                  </Typography>
-
-                  <Typography variant="h6" fontWeight="bold" sx={{ color: '#4CAF50', mb: 1 }}>
-                    ₹{item.price}
-                  </Typography>
-
-                  {/* Quantity Controls */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <IconButton
-                        size="small"
-                        onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                        sx={{
-                          bgcolor: '#f5f5f5',
-                          width: 32,
-                          height: 32,
-                          '&:hover': { bgcolor: '#e0e0e0' }
-                        }}
-                      >
-                        <RemoveIcon sx={{ fontSize: 16 }} />
-                      </IconButton>
-
-                      <Typography
-                        variant="body1"
-                        fontWeight="bold"
-                        sx={{
-                          minWidth: 24,
-                          textAlign: 'center',
-                          px: 1
-                        }}
-                      >
-                        {item.quantity}
+                  {/* Product Details */}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Typography variant="subtitle1" fontWeight="700" sx={{ lineHeight: 1.3, mb: 0.5 }}>
+                        {item.name}
                       </Typography>
-
                       <IconButton
                         size="small"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        sx={{
-                          bgcolor: '#4CAF50',
-                          color: 'white',
-                          width: 32,
-                          height: 32,
-                          '&:hover': { bgcolor: '#45a049' }
-                        }}
+                        onClick={() => removeFromCart(item.id)}
+                        sx={{ mt: -1, mr: -1, color: 'text.disabled' }}
                       >
-                        <AddIcon sx={{ fontSize: 16 }} />
+                        <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
 
-                    <IconButton
-                      onClick={() => removeFromCart(item.id)}
-                      sx={{ color: '#f44336' }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      50kg Bag
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+                      <Typography variant="h6" fontWeight="800" color="primary">
+                        ₹{item.price}
+                      </Typography>
+
+                      {/* Quantity Controls */}
+                      <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        bgcolor: '#F5F5F5',
+                        borderRadius: 3,
+                        p: 0.5
+                      }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          sx={{ width: 28, height: 28, bgcolor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+                        >
+                          <RemoveIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+
+                        <Typography variant="body2" fontWeight="700" sx={{ minWidth: 30, textAlign: 'center' }}>
+                          {item.quantity}
+                        </Typography>
+
+                        <IconButton
+                          size="small"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          sx={{ width: 28, height: 28, bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
+                        >
+                          <AddIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Box>
+                    </Box>
                   </Box>
-
-                  {/* Subtotal */}
-                  <Typography variant="body2" sx={{ color: '#666', mt: 1 }}>
-                    Subtotal: ₹{(item.price * item.quantity).toFixed(2)}
-                  </Typography>
                 </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </MotionCard>
+          ))}
+        </AnimatePresence>
       </Box>
 
-      {/* Price Summary */}
-      <Box sx={{ px: 2, mt: 2 }}>
-        <Paper sx={{ p: 2, borderRadius: 2 }}>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            Price Details
-          </Typography>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="body2">Price ({cartCount} items)</Typography>
-            <Typography variant="body2">₹{getCartTotal()}</Typography>
-          </Box>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="body2">Delivery Charges</Typography>
-            <Typography variant="body2" sx={{ color: '#4CAF50' }}>
-              FREE
-            </Typography>
-          </Box>
-
-          <Divider sx={{ my: 1 }} />
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h6" fontWeight="bold">
-              Total Amount
-            </Typography>
-            <Typography variant="h6" fontWeight="bold" sx={{ color: '#4CAF50' }}>
-              ₹{getCartTotal()}
-            </Typography>
-          </Box>
-
-          <Chip
-            label="You will save ₹150 on this order"
-            size="small"
-            sx={{
-              bgcolor: '#E8F5E8',
-              color: '#4CAF50',
-              fontWeight: 500,
-              width: '100%'
-            }}
-          />
+      {/* Bill Details */}
+      <Box sx={{ px: 2, mt: 3 }}>
+        <Typography variant="subtitle2" fontWeight="700" sx={{ mb: 1.5, ml: 1, textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.75rem', color: 'text.secondary' }}>
+          Bill Details
+        </Typography>
+        <Paper elevation={0} sx={{ p: 2.5, borderRadius: 4, bgcolor: '#FAFAFA', border: '1px solid #F0F0F0' }}>
+          <Stack spacing={1.5}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="body2" color="text.secondary">Item Total</Typography>
+              <Typography variant="body2" fontWeight="600">₹{getCartTotal()}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="body2" color="text.secondary">Delivery Fee</Typography>
+              <Typography variant="body2" fontWeight="bold" color="success.main">FREE</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="body2" color="text.secondary">Platform Fee</Typography>
+              <Typography variant="body2" fontWeight="600">₹10</Typography>
+            </Box>
+            <Divider sx={{ borderStyle: 'dashed' }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="h6" fontWeight="800">To Pay</Typography>
+              <Typography variant="h6" fontWeight="800" color="primary">₹{parseInt(getCartTotal()) + 10}</Typography>
+            </Box>
+          </Stack>
         </Paper>
+
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: '#E8F5E9', borderRadius: 2, border: '1px dashed #4CAF50' }}>
+          <LocalOffer sx={{ color: '#2E7D32', fontSize: 20 }} />
+          <Typography variant="caption" fontWeight="600" color="#2E7D32">
+            You saved ₹140 on this order!
+          </Typography>
+        </Box>
       </Box>
 
-      {/* Checkout Button */}
-      <Box sx={{ px: 2, mt: 2, mb: 2 }}>
+      {/* Checkout Footer */}
+      <Paper sx={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        p: 2,
+        pb: 3,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        boxShadow: '0 -8px 32px rgba(0,0,0,0.08)'
+      }}>
         <Button
           variant="contained"
           fullWidth
           size="large"
           onClick={() => navigate('/delivery-details')}
+          endIcon={<Box component="span" sx={{ bgcolor: 'rgba(255,255,255,0.2)', borderRadius: 1, px: 1, fontSize: '0.85rem' }}>₹{parseInt(getCartTotal()) + 10}</Box>}
           sx={{
-            bgcolor: '#FF9800',
-            '&:hover': { bgcolor: '#F57C00' },
-            borderRadius: 2,
-            py: 1.5,
+            py: 1.8,
+            borderRadius: 3,
             fontSize: '1rem',
-            fontWeight: 'bold',
-            textTransform: 'none'
+            fontWeight: '800',
+            textTransform: 'none',
+            justifyContent: 'space-between',
+            pl: 4, pr: 2,
+            background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+            boxShadow: '0 8px 24px rgba(46, 125, 50, 0.4)'
           }}
         >
           Place Order
         </Button>
-      </Box>
+      </Paper>
     </Box>
   );
 };
