@@ -9,6 +9,7 @@ const adminRoutes = require('./routes/admin');
 const vendorRoutes = require('./routes/vendor');
 const deliveryRoutes = require('./routes/delivery');
 const paymentRoutes = require('./routes/paymentRoutes');
+const drAgroRoutes = require('./routes/drAgro');
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/vendor', vendorRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/dr-agro', drAgroRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

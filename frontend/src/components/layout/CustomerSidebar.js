@@ -35,7 +35,8 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ExpandLess,
   ExpandMore,
-  People as PeopleIcon
+  People as PeopleIcon,
+  Science as ScienceIcon
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
@@ -77,6 +78,13 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
       label: t('navigation.labour'),
       icon: PeopleIcon,
       path: '/customer/labour',
+      badge: null
+    },
+    {
+      id: 'drAgro',
+      label: t('drAgro.title'),
+      icon: ScienceIcon,
+      path: '/customer/dr-agro',
       badge: null
     },
     {

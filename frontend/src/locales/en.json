@@ -127,5 +127,46 @@
     "next": "Next",
     "previous": "Previous",
     "close": "Close"
+  },
+  "drAgro": {
+    "title": "Dr. Agro 👨‍⚕️",
+    "subtitle": "Your Personal Agriculture Expert",
+    "uploadTab": "Upload Soil Report",
+    "manualTab": "Manual Entry",
+    "uploadInstructions": "Upload a photo or PDF of your soil test report for AI analysis.",
+    "manualInstructions": "Enter your soil test values manually to get recommendations.",
+    "selectFile": "Select Soil Report",
+    "supportedFormats": "Supported: JPG, PNG, PDF (Max 5MB)",
+    "fileSizeError": "File size exceeds 5MB limit",
+    "uploadError": "Error uploading file. Please try again.",
+    "analyzeButton": "Analyze & Recommend",
+    "analyzing": "Analyzing...",
+    "analysisResultTitle": "Diagnosis & Recommendations",
+    "soilHealth": "Soil Health Score",
+    "recommendationsTitle": "Suggested Fertilizers",
+    "addToCart": "Add to Cart",
+    "dosage": "Dosage",
+    "disclaimerTitle": "Disclaimer",
+    "disclaimerText": "These recommendations are AI-generated based on the data provided. Always consult a local agriculture officer before major applications.",
+    "crops": {
+      "wheat": "Wheat",
+      "rice": "Rice",
+      "cotton": "Cotton",
+      "sugarcane": "Sugarcane",
+      "soybean": "Soybean",
+      "maize": "Maize",
+      "vegetables": "Vegetables"
+    },
+    "form": {
+      "crop": "Select Crop",
+      "ph": "Soil pH Level",
+      "nitrogen": "Nitrogen (N)",
+      "phosphorus": "Phosphorus (P)",
+      "potassium": "Potassium (K)"
+    },
+    "validation": {
+      "required": "This field is required",
+      "ph": "Valid pH is required (0-14)"
+    }
   }
 }

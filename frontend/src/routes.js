@@ -39,6 +39,8 @@ import VendorRegistrationPage from './pages/VendorRegistrationPage';
 import VendorLogin from './pages/VendorLogin';
 import VendorDashboard from './pages/VendorDashboard';
 import UnifiedAuthPage from './pages/UnifiedAuthPage';
+import DrAgro from './pages/DrAgro';
+import DrAgroResults from './pages/DrAgroResults';
 import DeliveryRegistrationPage from './pages/DeliveryRegistrationPage';
 import DeliveryLogin from './pages/DeliveryLogin';
 import DeliveryDashboard from './pages/DeliveryDashboard';
@@ -244,6 +246,18 @@ const Routes = () => {
         <Route path="/customer/labour" element={
           <CustomerRoute useSidebar={true}>
             <LabourManagement />
+          </CustomerRoute>
+        } />
+
+        <Route path="/customer/dr-agro" element={
+          <CustomerRoute useSidebar={true}>
+            <DrAgro />
+          </CustomerRoute>
+        } />
+
+        <Route path="/customer/dr-agro/results" element={
+          <CustomerRoute useSidebar={true}>
+            <DrAgroResults />
           </CustomerRoute>
         } />
 
