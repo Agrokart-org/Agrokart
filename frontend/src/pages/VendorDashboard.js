@@ -51,6 +51,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import theme from '../theme'; // Using the main theme we just updated
+import MobileVendorDashboard from './MobileVendorDashboard';
 
 const drawerWidth = 280;
 
@@ -77,6 +78,8 @@ const itemVariants = {
   }
 };
 
+
+
 const VendorDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -85,6 +88,10 @@ const VendorDashboard = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
+
+  if (isMobile) {
+    return <MobileVendorDashboard />;
+  }
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
   const handleProfileMenuOpen = (event) => setAnchorEl(event.currentTarget);

@@ -3,14 +3,12 @@ import {
   Card,
   CardMedia,
   CardContent,
-  CardActions,
   Typography,
   Button,
   IconButton,
   Box,
   Chip,
   Rating,
-  Badge,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -22,10 +20,7 @@ import {
   Remove,
   ShoppingCart,
   Favorite,
-  FavoriteBorder,
-  Share,
-  LocationOn,
-  LocalOffer
+  FavoriteBorder
 } from '@mui/icons-material';
 import { useMobile } from '../context/MobileContext';
 
@@ -40,7 +35,7 @@ const MobileProductCard = ({
   isFavorite = false,
   compact = false
 }) => {
-  const { vibrate, showToast, shareContent } = useMobile();
+  const { vibrate, showToast } = useMobile();
   const [quantity, setQuantity] = useState(1);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -73,18 +68,7 @@ const MobileProductCard = ({
     }
   };
 
-  const handleShare = async () => {
-    try {
-      await vibrate('light');
-      await shareContent({
-        title: product.name,
-        text: `Check out ${product.name} on Agrokart!`,
-        url: window.location.href
-      });
-    } catch (error) {
-      console.error('Share error:', error);
-    }
-  };
+
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-IN', {
@@ -94,7 +78,7 @@ const MobileProductCard = ({
   };
 
   const isDiscounted = product.originalPrice && product.originalPrice > product.price;
-  const discountPercentage = isDiscounted 
+  const discountPercentage = isDiscounted
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
@@ -105,9 +89,15 @@ const MobileProductCard = ({
           position: 'relative',
           borderRadius: 2,
           overflow: 'hidden',
+          border: '1px solid #f0f0f0',
+          boxShadow: 'none',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
           '&:hover': {
             transform: 'translateY(-2px)',
-            boxShadow: 4,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            borderColor: '#4CAF50',
             transition: 'all 0.3s ease'
           }
         }}
@@ -116,26 +106,32 @@ const MobileProductCard = ({
         {isDiscounted && (
           <Chip
             label={`${discountPercentage}% OFF`}
-            color="error"
             size="small"
             sx={{
               position: 'absolute',
               top: 8,
               left: 8,
               zIndex: 1,
-              fontWeight: 'bold'
+              bgcolor: '#d32f2f',
+              color: 'white',
+              fontWeight: 700,
+              fontSize: '0.65rem',
+              height: 20,
+              '& .MuiChip-label': { px: 1 }
             }}
           />
         )}
 
         {/* Favorite Button */}
         <IconButton
+          size="small"
           sx={{
             position: 'absolute',
-            top: 8,
-            right: 8,
+            top: 4,
+            right: 4,
             zIndex: 1,
-            bgcolor: 'rgba(255, 255, 255, 0.9)',
+            bgcolor: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(4px)',
             '&:hover': {
               bgcolor: 'rgba(255, 255, 255, 1)'
             }
@@ -143,26 +139,33 @@ const MobileProductCard = ({
           onClick={handleToggleFavorite}
         >
           {isFavorite ? (
-            <Favorite color="error" />
+            <Favorite color="error" sx={{ fontSize: 18 }} />
           ) : (
-            <FavoriteBorder />
+            <FavoriteBorder sx={{ fontSize: 18, color: 'text.secondary' }} />
           )}
         </IconButton>
 
         {/* Product Image */}
-        <CardMedia
-          component="img"
-          height={compact ? 120 : 180}
-          image={product.image || '/api/placeholder/300/300'}
-          alt={product.name}
-          onClick={() => setShowDetails(true)}
-          sx={{ cursor: 'pointer' }}
-        />
+        <Box sx={{ overflow: 'hidden', height: compact ? 100 : 140 }}>
+          <CardMedia
+            component="img"
+            height={compact ? 100 : 140}
+            image={product.image || '/api/placeholder/300/300'}
+            alt={product.name}
+            onClick={() => setShowDetails(true)}
+            sx={{
+              cursor: 'pointer',
+              objectFit: 'cover',
+              transition: 'transform 0.5s ease',
+              '&:hover': { transform: 'scale(1.1)' }
+            }}
+          />
+        </Box>
 
-        <CardContent sx={{ pb: 1 }}>
+        <CardContent sx={{ p: 1.5, pb: '8px !important', flexGrow: 1 }}>
           {/* Product Name */}
           <Typography
-            variant={compact ? 'body2' : 'h6'}
+            variant="subtitle2"
             fontWeight="bold"
             sx={{
               overflow: 'hidden',
@@ -170,103 +173,101 @@ const MobileProductCard = ({
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
-              mb: 1
+              mb: 0.5,
+              lineHeight: 1.2,
+              height: '2.4em'
             }}
           >
             {product.name}
           </Typography>
 
-          {/* Vendor Info */}
-          {product.vendorName && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <LocationOn sx={{ fontSize: 14, color: 'text.secondary', mr: 0.5 }} />
-              <Typography variant="caption" color="text.secondary">
-                {product.vendorName}
-              </Typography>
-            </Box>
-          )}
-
           {/* Rating */}
-          {product.rating && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Rating
-                value={product.rating}
-                precision={0.1}
-                size="small"
-                readOnly
-              />
-              <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                ({product.reviewCount || 0})
-              </Typography>
-            </Box>
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+            <Rating
+              value={Number(product.rating) || 0}
+              precision={0.5}
+              size="small"
+              readOnly
+              sx={{ fontSize: 14 }}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5, fontSize: '0.7rem' }}>
+              {product.rating ? Number(product.rating).toFixed(1) : 'New'}
+            </Typography>
+          </Box>
 
           {/* Price */}
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <Typography variant="h6" color="primary" fontWeight="bold">
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1 }}>
+            <Typography variant="body1" color="primary" fontWeight="700">
               {formatPrice(product.price)}
             </Typography>
             {isDiscounted && (
               <Typography
-                variant="body2"
+                variant="caption"
                 color="text.secondary"
-                sx={{ textDecoration: 'line-through', ml: 1 }}
+                sx={{ textDecoration: 'line-through' }}
               >
                 {formatPrice(product.originalPrice)}
               </Typography>
             )}
           </Box>
 
-          {/* Stock Status */}
-          {product.stock !== undefined && (
-            <Chip
-              label={product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-              color={product.stock > 0 ? 'success' : 'error'}
-              size="small"
-              variant="outlined"
-            />
-          )}
-        </CardContent>
 
-        <CardActions sx={{ px: 2, pb: 2 }}>
-          {/* Quantity Selector */}
-          <Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-            <IconButton
+          <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
+            {/* Quantity Selector - Simplified */}
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              border: '1px solid #e0e0e0',
+              borderRadius: 1.5,
+              height: 32
+            }}>
+              <IconButton
+                size="small"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
+                sx={{ p: 0.5 }}
+              >
+                <Remove sx={{ fontSize: 14 }} />
+              </IconButton>
+              <Typography sx={{ mx: 0.5, fontSize: '0.8rem', fontWeight: 600, minWidth: 16, textAlign: 'center' }}>
+                {quantity}
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={() => setQuantity(quantity + 1)}
+                sx={{ p: 0.5 }}
+              >
+                <Add sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Box>
+
+            {/* Add Button */}
+            <Button
+              variant="contained"
+              onClick={handleAddToCart}
+              disabled={!(
+                (product.stock && product.stock > 0) ||
+                (product.countInStock && product.countInStock > 0) ||
+                product.inStock === true ||
+                product.availability === 'In Stock'
+              )}
+              sx={{
+                flexGrow: 1,
+                borderRadius: 1.5,
+                textTransform: 'none',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                boxShadow: 'none',
+                height: 32,
+                minWidth: 0,
+                p: 0
+              }}
               size="small"
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              disabled={quantity <= 1}
             >
-              <Remove />
-            </IconButton>
-            <Typography sx={{ mx: 1, minWidth: 20, textAlign: 'center' }}>
-              {quantity}
-            </Typography>
-            <IconButton
-              size="small"
-              onClick={() => setQuantity(quantity + 1)}
-              disabled={product.stock && quantity >= product.stock}
-            >
-              <Add />
-            </IconButton>
+              Add
+            </Button>
           </Box>
-
-          {/* Add to Cart Button */}
-          <Button
-            variant="contained"
-            startIcon={<ShoppingCart />}
-            onClick={handleAddToCart}
-            disabled={!product.stock || product.stock === 0}
-            sx={{ flexGrow: 1, mr: 1 }}
-            size={compact ? 'small' : 'medium'}
-          >
-            Add to Cart
-          </Button>
-
-          {/* Share Button */}
-          <IconButton onClick={handleShare} size="small">
-            <Share />
-          </IconButton>
-        </CardActions>
+        </CardContent>
       </Card>
 
       {/* Product Details Dialog */}
@@ -285,7 +286,7 @@ const MobileProductCard = ({
             {product.name}
           </Typography>
         </DialogTitle>
-        
+
         <DialogContent>
           <Box sx={{ textAlign: 'center', mb: 2 }}>
             <img
@@ -299,11 +300,11 @@ const MobileProductCard = ({
               }}
             />
           </Box>
-          
+
           <Typography variant="body1" paragraph>
             {product.description || 'Fresh and high-quality agricultural product.'}
           </Typography>
-          
+
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h5" color="primary" fontWeight="bold">
               {formatPrice(product.price)}
@@ -318,7 +319,7 @@ const MobileProductCard = ({
               </Typography>
             )}
           </Box>
-          
+
           {product.specifications && (
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
@@ -332,7 +333,7 @@ const MobileProductCard = ({
             </Box>
           )}
         </DialogContent>
-        
+
         <DialogActions>
           <Button onClick={() => setShowDetails(false)}>
             Close
@@ -344,7 +345,12 @@ const MobileProductCard = ({
               handleAddToCart();
               setShowDetails(false);
             }}
-            disabled={!product.stock || product.stock === 0}
+            disabled={!(
+              (product.stock && product.stock > 0) ||
+              (product.countInStock && product.countInStock > 0) ||
+              product.inStock === true ||
+              product.availability === 'In Stock'
+            )}
           >
             Add to Cart
           </Button>

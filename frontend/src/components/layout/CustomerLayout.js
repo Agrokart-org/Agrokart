@@ -350,11 +350,11 @@ const CustomerLayout = ({ children }) => {
           width: { sm: `calc(100% - ${sidebarOpen ? 280 : 80}px)` },
         }}
       >
-        <Toolbar sx={{ minHeight: 70 }} /> {/* Spacer for Fixed AppBar */}
+        {/* Spacer for Fixed AppBar */}
         <Box sx={{ flex: 1 }}>
           {children}
         </Box>
-        <Footer />
+        {!isMobile && <Footer />}
       </Box>
     </Box >
   );

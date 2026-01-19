@@ -41,10 +41,13 @@ import { useSocket } from '../context/SocketContext';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import theme from '../theme';
+import MobileDeliveryDashboard from './MobileDeliveryDashboard';
 
 // Animations
 const MotionCard = motion(Card);
 const MotionBox = motion(Box);
+
+
 
 const DeliveryDashboard = () => {
   const { user, logout } = useAuth();
@@ -55,6 +58,10 @@ const DeliveryDashboard = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const simulationInterval = useRef(null);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  if (isMobile) {
+    return <MobileDeliveryDashboard />;
+  }
 
   // Simulation Path
   const simulationPath = [

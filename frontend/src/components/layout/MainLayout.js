@@ -229,8 +229,15 @@ const MainLayout = ({ children }) => {
         {children}
       </Container>
 
-      {/* Footer */}
-      <Box component="footer" sx={{ py: 3, px: 2, mt: 'auto', bgcolor: 'white', borderTop: '1px solid #e0e0e0' }}>
+      {/* Footer - Hidden on mobile */}
+      <Box component="footer" sx={{
+        py: 3,
+        px: 2,
+        mt: 'auto',
+        bgcolor: 'white',
+        borderTop: '1px solid #e0e0e0',
+        display: { xs: 'none', md: 'block' } // Hide on mobile
+      }}>
         <Container maxWidth="sm">
           <Typography variant="body2" color="text.secondary" align="center">
             © {new Date().getFullYear()} {t('app.name')}. All rights reserved.

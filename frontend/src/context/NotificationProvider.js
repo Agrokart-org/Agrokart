@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  Snackbar, 
-  Alert, 
-  IconButton, 
-  Box, 
+import {
+  Snackbar,
+  Alert,
+  IconButton,
+  Box,
   Typography,
   Button,
   Dialog,
@@ -11,8 +11,8 @@ import {
   DialogContent,
   DialogActions
 } from '@mui/material';
-import { 
-  Close, 
+import {
+  Close,
   NotificationsActive,
   ShoppingCart,
   LocalShipping,
@@ -34,14 +34,14 @@ export const useNotifications = () => {
 };
 
 export const NotificationProvider = ({ children }) => {
-  const { 
-    isNative, 
-    requestNotificationPermission, 
+  const {
+    isNative,
+    requestPermissions,
     showLocalNotification,
     vibrate,
-    showToast 
+    showToast
   } = useMobile();
-  
+
   const [notifications, setNotifications] = useState([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -54,7 +54,7 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     // Initialize notification system
     initializeNotifications();
-    
+
     // Listen for push notifications if native
     if (isNative) {
       setupPushNotificationListeners();
@@ -65,9 +65,9 @@ export const NotificationProvider = ({ children }) => {
     try {
       // Check if notifications are supported
       if (isNative || 'Notification' in window) {
-        // Request permission if not already granted
-        const permission = await requestNotificationPermission();
-        if (permission !== 'granted') {
+        // Check permissions using MobileContext
+        const permissions = await requestPermissions(['notifications']);
+        if (!permissions.notifications) {
           setPermissionDialog(true);
         }
       }
@@ -234,10 +234,10 @@ export const NotificationProvider = ({ children }) => {
 
   const handlePermissionRequest = async () => {
     try {
-      const permission = await requestNotificationPermission();
+      const permissions = await requestPermissions(['notifications']);
       setPermissionDialog(false);
-      
-      if (permission === 'granted') {
+
+      if (permissions.notifications) {
         await showToast('Notifications enabled successfully!');
       } else {
         await showToast('Notifications were not enabled');
@@ -281,7 +281,7 @@ export const NotificationProvider = ({ children }) => {
   return (
     <NotificationContext.Provider value={contextValue}>
       {children}
-      
+
       {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
@@ -322,13 +322,13 @@ export const NotificationProvider = ({ children }) => {
             <Typography variant="h6">Enable Notifications</Typography>
           </Box>
         </DialogTitle>
-        
+
         <DialogContent>
           <Typography variant="body1" paragraph>
-            Stay updated with your orders, deliveries, and special offers! 
+            Stay updated with your orders, deliveries, and special offers!
             Enable notifications to receive important updates about your Agrokart experience.
           </Typography>
-          
+
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary">
               You'll receive notifications about:
@@ -346,13 +346,13 @@ export const NotificationProvider = ({ children }) => {
             </Box>
           </Box>
         </DialogContent>
-        
+
         <DialogActions>
           <Button onClick={() => setPermissionDialog(false)}>
             Maybe Later
           </Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={handlePermissionRequest}
             startIcon={<NotificationsActive />}
           >

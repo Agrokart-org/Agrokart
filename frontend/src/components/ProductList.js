@@ -151,26 +151,25 @@ const ProductList = () => {
             border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
             animation: `${pulse} 2s infinite`
         }}>
-            <Skeleton variant="rectangular" height={240} />
-            <CardContent sx={{ p: 3 }}>
-                <Skeleton variant="text" height={32} width="80%" />
-                <Skeleton variant="text" height={20} width="60%" sx={{ mt: 1 }} />
-                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                    <Skeleton variant="rounded" width={60} height={24} />
-                    <Skeleton variant="rounded" width={80} height={24} />
+            <Skeleton variant="rectangular" height={160} />
+            <CardContent sx={{ p: 1.5 }}>
+                <Skeleton variant="text" height={24} width="80%" />
+                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    <Skeleton variant="rounded" width={40} height={20} />
+                    <Skeleton variant="rounded" width={50} height={20} />
                 </Box>
-                <Skeleton variant="text" height={28} width="40%" sx={{ mt: 2 }} />
-                <Skeleton variant="rectangular" height={40} sx={{ mt: 2, borderRadius: 2 }} />
+                <Skeleton variant="text" height={24} width="40%" sx={{ mt: 1 }} />
+                <Skeleton variant="rectangular" height={32} sx={{ mt: 1.5, borderRadius: 1.5 }} />
             </CardContent>
         </Card>
     );
 
     if (loading) {
         return (
-            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-                <Grid container spacing={3}>
-                    {[1, 2, 3, 4, 5, 6].map((item) => (
-                        <Grid item xs={12} sm={6} md={4} key={item}>
+            <Container maxWidth="xl" sx={{ mt: 2, mb: 4, px: { xs: 1, sm: 2 } }}>
+                <Grid container spacing={1.5}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
+                        <Grid item xs={6} sm={4} md={3} lg={2.4} key={item}>
                             <ProductSkeleton />
                         </Grid>
                     ))}
@@ -185,8 +184,8 @@ const ProductList = () => {
                 <Alert severity="error" sx={{ mb: 2 }}>
                     {error}
                 </Alert>
-                <Button 
-                    variant="contained" 
+                <Button
+                    variant="contained"
                     onClick={fetchProducts}
                     sx={{ mt: 2 }}
                 >
@@ -213,9 +212,9 @@ const ProductList = () => {
     }
 
     return (
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Container maxWidth="xl" sx={{ mt: 2, mb: 4, px: { xs: 1, sm: 2 } }}>
             {/* Stats */}
-            <Stack direction="row" spacing={3} sx={{ mb: 3 }}>
+            <Stack direction="row" spacing={3} sx={{ mb: 3, justifyContent: 'center', display: { xs: 'none', md: 'flex' } }}>
                 <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="h5" sx={{ fontWeight: 700, color: theme.palette.primary.main }}>
                         {products.length}
@@ -224,22 +223,7 @@ const ProductList = () => {
                         Products Available
                     </Typography>
                 </Box>
-                <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: theme.palette.success.main }}>
-                        24h
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        Fast Delivery
-                    </Typography>
-                </Box>
-                <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: theme.palette.warning.main }}>
-                        100%
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        Quality Assured
-                    </Typography>
-                </Box>
+                {/* ... other stats only on desktop ... */}
             </Stack>
 
             {localStorage.getItem('userRole') === 'admin' && (
@@ -252,9 +236,9 @@ const ProductList = () => {
                     Add New Product
                 </Button>
             )}
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                 {products.map((product, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={product._id}>
+                    <Grid item xs={6} sm={4} md={3} lg={2} key={product._id}>
                         <Card
                             sx={{
                                 height: '100%',
@@ -262,55 +246,36 @@ const ProductList = () => {
                                 flexDirection: 'column',
                                 borderRadius: 3,
                                 overflow: 'hidden',
-                                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                 position: 'relative',
+                                border: '1px solid #f0f0f0',
+                                backgroundColor: '#fff',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                maxWidth: 280,
                                 '&:hover': {
-                                    transform: 'translateY(-8px)',
-                                    boxShadow: `0 20px 40px ${alpha(theme.palette.primary.main, 0.15)}`,
-                                    borderColor: alpha(theme.palette.primary.main, 0.3),
+                                    transform: 'translateY(-4px)',
+                                    boxShadow: '0 12px 24px -10px rgba(0,0,0,0.15)',
+                                    borderColor: theme.palette.primary.main,
+                                    '& .product-image': {
+                                        transform: 'scale(1.05)'
+                                    }
                                 }
                             }}
                         >
                             {/* Badges */}
-                            <Box sx={{ position: 'absolute', top: 12, left: 12, zIndex: 2 }}>
-                                <Stack direction="row" spacing={1}>
+                            <Box sx={{ position: 'absolute', top: 8, left: 8, zIndex: 2 }}>
+                                <Stack direction="column" spacing={0.5}>
                                     {product.discount && (
                                         <Chip
-                                            icon={<FlashOn sx={{ fontSize: 16 }} />}
                                             label={`-${getDiscountPercentage(product.originalPrice, product.price)}%`}
                                             size="small"
                                             sx={{
-                                                bgcolor: theme.palette.error.main,
+                                                height: 20,
+                                                bgcolor: alpha(theme.palette.error.main, 0.9),
                                                 color: 'white',
-                                                fontWeight: 600,
-                                                fontSize: '0.75rem'
-                                            }}
-                                        />
-                                    )}
-                                    {product.isPopular && (
-                                        <Chip
-                                            icon={<LocalFireDepartment sx={{ fontSize: 16 }} />}
-                                            label="Popular"
-                                            size="small"
-                                            sx={{
-                                                bgcolor: theme.palette.warning.main,
-                                                color: 'white',
-                                                fontWeight: 600,
-                                                fontSize: '0.75rem'
-                                            }}
-                                        />
-                                    )}
-                                    {product.isOrganic && (
-                                        <Chip
-                                            icon={<Nature sx={{ fontSize: 16 }} />} // Changed from Eco to Nature
-                                            label="Organic"
-                                            size="small"
-                                            sx={{
-                                                bgcolor: theme.palette.success.main,
-                                                color: 'white',
-                                                fontWeight: 600,
-                                                fontSize: '0.75rem'
+                                                fontWeight: 700,
+                                                fontSize: '0.65rem',
+                                                backdropFilter: 'blur(4px)',
+                                                '& .MuiChip-label': { px: 1 }
                                             }}
                                         />
                                     )}
@@ -319,100 +284,77 @@ const ProductList = () => {
 
                             {/* Favorite Button */}
                             <IconButton
+                                size="small"
                                 sx={{
                                     position: 'absolute',
-                                    top: 12,
-                                    right: 12,
+                                    top: 4,
+                                    right: 4,
                                     zIndex: 2,
-                                    bgcolor: alpha('#fff', 0.9),
-                                    '&:hover': {
-                                        bgcolor: '#fff',
-                                        transform: 'scale(1.1)'
-                                    },
+                                    bgcolor: 'rgba(255, 255, 255, 0.8)',
+                                    backdropFilter: 'blur(4px)',
+                                    '&:hover': { bgcolor: '#fff', transform: 'scale(1.1)' },
                                     transition: 'all 0.2s'
                                 }}
                                 onClick={() => handleToggleFavorite(product._id)}
                             >
                                 {favorites.has(product._id) ? (
-                                    <Favorite sx={{ color: theme.palette.error.main }} />
+                                    <Favorite sx={{ fontSize: 18, color: theme.palette.error.main }} />
                                 ) : (
-                                    <FavoriteBorder sx={{ color: theme.palette.grey[600] }} />
+                                    <FavoriteBorder sx={{ fontSize: 18, color: theme.palette.grey[600] }} />
                                 )}
                             </IconButton>
-
-                            <CardMedia
-                                component="img"
-                                height="240"
-                                image={product.images?.[0] || getProductImage(product, index)}
-                                alt={product.name}
-                                onError={(e) => handleImageError(e, index)}
-                                sx={{
-                                    objectFit: 'cover',
-                                    bgcolor: 'grey.100',
-                                    transition: 'transform 0.3s',
-                                    '&:hover': {
-                                        transform: 'scale(1.05)'
-                                    }
-                                }}
-                            />
-                            <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                            <Box sx={{ overflow: 'hidden', height: 140, bgcolor: 'grey.50' }}>
+                                <CardMedia
+                                    component="img"
+                                    height="140"
+                                    className="product-image"
+                                    image={product.images?.[0] || getProductImage(product, index)}
+                                    alt={product.name}
+                                    onError={(e) => handleImageError(e, index)}
+                                    sx={{
+                                        objectFit: 'cover',
+                                        transition: 'transform 0.5s ease'
+                                    }}
+                                />
+                            </Box>
+                            {/* Move Content Box wrapper to handle content overflow/padding safely if Card is visible */}
+                            <CardContent sx={{ flexGrow: 1, p: 1.5, pb: 2 }}>
                                 <Typography
-                                    variant="h6"
-                                    component="h2"
+                                    variant="subtitle2"
                                     sx={{
                                         fontWeight: 600,
-                                        mb: 1,
-                                        color: theme.palette.text.primary,
-                                        lineHeight: 1.3
+                                        mb: 0.5,
+                                        lineHeight: 1.2,
+                                        height: '2.4em',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
                                     }}
                                 >
                                     {product.name}
                                 </Typography>
 
                                 <Typography
-                                    variant="body2"
+                                    variant="caption"
                                     color="text.secondary"
                                     sx={{
-                                        lineHeight: 1.5,
-                                        mb: 2,
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical',
-                                        overflow: 'hidden'
+                                        display: 'block',
+                                        mb: 1,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
                                     }}
                                 >
-                                    {product.description}
+                                    {product.category}
                                 </Typography>
 
-                                {/* Category and Stock */}
-                                <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                                    <Chip
-                                        label={product.category}
-                                        size="small"
-                                        sx={{
-                                            bgcolor: alpha(theme.palette.primary.main, 0.1),
-                                            color: theme.palette.primary.main,
-                                            fontWeight: 500,
-                                            fontSize: '0.75rem'
-                                        }}
-                                    />
-                                    <Chip
-                                        label={`${product.stock} ${product.unit} in stock`}
-                                        size="small"
-                                        sx={{
-                                            bgcolor: alpha(theme.palette.success.main, 0.1),
-                                            color: theme.palette.success.main,
-                                            fontWeight: 500,
-                                            fontSize: '0.75rem'
-                                        }}
-                                    />
-                                </Stack>
-
                                 {/* Price Section */}
-                                <Box sx={{ mb: 2 }}>
-                                    <Stack direction="row" alignItems="center" spacing={1}>
+                                <Box sx={{ mb: 1 }}>
+                                    <Stack direction="row" alignItems="center" spacing={0.5}>
                                         <Typography
-                                            variant="h6"
+                                            variant="body1"
                                             sx={{
                                                 fontWeight: 700,
                                                 color: theme.palette.primary.main
@@ -420,12 +362,9 @@ const ProductList = () => {
                                         >
                                             ₹{product.price}
                                         </Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            /{product.unit}
-                                        </Typography>
                                         {product.originalPrice && product.originalPrice > product.price && (
                                             <Typography
-                                                variant="body2"
+                                                variant="caption"
                                                 sx={{
                                                     textDecoration: 'line-through',
                                                     color: theme.palette.text.disabled
@@ -438,116 +377,75 @@ const ProductList = () => {
                                 </Box>
 
                                 {/* Rating */}
-                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
                                     <Rating
-                                        value={product.averageRating || 0}
+                                        value={Number(product.averageRating) || 0}
                                         precision={0.5}
                                         readOnly
                                         size="small"
-                                        sx={{ mr: 1 }}
+                                        sx={{ fontSize: '1rem', mr: 0.5 }}
                                     />
-                                    <Typography variant="caption" color="text.secondary">
-                                        ({product.ratings?.length || 0} reviews)
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                                        {product.averageRating ? Number(product.averageRating).toFixed(1) : 'New'}
+                                        <span style={{ marginLeft: 4, color: theme.palette.text.disabled }}>
+                                            ({product.ratings?.length || 0})
+                                        </span>
                                     </Typography>
                                 </Box>
 
                                 {/* Add to Cart Section */}
-                                <Box sx={{ mt: 'auto' }}>
-                                    {/* Quantity Selector */}
+                                <Box sx={{ mt: 'auto', display: 'flex', gap: 1 }}>
+                                    {/* Simplified Quantity Selector */}
                                     <Box sx={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center',
-                                        mb: 2,
-                                        bgcolor: alpha(theme.palette.grey[100], 0.5),
-                                        borderRadius: 2,
-                                        p: 0.5
+                                        border: '1px solid #e0e0e0',
+                                        borderRadius: 1.5,
+                                        height: 32
                                     }}>
                                         <IconButton
                                             size="small"
                                             onClick={() => handleQuantityChange(product._id, -1)}
                                             disabled={quantities[product._id] <= 1}
-                                            sx={{
-                                                bgcolor: quantities[product._id] <= 1 ? 'transparent' : 'white',
-                                                '&:hover': {
-                                                    bgcolor: quantities[product._id] <= 1 ? 'transparent' : alpha(theme.palette.primary.main, 0.1)
-                                                }
-                                            }}
+                                            sx={{ p: 0.5 }}
                                         >
-                                            <Remove fontSize="small" />
+                                            <Remove sx={{ fontSize: 14 }} />
                                         </IconButton>
-
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                mx: 2,
-                                                minWidth: '30px',
-                                                textAlign: 'center',
-                                                fontWeight: 600
-                                            }}
-                                        >
+                                        <Typography sx={{ mx: 0.5, fontSize: '0.875rem', fontWeight: 600 }}>
                                             {quantities[product._id] || 1}
                                         </Typography>
-
                                         <IconButton
                                             size="small"
                                             onClick={() => handleQuantityChange(product._id, 1)}
                                             disabled={quantities[product._id] >= product.stock}
-                                            sx={{
-                                                bgcolor: quantities[product._id] >= product.stock ? 'transparent' : 'white',
-                                                '&:hover': {
-                                                    bgcolor: quantities[product._id] >= product.stock ? 'transparent' : alpha(theme.palette.primary.main, 0.1)
-                                                }
-                                            }}
+                                            sx={{ p: 0.5 }}
                                         >
-                                            <Add fontSize="small" />
+                                            <Add sx={{ fontSize: 14 }} />
                                         </IconButton>
                                     </Box>
 
-                                    {/* Add to Cart Button */}
                                     <Button
                                         variant="contained"
+                                        size="small"
                                         fullWidth
-                                        startIcon={<ShoppingCart />}
                                         onClick={() => handleAddToCart(product)}
                                         disabled={product.stock === 0}
                                         sx={{
-                                            borderRadius: 2,
-                                            py: 1.5,
-                                            fontWeight: 600,
-                                            fontSize: '0.875rem',
+                                            borderRadius: 1.5,
+                                            height: 32,
+                                            minWidth: 0,
                                             textTransform: 'none',
+                                            fontSize: '0.8rem',
+                                            p: 0,
+                                            bgcolor: theme.palette.primary.main,
                                             boxShadow: 'none',
                                             '&:hover': {
-                                                boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.25)}`,
+                                                bgcolor: theme.palette.primary.dark,
+                                                boxShadow: 'none'
                                             }
                                         }}
                                     >
-                                        {product.stock === 0 ? 'Out of Stock' : t('products.addToCart')}
-                                    </Button>
-
-                                    {/* Quick View Button */}
-                                    <Button
-                                        variant="outlined"
-                                        fullWidth
-                                        startIcon={<Visibility />}
-                                        onClick={() => navigate(`/product/${product._id}`)}
-                                        sx={{
-                                            mt: 1,
-                                            borderRadius: 2,
-                                            py: 1,
-                                            fontWeight: 500,
-                                            fontSize: '0.8rem',
-                                            textTransform: 'none',
-                                            borderColor: alpha(theme.palette.primary.main, 0.3),
-                                            color: theme.palette.primary.main,
-                                            '&:hover': {
-                                                borderColor: theme.palette.primary.main,
-                                                bgcolor: alpha(theme.palette.primary.main, 0.04)
-                                            }
-                                        }}
-                                    >
-                                        View Details
+                                        Add
                                     </Button>
                                 </Box>
                             </CardContent>

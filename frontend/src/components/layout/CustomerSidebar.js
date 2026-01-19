@@ -41,8 +41,9 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 
-const DRAWER_WIDTH = 320;
+const DRAWER_WIDTH = 280; // Reduced from 320 for better mobile fit
 const DRAWER_WIDTH_COLLAPSED = 80;
+const DRAWER_WIDTH_MOBILE = 240; // Even smaller for mobile
 
 const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) => {
   const navigate = useNavigate();
@@ -154,6 +155,8 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
     return location.pathname.startsWith(path);
   };
 
+  const showContent = open || isMobile;
+
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
@@ -167,7 +170,7 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
           gap: 1.5
         }}
       >
-        {open && (
+        {showContent && (
           <>
             <Box
               sx={{
@@ -219,7 +222,7 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
           </>
         )}
 
-        {!open && !isMobile && (
+        {!showContent && !isMobile && (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 60 }}>
             <IconButton
               onClick={onOpen}
@@ -258,14 +261,14 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
                       bgcolor: active ? alpha('#8B5CF6', 0.15) : alpha('#8B5CF6', 0.05)
                     },
                     transition: 'all 0.2s ease',
-                    ...(open ? {} : { justifyContent: 'center', px: 0 })
+                    ...(showContent ? {} : { justifyContent: 'center', px: 0 })
                   }}
                 >
                   <ListItemIcon
                     sx={{
-                      minWidth: open ? 48 : 'auto',
+                      minWidth: showContent ? 48 : 'auto',
                       color: active ? '#8B5CF6' : 'inherit',
-                      justifyContent: open ? 'flex-start' : 'center'
+                      justifyContent: showContent ? 'flex-start' : 'center'
                     }}
                   >
                     {item.badge ? (
@@ -276,7 +279,7 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
                       <Icon />
                     )}
                   </ListItemIcon>
-                  {open && (
+                  {showContent && (
                     <ListItemText
                       primary={item.label}
                       primaryTypographyProps={{
@@ -285,7 +288,7 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
                       }}
                     />
                   )}
-                  {!open && (
+                  {!showContent && (
                     <Tooltip title={item.label} placement="right" arrow>
                       <Box />
                     </Tooltip>
@@ -310,7 +313,7 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
               textTransform: 'uppercase',
               fontSize: '0.7rem',
               letterSpacing: 1,
-              display: open ? 'block' : 'none'
+              display: showContent ? 'block' : 'none'
             }}
           >
             {t('navigation.account')}
@@ -331,14 +334,14 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
                     '&:hover': {
                       bgcolor: active ? alpha('#2E7D32', 0.15) : alpha('#2E7D32', 0.05)
                     },
-                    ...(open ? {} : { justifyContent: 'center', px: 0 })
+                    ...(showContent ? {} : { justifyContent: 'center', px: 0 })
                   }}
                 >
                   <ListItemIcon
                     sx={{
-                      minWidth: open ? 48 : 'auto',
+                      minWidth: showContent ? 48 : 'auto',
                       color: active ? '#8B5CF6' : 'inherit',
-                      justifyContent: open ? 'flex-start' : 'center'
+                      justifyContent: showContent ? 'flex-start' : 'center'
                     }}
                   >
                     {item.badge ? (
@@ -349,7 +352,7 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
                       <Icon />
                     )}
                   </ListItemIcon>
-                  {open && (
+                  {showContent && (
                     <ListItemText
                       primary={item.label}
                       primaryTypographyProps={{
@@ -384,19 +387,19 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
                     '&:hover': {
                       bgcolor: active ? alpha('#2E7D32', 0.15) : alpha('#2E7D32', 0.05)
                     },
-                    ...(open ? {} : { justifyContent: 'center', px: 0 })
+                    ...(showContent ? {} : { justifyContent: 'center', px: 0 })
                   }}
                 >
                   <ListItemIcon
                     sx={{
-                      minWidth: open ? 48 : 'auto',
+                      minWidth: showContent ? 48 : 'auto',
                       color: active ? '#8B5CF6' : 'inherit',
-                      justifyContent: open ? 'flex-start' : 'center'
+                      justifyContent: showContent ? 'flex-start' : 'center'
                     }}
                   >
                     <Icon />
                   </ListItemIcon>
-                  {open && (
+                  {showContent && (
                     <ListItemText
                       primary={item.label}
                       primaryTypographyProps={{
@@ -423,19 +426,19 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
             '&:hover': {
               bgcolor: alpha('#d32f2f', 0.1)
             },
-            ...(open ? {} : { justifyContent: 'center', px: 0 })
+            ...(showContent ? {} : { justifyContent: 'center', px: 0 })
           }}
         >
           <ListItemIcon
             sx={{
-              minWidth: open ? 48 : 'auto',
+              minWidth: showContent ? 48 : 'auto',
               color: 'error.main',
-              justifyContent: open ? 'flex-start' : 'center'
+              justifyContent: showContent ? 'flex-start' : 'center'
             }}
           >
             <LogoutIcon />
           </ListItemIcon>
-          {open && (
+          {showContent && (
             <ListItemText
               primary={t('navigation.logout')}
               primaryTypographyProps={{
@@ -451,7 +454,6 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
 
   return (
     <>
-      {/* Mobile Drawer */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
@@ -463,7 +465,7 @@ const CustomerSidebar = ({ open, onClose, onOpen, mobileOpen, onMobileClose }) =
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
-            width: DRAWER_WIDTH,
+            width: DRAWER_WIDTH_MOBILE,
             borderRight: `1px solid ${alpha('#000', 0.08)}`
           }
         }}

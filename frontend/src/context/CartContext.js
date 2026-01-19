@@ -44,7 +44,12 @@ export const CartProvider = ({ children }) => {
   };
 
   const getCartTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.reduce((total, item) => {
+      const price = typeof item.price === 'string'
+        ? parseFloat(item.price.replace(/[₹,]/g, ''))
+        : item.price;
+      return total + (price * item.quantity);
+    }, 0);
   };
 
   const clearCart = () => {

@@ -443,20 +443,32 @@ const CustomerDashboard = () => {
                                         display: 'flex',
                                         flexDirection: 'column',
                                         cursor: 'pointer',
-                                        transition: 'all 0.3s',
+                                        borderRadius: 3,
+                                        border: 'none',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        overflow: 'hidden',
+                                        maxWidth: 280,
                                         '&:hover': {
                                             transform: 'translateY(-4px)',
-                                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                                            boxShadow: '0 12px 24px -10px rgba(0,0,0,0.2)',
+                                            '& .dashboard-product-img': {
+                                                transform: 'scale(1.05)'
+                                            }
                                         }
                                     }}
                                 >
-                                    <Box sx={{ position: 'relative' }}>
+                                    <Box sx={{ position: 'relative', overflow: 'hidden', height: 140 }}>
                                         <CardMedia
                                             component="img"
-                                            height="180"
+                                            height="140"
+                                            className="dashboard-product-img"
                                             image={product.image}
                                             alt={product.name}
-                                            sx={{ objectFit: 'cover' }}
+                                            sx={{
+                                                objectFit: 'cover',
+                                                transition: 'transform 0.5s ease'
+                                            }}
                                         />
                                         <IconButton
                                             onClick={(e) => {
@@ -465,17 +477,21 @@ const CustomerDashboard = () => {
                                             }}
                                             sx={{
                                                 position: 'absolute',
-                                                top: 8,
-                                                right: 8,
-                                                bgcolor: 'white',
-                                                '&:hover': { bgcolor: '#f5f5f5' }
+                                                top: 6,
+                                                right: 6,
+                                                bgcolor: 'rgba(255,255,255,0.8)',
+                                                backdropFilter: 'blur(4px)',
+                                                width: 30,
+                                                height: 30,
+                                                '&:hover': { bgcolor: '#fff', transform: 'scale(1.1)' },
+                                                transition: 'all 0.2s'
                                             }}
                                             size="small"
                                         >
                                             {wishlist.includes(product.id) ? (
-                                                <FavoriteFilled sx={{ color: '#e91e63' }} />
+                                                <FavoriteFilled sx={{ color: '#e91e63', fontSize: 18 }} />
                                             ) : (
-                                                <FavoriteIcon />
+                                                <FavoriteIcon sx={{ fontSize: 18 }} />
                                             )}
                                         </IconButton>
                                         {product.discount > 0 && (
@@ -484,43 +500,47 @@ const CustomerDashboard = () => {
                                                 size="small"
                                                 sx={{
                                                     position: 'absolute',
-                                                    bottom: 8,
-                                                    left: 8,
-                                                    bgcolor: '#2E7D32',
+                                                    bottom: 6,
+                                                    left: 6,
+                                                    height: 20,
+                                                    bgcolor: '#d32f2f',
                                                     color: 'white',
                                                     fontWeight: 700,
-                                                    fontSize: '0.7rem'
+                                                    fontSize: '0.6rem',
+                                                    '& .MuiChip-label': { px: 0.8 }
                                                 }}
                                             />
                                         )}
                                     </Box>
-                                    <CardContent sx={{ flexGrow: 1, p: 1.5 }}>
+                                    <CardContent sx={{ flexGrow: 1, p: 1.5, pb: 2 }}>
                                         <Typography
-                                            variant="body2"
+                                            variant="subtitle2"
                                             sx={{
-                                                fontWeight: 500,
+                                                fontWeight: 600,
                                                 mb: 0.5,
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
                                                 display: '-webkit-box',
                                                 WebkitLineClamp: 2,
                                                 WebkitBoxOrient: 'vertical',
-                                                minHeight: 40
+                                                minHeight: 40,
+                                                lineHeight: 1.2,
+                                                height: '2.4em',
                                             }}
                                         >
                                             {product.name}
                                         </Typography>
-                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                                            {product.weight}
-                                        </Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                                            <Rating value={product.rating} precision={0.5} size="small" readOnly />
-                                            <Typography variant="caption" color="text.secondary">
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                            <Rating value={product.rating} precision={0.5} readOnly size="small" sx={{ fontSize: '0.9rem' }} />
+                                            <Typography variant="caption" sx={{ ml: 0.5, color: 'text.secondary', fontWeight: 500 }}>
+                                                {Number(product.rating).toFixed(1)}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', ml: 0.5 }}>
                                                 ({product.reviews})
                                             </Typography>
                                         </Box>
-                                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 1 }}>
-                                            <Typography variant="h6" fontWeight="700">
+                                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.8, mb: 1.5 }}>
+                                            <Typography variant="body1" fontWeight="700" color="#2E7D32">
                                                 ₹{product.price}
                                             </Typography>
                                             <Typography
@@ -532,17 +552,23 @@ const CustomerDashboard = () => {
                                         </Box>
                                         <Button
                                             fullWidth
-                                            variant="contained"
+                                            variant="outlined"
                                             size="small"
-                                            startIcon={<CartIcon />}
                                             sx={{
-                                                bgcolor: '#2E7D32',
                                                 textTransform: 'none',
                                                 fontWeight: 600,
-                                                '&:hover': { bgcolor: '#1B5E20' }
+                                                color: '#2E7D32',
+                                                borderColor: '#2E7D32',
+                                                height: 32,
+                                                fontSize: '0.8rem',
+                                                '&:hover': {
+                                                    bgcolor: '#e8f5e9',
+                                                    borderColor: '#1B5E20',
+                                                    color: '#1B5E20'
+                                                }
                                             }}
                                         >
-                                            Add to Cart
+                                            Add
                                         </Button>
                                     </CardContent>
                                 </Card>
@@ -567,32 +593,77 @@ const CustomerDashboard = () => {
                                     sx={{
                                         height: '100%',
                                         cursor: 'pointer',
-                                        transition: 'all 0.3s',
+                                        borderRadius: 2,
+                                        transition: 'all 0.2s',
+                                        border: '1px solid #f0f0f0',
+                                        boxShadow: 'none',
                                         '&:hover': {
                                             transform: 'translateY(-4px)',
-                                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                                            boxShadow: '0 8px 16px rgba(0,0,0,0.08)',
+                                            borderColor: '#4CAF50'
                                         }
                                     }}
                                 >
-                                    <CardMedia
-                                        component="img"
-                                        height="180"
-                                        image={product.image}
-                                        alt={product.name}
-                                    />
-                                    <CardContent sx={{ p: 1.5 }}>
-                                        <Typography variant="body2" fontWeight="500" sx={{ mb: 0.5, minHeight: 40 }}>
+                                    <Box sx={{ position: 'relative' }}>
+                                        <CardMedia
+                                            component="img"
+                                            height="150"
+                                            image={product.image}
+                                            alt={product.name}
+                                            sx={{ objectFit: 'cover' }}
+                                        />
+                                        <Box
+                                            sx={{
+                                                position: 'absolute',
+                                                bottom: 6,
+                                                left: 6,
+                                                bgcolor: 'rgba(255,255,255,0.95)',
+                                                borderRadius: 1,
+                                                px: 0.8,
+                                                py: 0.2,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 0.5
+                                            }}
+                                        >
+                                            <Rating value={product.rating} precision={0.5} max={1} readOnly sx={{ fontSize: 14 }} />
+                                            <Typography variant="caption" fontWeight="700" sx={{ fontSize: '0.75rem' }}>
+                                                {product.rating}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                    <CardContent sx={{ p: 1.5, pb: '10px !important' }}>
+                                        <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 0.5, height: 40, overflow: 'hidden', lineHeight: 1.2 }}>
                                             {product.name}
                                         </Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                                            <Rating value={product.rating} precision={0.5} size="small" readOnly />
+                                        <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="body1" fontWeight="700" color="#2E7D32">
+                                                ₹{product.price}
+                                            </Typography>
                                             <Typography variant="caption" color="text.secondary">
                                                 ({product.reviews})
                                             </Typography>
                                         </Box>
-                                        <Typography variant="h6" fontWeight="700" color="#2E7D32">
-                                            ₹{product.price}
-                                        </Typography>
+                                        <Button
+                                            fullWidth
+                                            variant="outlined"
+                                            size="small"
+                                            sx={{
+                                                textTransform: 'none',
+                                                fontWeight: 600,
+                                                color: '#2E7D32',
+                                                borderColor: '#2E7D32',
+                                                height: 32,
+                                                fontSize: '0.8rem',
+                                                '&:hover': {
+                                                    bgcolor: '#e8f5e9',
+                                                    borderColor: '#1B5E20',
+                                                    color: '#1B5E20'
+                                                }
+                                            }}
+                                        >
+                                            Add
+                                        </Button>
                                     </CardContent>
                                 </Card>
                             </Grid>

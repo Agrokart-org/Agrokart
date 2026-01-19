@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
   if (isMobile()) {
     // Use your computer's IP address for mobile devices
     // Replace with your actual IP address from the network your phone is connected to
-    return 'http://192.168.43.196:5000/api'; // Update this IP if needed
+    return 'http://10.226.42.226:5000/api'; // Update this IP if needed
   }
   return 'http://localhost:5000/api'; // For web browser
 };

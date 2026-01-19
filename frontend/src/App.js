@@ -22,6 +22,7 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import './i18n'; // Initialize i18n
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Main App Content Component (must be inside AuthProvider)
 const AppContent = () => {
@@ -93,7 +94,9 @@ const AppContent = () => {
 
   return (
     <>
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
       {/* AI Chatbot - Available on all pages */}
       <AIChatbot />
     </>

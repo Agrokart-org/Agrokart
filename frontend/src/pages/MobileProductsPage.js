@@ -18,7 +18,9 @@ import {
   useTheme,
   InputAdornment,
   TextField,
-  alpha
+  alpha,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   FilterList as FilterIcon,
@@ -54,6 +56,7 @@ const MobileProductsPage = () => {
     inStock: false
   });
   const [sortBy, setSortBy] = useState('relevance');
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     try {
@@ -118,6 +121,11 @@ const MobileProductsPage = () => {
 
   const handleAddToCart = (product) => {
     addToCart({ ...product, quantity: 1 });
+    setSnackbar({ open: true, message: `${product.name} added to cart!`, severity: 'success' });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   const categories = ['Fertilizers', 'Seeds', 'Pesticides', 'Equipment', 'Organic', 'Tools'];
@@ -250,7 +258,7 @@ const MobileProductsPage = () => {
                         </Box>
                       </Box>
 
-                      {product.inStock ? (
+                      {(product.inStock || product.availability === 'In Stock' || product.countInStock > 0) ? (
                         <Button
                           fullWidth
                           variant="contained"
@@ -347,8 +355,21 @@ const MobileProductsPage = () => {
             ))}
           </List>
         </Box>
-      </Drawer>
-    </Box>
+
+      </Drawer >
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={2000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ bottom: { xs: 70, md: 24 } }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box >
   );
 };
 

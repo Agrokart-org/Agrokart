@@ -36,10 +36,13 @@ import {
   Email as EmailIcon,
   Phone as PhoneIcon
 } from '@mui/icons-material';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { createOrder } from '../services/api';
 import { auth } from '../config/firebase'; // Direct auth access needed
+import AgrokartLogo from '../components/AgrokartLogo';
 
 const OrderConfirmationPage = () => {
   const navigate = useNavigate();
@@ -257,8 +260,32 @@ const OrderConfirmationPage = () => {
 
   const handleDownload = async () => {
     try {
-      // Simple download using browser's print to PDF functionality
-      window.print();
+      const element = billRef.current;
+      if (!element) return;
+
+      // Show processing feedback if needed
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10; // Top margin
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, canvas.height * pdfWidth / canvas.width);
+      pdf.save(`Invoice-${orderId}.pdf`);
+
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
@@ -267,7 +294,7 @@ const OrderConfirmationPage = () => {
 
   const handleShare = () => {
     const shareData = {
-      title: 'KrushiDoot Order Confirmation',
+      title: 'Agrokart Order Confirmation',
       text: `Order ${orderId} confirmed! Total: ₹${total}`,
       url: window.location.href
     };
@@ -284,7 +311,7 @@ const OrderConfirmationPage = () => {
   };
 
   const handleWhatsAppShare = () => {
-    const message = `🌾 KrushiDoot Order Confirmed!\n\nOrder ID: ${orderId}\nTotal Amount: ₹${total}\nDelivery: 2-3 business days\n\nThank you for choosing KrushiDoot for your fertilizer needs!`;
+    const message = `🌾 Agrokart Order Confirmed!\n\nOrder ID: ${orderId}\nTotal Amount: ₹${total}\nDelivery: 2-3 business days\n\nThank you for choosing Agrokart for your agricultural needs!`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -321,7 +348,7 @@ const OrderConfirmationPage = () => {
           Order Confirmed!
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
-          Thank you for choosing KrushiDoot
+          Thank you for choosing Agrokart
         </Typography>
         <Chip
           label={`Order ID: ${orderId}`}
@@ -375,14 +402,14 @@ const OrderConfirmationPage = () => {
         {/* Invoice Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 4 }}>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-              🌾 <Box component="span" sx={{ color: '#CE93D8' }}>Krushi</Box><Box component="span" sx={{ color: '#FFE500' }}>Doot</Box>
+            <Box sx={{ mb: 1 }}>
+              <AgrokartLogo variant="full" />
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Premium Agricultural Products
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Premium Fertilizer Delivery Service
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              📧 support@krushidoot.com | 📞 1800-XXX-XXXX
+              📧 support@agrokart.com | 📞 1800-XXX-XXXX
             </Typography>
           </Box>
           <Box sx={{ textAlign: 'right' }}>
@@ -462,11 +489,11 @@ const OrderConfirmationPage = () => {
                       {item.name || `Product ${item.id || item.product || index + 1}`}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {item.category || 'Fertilizer'}
+                      {item.category || 'Agricultural Product'}
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Chip label={`${item.quantity} ${item.unit || 'kg'}`} size="small" />
+                    <Chip label={`${item.quantity} ${item.unit || 'units'}`} size="small" />
                   </TableCell>
                   <TableCell align="right">₹{item.price}</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 600 }}>
@@ -536,14 +563,14 @@ const OrderConfirmationPage = () => {
         {/* Footer */}
         <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'grey.300', textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            Thank you for choosing KrushiDoot! Your order will be processed within 24 hours.
+            Thank you for choosing Agrokart! Your order will be processed within 24 hours.
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            For any queries, contact us at support@krushidoot.com or call 1800-XXX-XXXX
+            For any queries, contact us at support@agrokart.com or call 1800-XXX-XXXX
           </Typography>
           <Box sx={{ mt: 2 }}>
             <Typography variant="caption" color="text.secondary">
-              🌾 KrushiDoot - Empowering Farmers with Quality Fertilizers
+              🌾 Agrokart - Empowering Farmers with Quality Products
             </Typography>
           </Box>
         </Box>
@@ -598,7 +625,7 @@ const OrderConfirmationPage = () => {
             <Button
               variant="contained"
               startIcon={<EmailIcon />}
-              onClick={() => window.open('mailto:support@krushidoot.com')}
+              onClick={() => window.open('mailto:support@agrokart.com')}
               sx={{ bgcolor: 'white', color: 'primary.main' }}
             >
               Email
