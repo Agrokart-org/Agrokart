@@ -45,6 +45,7 @@ import {
 } from '@mui/icons-material';
 import { useCart } from '../context/CartContext';
 import { getProduct } from '../services/api';
+import { mockProducts } from '../data/mockProducts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { alpha } from '@mui/material/styles';
 
@@ -73,7 +74,29 @@ const ProductDetailPage = () => {
         setLoading(true);
         setError(null);
 
-        // Mock data for demo/seed IDs
+        // First, try to find in mock products
+        const mockProduct = mockProducts.find(p => p._id === id);
+        if (mockProduct) {
+          setProduct({
+            _id: mockProduct._id,
+            name: mockProduct.name,
+            price: mockProduct.price,
+            originalPrice: mockProduct.originalPrice,
+            description: mockProduct.description,
+            images: mockProduct.images || [],
+            image: mockProduct.images?.[0],
+            category: mockProduct.category,
+            rating: mockProduct.averageRating,
+            numReviews: mockProduct.ratings?.length || 0,
+            stock: mockProduct.stock,
+            brand: mockProduct.brand,
+            specifications: mockProduct.specifications || {}
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Mock data for demo/seed IDs (legacy support)
         if (id && id.startsWith('seed')) {
           setTimeout(() => {
             setProduct({
@@ -103,11 +126,16 @@ const ProductDetailPage = () => {
 
         // Simulate API delay for smoothness
         setTimeout(async () => {
-          const response = await getProduct(id);
-          if (response._id || response.id) {
-            setProduct(response);
-          } else {
-            setError(response.message || 'Product not found');
+          try {
+            const response = await getProduct(id);
+            if (response._id || response.id) {
+              setProduct(response);
+            } else {
+              setError(response.message || 'Product not found');
+            }
+          } catch (apiError) {
+            console.error('API error:', apiError);
+            setError('Product not found');
           }
           setLoading(false);
         }, 500);

@@ -247,7 +247,7 @@ const LabourManagement = () => {
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: '#F8FAFC' }}>
-            <Container maxWidth="xl" sx={{ py: 4 }}>
+            <Container maxWidth="xl" sx={{ py: 4, mt: 12 }}>
                 {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}

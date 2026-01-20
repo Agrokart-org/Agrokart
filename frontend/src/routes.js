@@ -50,6 +50,10 @@ import AdminLoginPage from './pages/AdminLoginPage';
 import MarketplaceNavigation from './components/MarketplaceNavigation';
 import RoleSelectionPage from './components/RoleSelectionPage';
 import LabourManagement from './pages/LabourManagement';
+import WishlistPage from './pages/WishlistPage';
+import NotificationsPage from './pages/NotificationsPage';
+import SettingsPage from './pages/SettingsPage';
+import HelpPage from './pages/HelpPage';
 
 
 // Helper to redirect based on role
@@ -300,6 +304,38 @@ const Routes = () => {
           element={
             <CustomerRoute useSidebar={true}>
               <ResponsivePageWrapper pageType="profile" />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/wishlist"
+          element={
+            <CustomerRoute useSidebar={true}>
+              <WishlistPage />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <CustomerRoute useSidebar={true}>
+              <NotificationsPage />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <CustomerRoute useSidebar={true}>
+              <SettingsPage />
+            </CustomerRoute>
+          }
+        />
+        <Route
+          path="/help"
+          element={
+            <CustomerRoute useSidebar={true}>
+              <HelpPage />
             </CustomerRoute>
           }
         />

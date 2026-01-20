@@ -28,124 +28,115 @@ router.post('/', auth, async (req, res) => {
 
         // Validate products and calculate total
         let totalAmount = 0;
+        const refinedItems = [];
+
         for (const item of items) {
             console.log('Processing item:', item);
-            console.log('Product ID:', item.product, 'Type:', typeof item.product, 'Length:', item.product ? item.product.length : 'N/A');
 
             if (!item.product) {
-                console.log('Item missing product ID:', item);
                 return res.status(400).json({ message: 'Product ID is required for each item' });
             }
 
-            let product = null;
+            let finalPrice = 0;
+            let finalProductId = item.product;
+            const quantity = Number(item.quantity);
 
-            // Check if the product ID is a valid MongoDB ObjectId (24 hex characters)
+            // Check if valid ObjectId
             const isValidObjectId = item.product &&
                 typeof item.product === 'string' &&
                 item.product.length === 24 &&
                 /^[0-9a-fA-F]{24}$/.test(item.product);
 
-            console.log('Is valid ObjectId:', isValidObjectId);
-
-            // Try to find product by MongoDB ObjectId first
             if (isValidObjectId) {
+                // Real Product Logic
                 try {
-                    console.log('Attempting to find product by ObjectId:', item.product);
-                    product = await Product.findById(item.product);
-                    console.log('Found product in database:', product ? product.name : 'Not found');
+                    const product = await Product.findById(item.product);
+                    if (product) {
+                        if (product.stock < quantity) {
+                            return res.status(400).json({ message: `Insufficient stock for ${product.name}. Available: ${product.stock}` });
+                        }
+                        finalPrice = Number(product.price);
+                        console.log('Using DB price:', finalPrice);
+                    } else {
+                        // Product not found in DB? Treat as mock or error?
+                        // Current logic seems to allow it to fall through to mock if not found? 
+                        // Actually the original code had `if (product)` block vs `else`. 
+                        // But it tried `findById` only if `isValidObjectId`.
+                        // If valid ID but not found -> `product` is null -> goes to `else` block?
+                        // The original code caught error but didn't handle null product explicitly in the catch.
+                        console.warn('Product ID Valid but not found in DB:', item.product);
+                        // Fallback to mock logic below if we want to allow it, or error out. 
+                        // Let's assume we treat it as valid mock for resilience, similar to original logic? 
+                        // Original logic: if (isValidObjectId) try find. if (product) use it. 
+                        // If isValidObjectId but find fails/returns null, it goes to `else`... wait.
+                        // No, `product` would be null. `if (product)` would be false. 
+                        // So it would fall to `else` (line 82 in original)? No, line 82 is `else` of `if (product)`.
+                        // Correct. So if not found in DB, it treats as mock.
+                    }
+
+                    if (product) {
+                        finalProductId = product._id; // Ensure consistent ID object
+                    }
                 } catch (error) {
-                    console.log('Error finding product by ObjectId:', error.message);
+                    console.log('Error finding product:', error.message);
                 }
-            } else {
-                console.log('Product ID is not a valid ObjectId, treating as mock product:', item.product);
             }
 
-            // Validate quantity first
-            if (!item.quantity || item.quantity < 1) {
-                console.log('Invalid quantity for item:', item.product);
-                return res.status(400).json({ message: `Invalid quantity for item ${item.product}` });
-            }
+            // If finalPrice is still 0 (product not found or mock), parse from request
+            if (finalPrice === 0) {
+                // Mock Product Logic / Fallback
+                console.log('Using mock product logic');
 
-            if (product) {
-                // Real product from database
-                console.log('Found product in database:', product.name);
-
-                if (product.stock < item.quantity) {
-                    console.log('Insufficient stock for product:', product.name);
-                    return res.status(400).json({ message: `Insufficient stock for ${product.name}. Available: ${product.stock}` });
+                // Fix Product ID if needed
+                if (!isValidObjectId) {
+                    const crypto = require('crypto');
+                    const hash = crypto.createHash('md5').update(item.product.toString()).digest('hex');
+                    const mongoose = require('mongoose');
+                    finalProductId = new mongoose.Types.ObjectId(hash.substring(0, 24));
                 }
 
-                const price = Number(product.price);
-                const quantity = Number(item.quantity);
-                totalAmount += price * quantity;
-                console.log('Item processed from database:', { name: product.name, quantity, price, total: price * quantity });
-            } else {
-                // Mock product - use price from cart item
-                console.log('Using mock product with cart price');
-
-                // Robust price parsing: handle numbers, strings, and formatted strings (e.g., "₹500")
+                // Clean Price
                 let rawPrice = item.price;
                 let price;
 
                 if (typeof rawPrice === 'number') {
                     price = rawPrice;
                 } else if (typeof rawPrice === 'string') {
-                    // Remove any character that is not a digit or decimal point
                     const cleanedPrice = rawPrice.replace(/[^0-9.]/g, '');
                     price = parseFloat(cleanedPrice);
-                    if (isNaN(price)) price = undefined;
                 }
 
-                console.log(`Raw price: ${rawPrice}, Cleaned price: ${price}`);
-
-                // Auto-fix invalid prices for demo
                 if (price === undefined || isNaN(price) || price <= 0) {
-                    console.warn(`⚠️ Invalid price detected for item ${item.product}. Raw: ${rawPrice}. Defaulting to 100.`);
-                    price = 100; // Default fallback to ensure order creation
+                    price = 100; // Default
                 }
-
-                const quantity = Number(item.quantity);
-                totalAmount += price * quantity;
-                console.log('Item processed as mock product:', { id: item.product, quantity, price, total: price * quantity });
+                finalPrice = price;
             }
+
+            // Add to total
+            totalAmount += finalPrice * quantity;
+
+            // Add to sanitized list
+            refinedItems.push({
+                product: finalProductId,
+                quantity: quantity,
+                price: finalPrice
+            });
         }
 
         // Final check for totalAmount
         if (isNaN(totalAmount)) {
-            console.error('Total Amount calculation resulted in NaN even after fixes. Resetting to valid number.');
-            totalAmount = 100 * items.length; // Ultimate fallback
+            totalAmount = 100 * items.length;
         }
 
         console.log('Total amount calculated:', totalAmount);
 
         // Create order
         const mongoose = require('mongoose');
-        const crypto = require('crypto');
+        const crypto = require('crypto'); // Re-import just in case needed globally or scope issue
 
         const order = new Order({
             user: req.user.id,
-            items: items.map(item => {
-                let productId = item.product;
-
-                // For mock products (non-ObjectId), generate a valid ObjectId
-                const isValidObjectId = item.product &&
-                    typeof item.product === 'string' &&
-                    item.product.length === 24 &&
-                    /^[0-9a-fA-F]{24}$/.test(item.product);
-
-                if (!isValidObjectId) {
-                    // Generate a consistent ObjectId for mock products
-                    const hash = crypto.createHash('md5').update(item.product.toString()).digest('hex');
-                    productId = new mongoose.Types.ObjectId(hash.substring(0, 24));
-                    console.log(`Generated ObjectId for mock product ${item.product}: ${productId}`);
-                }
-
-                return {
-                    product: productId,
-                    quantity: item.quantity,
-                    price: item.price
-                };
-            }),
+            items: refinedItems, // Use the sanitized items
             totalAmount,
             deliveryAddress,
             deliverySlot,

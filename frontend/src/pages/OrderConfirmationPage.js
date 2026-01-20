@@ -62,9 +62,19 @@ const OrderConfirmationPage = () => {
 
   // Calculate order totals from order data or ordered items
   const calculateTotals = () => {
+    // Helper to parse price safely
+    const parsePrice = (price) => {
+      if (typeof price === 'number') return price;
+      if (typeof price === 'string') {
+        const val = parseFloat(price.replace(/[^0-9.]/g, ''));
+        return isNaN(val) ? 0 : val;
+      }
+      return 0;
+    };
+
     if (orderData && orderData.totalAmount) {
       // Use backend order data if available
-      const orderTotal = orderData.totalAmount;
+      const orderTotal = parsePrice(orderData.totalAmount);
       const deliveryFee = orderTotal > 5000 ? 0 : 200;
       return {
         subtotal: orderTotal - deliveryFee,
@@ -73,7 +83,9 @@ const OrderConfirmationPage = () => {
       };
     } else if (orderedItems && orderedItems.length > 0) {
       // Calculate from ordered items
-      const subtotal = orderedItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+      const subtotal = orderedItems.reduce((total, item) => {
+        return total + (parsePrice(item.price) * (item.quantity || 1));
+      }, 0);
       const deliveryFee = subtotal > 5000 ? 0 : 200;
       return {
         subtotal,
@@ -82,7 +94,7 @@ const OrderConfirmationPage = () => {
       };
     } else {
       // Fallback to cart total (for initial load)
-      const subtotal = getCartTotal();
+      const subtotal = getCartTotal(); // This is now safe from CartContext
       const deliveryFee = subtotal > 5000 ? 0 : 200;
       return {
         subtotal,

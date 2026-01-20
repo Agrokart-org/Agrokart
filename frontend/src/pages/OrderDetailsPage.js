@@ -43,6 +43,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../context/AuthContext';
 import { getOrderById } from '../services/api';
+import TrackingMap from '../components/map/TrackingMap';
+import { deliverySimulation } from '../services/deliverySimulation';
 
 // Custom Animated Connector for Stepper
 const ColorlibConnector = styled(StepConnector)(({ theme }) => ({
@@ -77,6 +79,27 @@ const OrderDetailsPage = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Tracking State
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [eta, setEta] = useState('Calculating...');
+
+  useEffect(() => {
+    // Only start simulation if status implies movement
+    if (order && (order.status === 'shipped' || order.status === 'out_for_delivery')) {
+      const unsubscribe = deliverySimulation.subscribe((loc) => {
+        setDriverLocation(loc);
+        setEta(`${Math.floor(Math.random() * 10) + 10} mins`); // Mock ETA
+      });
+
+      deliverySimulation.startTracking();
+
+      return () => {
+        unsubscribe();
+        deliverySimulation.stopTracking();
+      };
+    }
+  }, [order]);
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -134,6 +157,13 @@ const OrderDetailsPage = () => {
       active: index === activeIndex
     }));
   };
+
+  if (loading) return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+      <CircularProgress size={60} thickness={4} sx={{ color: theme.palette.primary.main }} />
+    </Box>
+  );
+
 
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
@@ -219,6 +249,30 @@ const OrderDetailsPage = () => {
             ))}
           </Stepper>
         </Paper>
+
+        {/* Live Tracking Map */}
+        {(order.status === 'shipped' || order.status === 'out_for_delivery') && (
+          <Paper elevation={0} sx={{ height: 400, mb: 3, borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+            {driverLocation ? (
+              <TrackingMap
+                deliveryLocation={driverLocation}
+                pickupLocation={{ lat: 18.5204, lng: 73.8567 }} // Example Start
+                dropoffLocation={{ lat: 18.5100, lng: 73.8460 }} // Example End
+                partnerDetails={{
+                  name: 'Ramesh Driver',
+                  vehicleNumber: 'MH-12-DT-9999',
+                  phone: '9876543210',
+                  photo: 'https://cdn-icons-png.flaticon.com/512/3048/3048122.png'
+                }}
+                eta={eta}
+              />
+            ) : (
+              <Box display="flex" justifyContent="center" alignItems="center" height="100%" bgcolor="#f5f5f5">
+                <Typography>Connecting to live tracking...</Typography>
+              </Box>
+            )}
+          </Paper>
+        )}
 
         {/* Items */}
         <Paper elevation={0} sx={{ p: 3, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>

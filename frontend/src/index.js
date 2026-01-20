@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import reportWebVitals from './reportWebVitals';
+import suppressMetaMaskErrors from './fixMetaMaskError';
+
+// Run suppression immediately
+suppressMetaMaskErrors();
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);

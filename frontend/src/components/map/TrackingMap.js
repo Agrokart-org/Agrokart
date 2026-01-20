@@ -19,10 +19,12 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 // Helper to create a rotated car icon
 const getRotatedCarIcon = (heading = 0) => {
+    // Adjust for Right-facing image: 0 deg bearing (North) needs -90 rotation to point Up
+    const rotation = (heading - 90) % 360;
     return L.divIcon({
         className: 'custom-car-marker',
-        html: `<div style="transform: rotate(${heading}deg); transition: transform 0.8s linear; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-                 <img src="https://cdn-icons-png.flaticon.com/512/744/744465.png" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />
+        html: `<div style="transform: rotate(${rotation}deg); transition: transform 0.8s linear; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                 <img src="/assets/delivery-truck.png" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />
                </div>`,
         iconSize: [50, 50],
         iconAnchor: [25, 25],
@@ -59,9 +61,13 @@ const createTextLabelIcon = (text, isDark = false) => {
 const RecenterAutomatically = ({ lat, lng }) => {
     const map = useMap();
     useEffect(() => {
-        // Ensure lat/lng are valid numbers
-        if (typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng)) {
-            map.flyTo([lat, lng], map.getZoom());
+        // Ensure lat/lng are valid numbers using robust Finite check
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            try {
+                map.flyTo([lat, lng], map.getZoom());
+            } catch (error) {
+                console.warn("Map FlyTo warning:", error);
+            }
         }
     }, [lat, lng, map]);
     return null;
@@ -71,7 +77,8 @@ const TrackingMap = ({
     deliveryLocation,
     pickupLocation,
     dropoffLocation,
-    partnerDetails
+    partnerDetails,
+    eta
 }) => {
     // Default center (e.g., India)
     const defaultCenter = [20.5937, 78.9629];
@@ -88,9 +95,41 @@ const TrackingMap = ({
         <Box sx={{ height: '100%', width: '100%', position: 'relative', bgcolor: '#f0f0f0' }}>
             <style>
                 {`
-                    .custom-car-marker, .custom-label-marker {
+                    .custom-car-marker, .custom-label-marker, .custom-pin-marker {
                         background: transparent;
                         border: none;
+                    }
+                    @keyframes bounce {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-10px); }
+                    }
+                    .pin-bounce {
+                        animation: bounce 1.5s infinite ease-in-out;
+                        position: relative;
+                        z-index: 2;
+                    }
+                    @keyframes pulse-ring {
+                        0% { transform: scale(0.33); opacity: 0.8; }
+                        80%, 100% { transform: scale(2.5); opacity: 0; }
+                    }
+                    .water-drop {
+                        position: absolute;
+                        top: 50%; left: 50%;
+                        transform: translate(-50%, -50%);
+                        width: 40px; height: 40px;
+                        background: rgba(33, 150, 243, 0.4);
+                        border-radius: 50%;
+                        animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+                        z-index: 1;
+                    }
+                    .water-drop::after {
+                        content: '';
+                        position: absolute;
+                        top: 0; left: 0; width: 100%; height: 100%;
+                        background: rgba(33, 150, 243, 0.4);
+                        border-radius: 50%;
+                        animation: pulse-ring 2s cubic-bezier(0.211, 0.61, 0.355, 1) infinite;
+                        animation-delay: 1s;
                     }
                 `}
             </style>
@@ -116,10 +155,34 @@ const TrackingMap = ({
                         pathOptions={{
                             color: 'black',
                             weight: 5,
-                            opacity: 0.9,
-                            lineCap: 'square'
+                            opacity: 0.8,
+                            lineCap: 'round',
+                            dashArray: '10, 10', // Dashed line for route
                         }}
                     />
+                )}
+
+                {/* Destination Pin (User Location) */}
+                {isValidCoord(dropoffLocation) && (
+                    <Marker
+                        position={[dropoffLocation.lat, dropoffLocation.lng]}
+                        icon={L.divIcon({
+                            className: 'custom-pin-marker',
+                            html: `<div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                     <div class="pin-bounce" style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                                        <div class="water-drop" style="top: 85%; width: 30px; height: 30px;"></div>
+                                        <img src="/assets/destination-pin.png" style="width: 100%; height: 100%; object-fit: contain; position: relative; z-index: 2; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));" />
+                                     </div>
+                                   </div>`,
+                            iconSize: [40, 40],
+                            iconAnchor: [20, 40], // Anchor at bottom center
+                            popupAnchor: [0, -40]
+                        })}
+                    >
+                        <Popup>
+                            <Typography variant="subtitle2" fontWeight="bold">Your Location</Typography>
+                        </Popup>
+                    </Marker>
                 )}
 
                 {/* Delivery Partner Marker + Time Label */}
@@ -138,7 +201,7 @@ const TrackingMap = ({
                         {/* Floating "Time Away" Label anchored to car */}
                         <Marker
                             position={[deliveryLocation.lat, deliveryLocation.lng]}
-                            icon={createTextLabelIcon('1 min away')}
+                            icon={createTextLabelIcon(eta || 'Calculating...')} // Use dynamic ETA
                             zIndexOffset={1000} // Ensure on top
                         />
                         <RecenterAutomatically lat={deliveryLocation.lat} lng={deliveryLocation.lng} />

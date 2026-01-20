@@ -348,6 +348,8 @@ const CustomerLayout = ({ children }) => {
           bgcolor: '#f5f5f5',
           minHeight: '100vh',
           width: { sm: `calc(100% - ${sidebarOpen ? 280 : 80}px)` },
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
         {/* Spacer for Fixed AppBar */}

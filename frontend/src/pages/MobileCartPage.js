@@ -106,7 +106,7 @@ const MobileCartPage = () => {
         <AnimatePresence>
           {cart.map((item) => (
             <MotionCard
-              key={item.id}
+              key={item.cartItemId}
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -140,15 +140,32 @@ const MobileCartPage = () => {
                   {/* Product Details */}
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Typography variant="subtitle1" fontWeight="700" sx={{ lineHeight: 1.3, mb: 0.5 }}>
+                      <Typography variant="subtitle1" fontWeight="700" sx={{ lineHeight: 1.3, mb: 0.5, pr: 1 }}>
                         {item.name}
                       </Typography>
                       <IconButton
                         size="small"
-                        onClick={() => removeFromCart(item.id)}
-                        sx={{ mt: -1, mr: -1, color: 'text.disabled' }}
+                        onClick={() => removeFromCart(item.cartItemId)}
+                        sx={{
+                          mt: -0.5,
+                          mr: -0.5,
+                          width: 32,
+                          height: 32,
+                          background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)',
+                          color: 'white',
+                          boxShadow: '0 4px 12px rgba(238, 90, 90, 0.35)',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #ff5252 0%, #d32f2f 100%)',
+                            transform: 'scale(1.1) rotate(8deg)',
+                            boxShadow: '0 6px 20px rgba(211, 47, 47, 0.5)',
+                          },
+                          '&:active': {
+                            transform: 'scale(0.95)',
+                          }
+                        }}
                       >
-                        <DeleteIcon fontSize="small" />
+                        <DeleteIcon sx={{ fontSize: 18 }} />
                       </IconButton>
                     </Box>
 
@@ -171,7 +188,7 @@ const MobileCartPage = () => {
                       }}>
                         <IconButton
                           size="small"
-                          onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          onClick={() => updateQuantity(item.cartItemId, Math.max(1, item.quantity - 1))}
                           sx={{ width: 28, height: 28, bgcolor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
                         >
                           <RemoveIcon sx={{ fontSize: 16 }} />
@@ -183,7 +200,7 @@ const MobileCartPage = () => {
 
                         <IconButton
                           size="small"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                           sx={{ width: 28, height: 28, bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
                         >
                           <AddIcon sx={{ fontSize: 16 }} />
