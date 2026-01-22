@@ -10,7 +10,10 @@ import {
   signInWithPopup,
   RecaptchaVerifier,
   signInWithPhoneNumber,
-  PhoneAuthProvider
+  PhoneAuthProvider,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import AgrokartLoader from '../components/AgrokartLoader';
@@ -234,6 +237,28 @@ export const AuthProvider = ({ children }) => {
    * Update User Profile (Name, Photo)
    * Note: Email update requires re-authentication, so it's handled separately or restricted.
    */
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    setLoading(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('No authenticated user found');
+
+      // Re-authenticate user before changing password
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Update password
+      await updatePassword(user, newPassword);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error changing password:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const updateUserProfile = useCallback(async (profileData) => {
     setLoading(true);
     try {
@@ -285,6 +310,7 @@ export const AuthProvider = ({ children }) => {
     selectRole,
     updateUser, // Legacy local update
     updateUserProfile, // New Firebase update
+    changePassword,
     setIsAuthenticated: setAuthenticationStatus,
     hideRoleSelection,
     login,
@@ -310,6 +336,7 @@ export const AuthProvider = ({ children }) => {
     selectRole,
     updateUser,
     updateUserProfile,
+    changePassword,
     setAuthenticationStatus,
     hideRoleSelection,
     login,

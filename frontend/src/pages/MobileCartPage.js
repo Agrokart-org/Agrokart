@@ -250,14 +250,13 @@ const MobileCartPage = () => {
         </Box>
       </Box>
 
-      {/* Checkout Footer */}
       <Paper sx={{
         position: 'fixed',
-        bottom: 0,
+        bottom: { xs: 75, md: 0 },
         left: 0,
         right: 0,
         p: 2,
-        pb: 3,
+        pb: { xs: 2, md: 3 },
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         boxShadow: '0 -8px 32px rgba(0,0,0,0.08)'

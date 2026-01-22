@@ -43,9 +43,8 @@ router.post('/analyze-report', (req, res, next) => {
         // Pass file AND land details (modify aiService if needed to accept 2nd arg)
         // Note: analyzeSoilImage in aiService determines data then calls generateRecommendations
         // We need to pass landDetails to it.
-        const analysisResult = await aiService.analyzeSoilImage(req.file);
-
-        // Re-generate recommendations using the correct land details
+        // Duplicate removed: const analysisResult = await aiService.analyzeSoilImage(req.file);
+        // Note: analyzeSoilImage in aiService determines data then calls generateRecommendations
         // (Since analyzeSoilImage currently doesn't accept landDetails, 
         // we might get default 1 acre results, so let's overwrite or pass it if updated)
         // BETTER: Update aiService.analyzeSoilImage to accept landDetails.
@@ -79,9 +78,20 @@ router.post('/analyze-report', (req, res, next) => {
 
         // Let's update the route to pass it, and I'll do a quick fix on aiService next.
 
-        const resultWithLand = await aiService.analyzeSoilImage(req.file);
+        const analysisResult = await aiService.analyzeSoilImage(req.file);
+
+        // Check if analysis (and validation) was successful
+        if (analysisResult.success === false) {
+            console.warn('Dr.Agro: Analysis/Validation failed:', analysisResult.message);
+            return res.json({
+                success: false,
+                message: analysisResult.message,
+                isInvalidReport: analysisResult.isInvalidReport
+            });
+        }
+
         // Re-run recommendation logic with correct Land details
-        const finalResult = aiService.generateRecommendations(resultWithLand.originalData, landDetails);
+        const finalResult = aiService.generateRecommendations(analysisResult.originalData, landDetails);
 
         console.log('Dr.Agro: Analysis complete');
 

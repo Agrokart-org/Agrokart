@@ -27,19 +27,26 @@ import {
   LocationOn,
   Language,
   KeyboardArrowDown,
-  Check
+  Check,
+  Home as HomeIcon,
+  Receipt as OrdersIcon,
+  Store as MarketplaceIcon,
+  Person as ProfileIcon,
+  MedicalServices as DrAgroIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import CustomerSidebar from './CustomerSidebar';
 import LogoImage from '../../assets/logo_green_no_bg.png';
 
 import Footer from './Footer';
+import { BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
 
 const CustomerLayout = ({ children }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const routerLocation = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { cart } = useCart();
   const { user } = useAuth();
@@ -78,7 +85,7 @@ const CustomerLayout = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Horizontal Navigation Bar */}
       <AppBar
         position="fixed"
@@ -344,21 +351,70 @@ const CustomerLayout = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, md: 3 },
-          bgcolor: '#f5f5f5',
+          p: { xs: 0, md: 3 },
+          bgcolor: 'background.default',
           minHeight: '100vh',
           width: { sm: `calc(100% - ${sidebarOpen ? 280 : 80}px)` },
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          overflowX: 'hidden'
         }}
       >
         {/* Spacer for Fixed AppBar */}
         <Box sx={{ flex: 1 }}>
           {children}
         </Box>
-        {!isMobile && <Footer />}
+
       </Box>
-    </Box >
+      {!isMobile && <Footer />}
+
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <Paper
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: theme.zIndex.drawer + 2,
+            borderTop: '1px solid #e0e0e0'
+          }}
+          elevation={3}
+        >
+          <BottomNavigation
+            value={routerLocation.pathname === '/customer/dashboard' ? 0 :
+              routerLocation.pathname === '/my-orders' ? 1 :
+                routerLocation.pathname.includes('/dr-agro') ? 2 :
+                  routerLocation.pathname === '/cart' ? 3 :
+                    routerLocation.pathname === '/profile' ? 4 : 0}
+            onChange={(event, newValue) => {
+              switch (newValue) {
+                case 0: navigate('/customer/dashboard'); break;
+                case 1: navigate('/my-orders'); break;
+                case 2: navigate('/customer/dr-agro'); break; // Dr. Agro
+                case 3: navigate('/cart'); break;
+                case 4: navigate('/profile'); break;
+                default: navigate('/customer/dashboard');
+              }
+            }}
+            sx={{ height: 65 }}
+          >
+            <BottomNavigationAction label="Home" icon={<HomeIcon />} />
+            <BottomNavigationAction label="Orders" icon={<OrdersIcon />} />
+            <BottomNavigationAction label="Dr. Agro" icon={<DrAgroIcon />} />
+            <BottomNavigationAction
+              label="Cart"
+              icon={
+                <Badge badgeContent={cartCount} color="error">
+                  <CartIcon />
+                </Badge>
+              }
+            />
+            <BottomNavigationAction label="Profile" icon={<ProfileIcon />} />
+          </BottomNavigation>
+        </Paper>
+      )}
+    </Box>
   );
 };
 

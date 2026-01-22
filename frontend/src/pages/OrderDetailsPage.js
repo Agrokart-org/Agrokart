@@ -177,7 +177,7 @@ const OrderDetailsPage = () => {
   const statusBg = getStatusBg(order.status || order.orderStatus);
 
   return (
-    <Container maxWidth="md" sx={{ py: 4, pb: 12 }}>
+    <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 }, px: { xs: 2, md: 3 }, pb: { xs: 10, md: 12 } }}>
       {/* Header */}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
         <IconButton onClick={() => navigate('/my-orders')} sx={{ bgcolor: 'white', boxShadow: 1 }}>

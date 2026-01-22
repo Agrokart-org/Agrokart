@@ -171,7 +171,7 @@ export const getProducts = async (params = {}) => {
 
     // Try to check backend availability with a shorter timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const healthResponse = await fetch(`${API_BASE_URL}/health`, {
       method: 'GET',

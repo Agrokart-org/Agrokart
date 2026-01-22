@@ -193,7 +193,7 @@ const MobileOrdersPage = () => {
                   transition={{ delay: index * 0.1 }}
                   sx={{
                     mb: 2,
-                    borderRadius: 4,
+                    borderRadius: 2,
                     border: '1px solid #F0F0F0',
                     boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
                     overflow: 'visible',

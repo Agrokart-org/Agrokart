@@ -15,7 +15,8 @@ import {
     alpha,
     Snackbar,
     Alert,
-    keyframes
+    keyframes,
+    useTheme
 } from '@mui/material';
 import {
     FavoriteBorder as FavoriteIcon,
@@ -217,284 +218,289 @@ const CustomerDashboard = () => {
     };
 
     // Modern Product Card Component
-    const ProductCard = ({ product, index }) => (
-        <Card
-            component={motion.div}
-            variants={itemVariants}
-            whileHover={{ y: -8, scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => handleProductClick(product.id)}
-            sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                cursor: 'pointer',
-                borderRadius: 2,
-                border: 'none',
-                background: 'linear-gradient(145deg, #ffffff 0%, #f8faf8 100%)',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                overflow: 'hidden',
-                position: 'relative',
-                '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '3px',
-                    background: 'linear-gradient(90deg, #2E7D32, #4CAF50, #81C784)',
-                    backgroundSize: '200% 100%',
-                    animation: `${gradientMove} 3s ease infinite`,
-                    opacity: 0,
-                    transition: 'opacity 0.3s ease'
-                },
-                '&:hover': {
-                    boxShadow: '0 20px 40px rgba(46, 125, 50, 0.15)',
+    const ProductCard = ({ product, index }) => {
+        const theme = useTheme();
+        return (
+            <Card
+                component={motion.div}
+                variants={itemVariants}
+                whileHover={{ y: -8, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleProductClick(product.id)}
+                sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    cursor: 'pointer',
+                    borderRadius: 2,
+                    border: 'none',
+                    background: theme.palette.mode === 'dark'
+                        ? 'linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%)'
+                        : 'linear-gradient(145deg, #ffffff 0%, #f8faf8 100%)',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    overflow: 'hidden',
+                    position: 'relative',
                     '&::before': {
-                        opacity: 1
-                    },
-                    '& .product-img': {
-                        transform: 'scale(1.1)'
-                    },
-                    '& .action-buttons': {
-                        opacity: 1,
-                        transform: 'translateY(0)'
-                    }
-                }
-            }}
-        >
-            <Box sx={{ position: 'relative', overflow: 'hidden', height: 160 }}>
-                <CardMedia
-                    component="img"
-                    height="160"
-                    className="product-img"
-                    image={product.image}
-                    alt={product.name}
-                    sx={{
-                        objectFit: 'cover',
-                        transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}
-                />
-
-                {/* Overlay Gradient */}
-                <Box
-                    sx={{
+                        content: '""',
                         position: 'absolute',
-                        bottom: 0,
+                        top: 0,
                         left: 0,
                         right: 0,
-                        height: '60%',
-                        background: 'linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 100%)',
+                        height: '3px',
+                        background: 'linear-gradient(90deg, #2E7D32, #4CAF50, #81C784)',
+                        backgroundSize: '200% 100%',
+                        animation: `${gradientMove} 3s ease infinite`,
                         opacity: 0,
-                        transition: 'opacity 0.3s ease',
-                        '.MuiCard-root:hover &': {
+                        transition: 'opacity 0.3s ease'
+                    },
+                    '&:hover': {
+                        boxShadow: '0 20px 40px rgba(46, 125, 50, 0.15)',
+                        '&::before': {
                             opacity: 1
-                        }
-                    }}
-                />
-
-                {/* Wishlist Button */}
-                <IconButton
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleWishlist(product.id);
-                    }}
-                    sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        bgcolor: 'rgba(255,255,255,0.95)',
-                        backdropFilter: 'blur(8px)',
-                        width: 36,
-                        height: 36,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                        '&:hover': {
-                            bgcolor: '#fff',
-                            transform: 'scale(1.15)',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
                         },
-                        transition: 'all 0.3s ease'
-                    }}
-                    size="small"
-                >
-                    {wishlist.includes(product.id) ? (
-                        <FavoriteFilled sx={{ color: '#e91e63', fontSize: 20 }} />
-                    ) : (
-                        <FavoriteIcon sx={{ fontSize: 20, color: '#666' }} />
-                    )}
-                </IconButton>
-
-                {/* Discount Badge */}
-                {product.discount > 0 && (
-                    <Chip
-                        icon={<OfferIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
-                        label={`${product.discount}% OFF`}
-                        size="small"
+                        '& .product-img': {
+                            transform: 'scale(1.1)'
+                        },
+                        '& .action-buttons': {
+                            opacity: 1,
+                            transform: 'translateY(0)'
+                        }
+                    }
+                }}
+            >
+                <Box sx={{ position: 'relative', overflow: 'hidden', height: 160 }}>
+                    <CardMedia
+                        component="img"
+                        height="160"
+                        className="product-img"
+                        image={product.image}
+                        alt={product.name}
                         sx={{
-                            position: 'absolute',
-                            top: 8,
-                            left: 8,
-                            height: 24,
-                            background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)',
-                            color: 'white',
-                            fontWeight: 700,
-                            fontSize: '0.7rem',
-                            boxShadow: '0 2px 8px rgba(211, 47, 47, 0.4)',
-                            '& .MuiChip-label': { px: 1 },
-                            '& .MuiChip-icon': { ml: 0.5 }
+                            objectFit: 'cover',
+                            transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                     />
-                )}
 
-                {/* Quick Action Buttons */}
-                <Box
-                    className="action-buttons"
-                    sx={{
-                        position: 'absolute',
-                        bottom: 12,
-                        left: '50%',
-                        transform: 'translateX(-50%) translateY(20px)',
-                        display: 'flex',
-                        gap: 1,
-                        opacity: 0,
-                        transition: 'all 0.3s ease'
-                    }}
-                >
-                    <IconButton
-                        onClick={(e) => handleAddToCart(e, product)}
+                    {/* Overlay Gradient */}
+                    <Box
                         sx={{
-                            bgcolor: '#4CAF50',
-                            color: '#fff',
-                            width: 40,
-                            height: 40,
-                            '&:hover': {
-                                bgcolor: '#2E7D32',
-                                transform: 'scale(1.1)'
-                            },
-                            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)',
-                            transition: 'all 0.2s ease'
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: '60%',
+                            background: 'linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 100%)',
+                            opacity: 0,
+                            transition: 'opacity 0.3s ease',
+                            '.MuiCard-root:hover &': {
+                                opacity: 1
+                            }
                         }}
-                    >
-                        <AddIcon />
-                    </IconButton>
+                    />
+
+                    {/* Wishlist Button */}
                     <IconButton
                         onClick={(e) => {
                             e.stopPropagation();
-                            handleProductClick(product.id);
+                            handleWishlist(product.id);
                         }}
                         sx={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
                             bgcolor: 'rgba(255,255,255,0.95)',
-                            color: '#333',
-                            width: 40,
-                            height: 40,
+                            backdropFilter: 'blur(8px)',
+                            width: 36,
+                            height: 36,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                             '&:hover': {
                                 bgcolor: '#fff',
-                                transform: 'scale(1.1)'
+                                transform: 'scale(1.15)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
                             },
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.3s ease'
                         }}
+                        size="small"
                     >
-                        <ViewIcon />
+                        {wishlist.includes(product.id) ? (
+                            <FavoriteFilled sx={{ color: '#e91e63', fontSize: 20 }} />
+                        ) : (
+                            <FavoriteIcon sx={{ fontSize: 20, color: '#666' }} />
+                        )}
                     </IconButton>
-                </Box>
-            </Box>
 
-            <CardContent sx={{ flexGrow: 1, p: 2, pb: 2.5 }}>
-                <Typography
-                    variant="subtitle2"
-                    sx={{
-                        fontWeight: 600,
-                        mb: 1,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        minHeight: 40,
-                        lineHeight: 1.3,
-                        color: '#1a1a1a',
-                        fontSize: '0.9rem'
-                    }}
-                >
-                    {product.name}
-                </Typography>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            bgcolor: alpha('#4CAF50', 0.1),
-                            borderRadius: 1,
-                            px: 0.8,
-                            py: 0.3
-                        }}
-                    >
-                        <Rating value={1} max={1} readOnly size="small" sx={{ fontSize: '0.9rem' }} />
-                        <Typography variant="caption" sx={{ ml: 0.3, fontWeight: 600, color: '#2E7D32' }}>
-                            {Number(product.rating).toFixed(1)}
-                        </Typography>
-                    </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', ml: 1 }}>
-                        ({product.reviews} reviews)
-                    </Typography>
-                </Box>
-
-                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 2 }}>
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            fontWeight: 800,
-                            color: '#2E7D32',
-                            fontSize: '1.1rem'
-                        }}
-                    >
-                        ₹{product.price}
-                    </Typography>
-                    {product.originalPrice && (
-                        <Typography
-                            variant="body2"
+                    {/* Discount Badge */}
+                    {product.discount > 0 && (
+                        <Chip
+                            icon={<OfferIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
+                            label={`${product.discount}% OFF`}
+                            size="small"
                             sx={{
-                                textDecoration: 'line-through',
-                                color: 'text.secondary',
-                                fontSize: '0.8rem'
+                                position: 'absolute',
+                                top: 8,
+                                left: 8,
+                                height: 24,
+                                background: 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)',
+                                color: 'white',
+                                fontWeight: 700,
+                                fontSize: '0.7rem',
+                                boxShadow: '0 2px 8px rgba(211, 47, 47, 0.4)',
+                                '& .MuiChip-label': { px: 1 },
+                                '& .MuiChip-icon': { ml: 0.5 }
+                            }}
+                        />
+                    )}
+
+                    {/* Quick Action Buttons */}
+                    <Box
+                        className="action-buttons"
+                        sx={{
+                            position: 'absolute',
+                            bottom: 12,
+                            left: '50%',
+                            transform: 'translateX(-50%) translateY(20px)',
+                            display: 'flex',
+                            gap: 1,
+                            opacity: 0,
+                            transition: 'all 0.3s ease'
+                        }}
+                    >
+                        <IconButton
+                            onClick={(e) => handleAddToCart(e, product)}
+                            sx={{
+                                bgcolor: '#4CAF50',
+                                color: '#fff',
+                                width: 40,
+                                height: 40,
+                                '&:hover': {
+                                    bgcolor: '#2E7D32',
+                                    transform: 'scale(1.1)'
+                                },
+                                boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)',
+                                transition: 'all 0.2s ease'
                             }}
                         >
-                            ₹{product.originalPrice}
-                        </Typography>
-                    )}
+                            <AddIcon />
+                        </IconButton>
+                        <IconButton
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleProductClick(product.id);
+                            }}
+                            sx={{
+                                bgcolor: 'rgba(255,255,255,0.95)',
+                                color: '#333',
+                                width: 40,
+                                height: 40,
+                                '&:hover': {
+                                    bgcolor: '#fff',
+                                    transform: 'scale(1.1)'
+                                },
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <ViewIcon />
+                        </IconButton>
+                    </Box>
                 </Box>
 
-                <Button
-                    fullWidth
-                    variant="contained"
-                    size="medium"
-                    startIcon={<CartIcon sx={{ fontSize: 18 }} />}
-                    onClick={(e) => handleAddToCart(e, product)}
-                    sx={{
-                        textTransform: 'none',
-                        fontWeight: 700,
-                        background: 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)',
-                        color: '#fff',
-                        height: 40,
-                        fontSize: '0.85rem',
-                        borderRadius: 2,
-                        boxShadow: '0 4px 12px rgba(46, 125, 50, 0.3)',
-                        '&:hover': {
-                            background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
-                            boxShadow: '0 6px 16px rgba(46, 125, 50, 0.4)',
-                            transform: 'translateY(-2px)'
-                        },
-                        transition: 'all 0.3s ease'
-                    }}
-                >
-                    Add to Cart
-                </Button>
-            </CardContent>
-        </Card>
-    );
+                <CardContent sx={{ flexGrow: 1, p: 2, pb: 2.5 }}>
+                    <Typography
+                        variant="subtitle2"
+                        sx={{
+                            fontWeight: 600,
+                            mb: 1,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            minHeight: 40,
+                            lineHeight: 1.3,
+                            color: 'text.primary',
+                            fontSize: '0.9rem'
+                        }}
+                    >
+                        {product.name}
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                bgcolor: alpha('#4CAF50', 0.1),
+                                borderRadius: 1,
+                                px: 0.8,
+                                py: 0.3
+                            }}
+                        >
+                            <Rating value={1} max={1} readOnly size="small" sx={{ fontSize: '0.9rem' }} />
+                            <Typography variant="caption" sx={{ ml: 0.3, fontWeight: 600, color: '#2E7D32' }}>
+                                {Number(product.rating).toFixed(1)}
+                            </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', ml: 1 }}>
+                            ({product.reviews} reviews)
+                        </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 2 }}>
+                        <Typography
+                            variant="h6"
+                            sx={{
+                                fontWeight: 800,
+                                color: '#2E7D32',
+                                fontSize: '1.1rem'
+                            }}
+                        >
+                            ₹{product.price}
+                        </Typography>
+                        {product.originalPrice && (
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    textDecoration: 'line-through',
+                                    color: 'text.secondary',
+                                    fontSize: '0.8rem'
+                                }}
+                            >
+                                ₹{product.originalPrice}
+                            </Typography>
+                        )}
+                    </Box>
+
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        size="medium"
+                        startIcon={<CartIcon sx={{ fontSize: 18 }} />}
+                        onClick={(e) => handleAddToCart(e, product)}
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)',
+                            color: '#fff',
+                            height: 40,
+                            fontSize: '0.85rem',
+                            borderRadius: 2,
+                            boxShadow: '0 4px 12px rgba(46, 125, 50, 0.3)',
+                            '&:hover': {
+                                background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
+                                boxShadow: '0 6px 16px rgba(46, 125, 50, 0.4)',
+                                transform: 'translateY(-2px)'
+                            },
+                            transition: 'all 0.3s ease'
+                        }}
+                    >
+                        Add to Cart
+                    </Button>
+                </CardContent>
+            </Card>
+        )
+    };
 
 
     // Log products for debugging
@@ -504,7 +510,7 @@ const CustomerDashboard = () => {
     }, [products]);
 
     return (
-        <Box sx={{ bgcolor: '#f5f7f5', minHeight: '100vh', pb: 4 }}>
+        <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', pb: 4 }}>
             <Container maxWidth="xl" sx={{ px: { xs: 1.5, sm: 2, md: 3 } }}>
 
                 {/* Hero Banner Carousel */}

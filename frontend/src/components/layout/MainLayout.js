@@ -101,7 +101,7 @@ const MainLayout = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#f1f3f6' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* White High Visibility Navbar */}
       <AppBar position="sticky" elevation={1} sx={{ zIndex: 1200, bgcolor: 'white', color: 'text.primary' }}>
 

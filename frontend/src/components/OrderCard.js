@@ -86,10 +86,10 @@ const OrderCard = ({ order }) => {
             sx={{
                 mb: 3,
                 border: 'none',
-                borderRadius: 4,
+                borderRadius: 1,
                 overflow: 'hidden',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                background: '#ffffff'
+                background: 'background.paper'
             }}
         >
             <Box sx={{ p: 2 }}>

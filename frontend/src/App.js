@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { useLocation, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { MobileProvider } from './context/MobileContext';
 import { NotificationProvider } from './context/NotificationProvider';
 import { SocketProvider } from './context/SocketContext';
-import theme from './theme';
+import { ThemeProvider } from './context/ThemeContext';
 import AppRoutes from './routes';
 import AIChatbot from './components/AIChatbot';
 import WorkflowProvider from './components/WorkflowManager';
 import SplashScreen from './components/SplashScreen';
+import { css, Global } from '@emotion/react';
+import { useTheme, useMediaQuery } from '@mui/material';
 import RoleSelectionPage from './components/RoleSelectionPage';
 import DeliveryLogin from './pages/DeliveryLogin';
 import UnifiedAuthPage from './pages/UnifiedAuthPage';
@@ -28,6 +30,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 const AppContent = () => {
   const { showRoleSelection, isAuthenticated } = useAuth();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileInitialized, setMobileInitialized] = useState(false);
 
   // Initialize mobile services
@@ -89,6 +93,10 @@ const AppContent = () => {
   // For new/unauthenticated users, show role selection on normal entry points,
   // but not when they explicitly navigate to a login/register route.
   if (!shouldBypassRoleGate && showRoleSelection && !isAuthenticated) {
+    // Mobile First: Redirect to Customer Login directly on mobile
+    if (isMobile && location.pathname === '/') {
+      return <Navigate to="/login" replace />;
+    }
     return <RoleSelectionPage />;
   }
 
@@ -123,7 +131,7 @@ function App() {
   // Show splash screen until app is ready and splash duration is complete
   if (showSplash || !appReady) {
     return (
-      <ThemeProvider theme={theme}>
+      <ThemeProvider>
         <CssBaseline />
         <SplashScreen onComplete={handleSplashComplete} />
       </ThemeProvider>
@@ -131,7 +139,7 @@ function App() {
   }
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider>
       <CssBaseline />
       <Router>
         <MobileProvider>

@@ -43,6 +43,12 @@ import { useMobile } from '../context/MobileContext';
 import { useNotifications } from '../context/NotificationProvider';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { mockProducts } from '../data/mockProducts';
+
+// Banner Images
+import bannerSale from '../assets/banner_sale_field.png';
+import bannerOrganic from '../assets/banner_organic_harvest.png';
+import bannerBulk from '../assets/banner_bulk_supply.png';
 
 // Modern animations
 const float = keyframes`
@@ -71,11 +77,11 @@ const MobileHomePage = () => {
   const { user, logout } = useAuth();
   const { addToCart, cart, cartCount } = useCart();
   const { showNotification } = useNotifications();
-  const { 
-    vibrate, 
-    getCurrentLocation, 
+  const {
+    vibrate,
+    getCurrentLocation,
     showToast,
-    isNative 
+    isNative
   } = useMobile();
 
   const [location, setLocation] = useState('');
@@ -95,91 +101,69 @@ const MobileHomePage = () => {
   const loadHomeData = async () => {
     try {
       setLoading(true);
-      
-      // Simulate API calls - replace with actual API calls
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock data
-      setProducts([
-        {
-          id: 1,
-          name: 'Premium Urea Fertilizer',
-          price: 850,
-          originalPrice: 1000,
-          image: '/api/placeholder/300/300',
-          vendorName: 'Agrokart Premium',
-          rating: 4.5,
-          reviewCount: 128,
-          stock: 50,
-          category: 'Fertilizers',
-          isPopular: true,
-          discount: 15
-        },
-        {
-          id: 2,
-          name: 'DAP Fertilizer',
-          price: 1200,
-          image: '/api/placeholder/300/300',
-          vendorName: 'Agrokart Premium',
-          rating: 4.8,
-          reviewCount: 89,
-          stock: 25,
-          category: 'Fertilizers',
-          isOrganic: true
-        },
-        {
-          id: 3,
-          name: 'NPK 20:20:20',
-          price: 1100,
-          originalPrice: 1300,
-          image: '/api/placeholder/300/300',
-          vendorName: 'Agrokart Premium',
-          rating: 4.7,
-          reviewCount: 156,
-          stock: 40,
-          category: 'Fertilizers',
-          discount: 15
-        },
-        {
-          id: 4,
-          name: 'Organic Compost',
-          price: 450,
-          image: '/api/placeholder/300/300',
-          vendorName: 'Agrokart Premium',
-          rating: 4.9,
-          reviewCount: 203,
-          stock: 60,
-          category: 'Organic',
-          isOrganic: true
-        }
-      ]);
 
+      // Simulate API calls
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // 1. Process Products from shared source
+      const processedProducts = mockProducts.map(p => ({
+        id: p._id,
+        name: p.name,
+        price: p.price,
+        originalPrice: p.originalPrice,
+        image: p.images?.[0] || 'https://via.placeholder.com/300',
+        vendorName: 'Agrokart Verified',
+        rating: p.averageRating,
+        reviewCount: p.ratings?.length || 0,
+        stock: p.stock,
+        category: p.category,
+        discount: p.discount,
+        isPopular: p.averageRating > 4.5,
+        isOrganic: p.category === 'Organic'
+      }));
+
+      setProducts(processedProducts);
+
+      // 2. Set Categories (matching desktop)
       setCategories([
-        { id: 1, name: 'Urea', icon: '🌱', count: 150, color: '#16A34A' },
-        { id: 2, name: 'DAP', icon: '🌾', count: 89, color: '#8B5CF6' },
-        { id: 3, name: 'NPK', icon: '🌿', count: 65, color: '#F97316' },
-        { id: 4, name: 'Organic', icon: '🍃', count: 45, color: '#10B981' }
+        { id: 1, name: 'NPK', icon: '🌱', count: 150, color: '#2E7D32' },
+        { id: 2, name: 'Organic', icon: '🍃', count: 89, color: '#388E3C' },
+        { id: 3, name: 'Urea', icon: '💧', count: 65, color: '#0288D1' },
+        { id: 4, name: 'Seeds', icon: '🌾', count: 45, color: '#F57F17' },
+        { id: 5, name: 'Pesticides', icon: '🐞', count: 30, color: '#D32F2F' },
+        { id: 6, name: 'Tools', icon: '🛠️', count: 25, color: '#5D4037' },
+        { id: 7, name: 'Micro', icon: '🔬', count: 40, color: '#7B1FA2' },
+        { id: 8, name: 'Bio', icon: '🦠', count: 35, color: '#388E3C' }
       ]);
 
+      // 3. Set Banners (using imported assets)
       setBanners([
         {
           id: 1,
-          title: 'Premium Fertilizers',
-          subtitle: 'Up to 30% off',
-          image: '/api/placeholder/800/300',
-          action: '/category/fertilizers',
-          gradient: 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)'
+          title: 'Season Sale',
+          subtitle: 'Up to 50% Off on Fertilizers',
+          image: bannerSale,
+          action: '/products?category=Fertilizers',
+          gradient: 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)'
         },
         {
           id: 2,
-          title: 'Organic Products',
-          subtitle: 'Farm Fresh Quality',
-          image: '/api/placeholder/800/300',
-          action: '/category/organic',
+          title: 'Organic Harvest',
+          subtitle: '100% Certified Organic',
+          image: bannerOrganic,
+          action: '/products?category=Organic',
           gradient: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)'
+        },
+        {
+          id: 3,
+          title: 'Bulk Supply',
+          subtitle: 'Wholesale Rates for Farmers',
+          image: bannerBulk,
+          action: '/products?category=Bulk',
+          gradient: 'linear-gradient(135deg, #0288D1 0%, #29B6F6 100%)'
         }
       ]);
-      
+
     } catch (error) {
       console.error('Failed to load home data:', error);
       await showToast('Failed to load data');
@@ -266,10 +250,10 @@ const MobileHomePage = () => {
       showNavigation={true}
     >
       {/* Futuristic Header Section */}
-      <Box 
-        sx={{ 
-          px: 2, 
-          pt: 2, 
+      <Box
+        sx={{
+          px: 2,
+          pt: 2,
           pb: 1,
           background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.main, 0.1)} 100%)`,
           borderRadius: '0 0 24px 24px',
@@ -279,19 +263,19 @@ const MobileHomePage = () => {
         {/* Location and Refresh */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <LocationOn 
-              sx={{ 
-                mr: 1, 
+            <LocationOn
+              sx={{
+                mr: 1,
                 color: theme.palette.primary.main,
                 animation: `${pulse} 2s ease-in-out infinite`
-              }} 
+              }}
             />
             <Typography variant="body2" color="text.secondary" fontWeight={500}>
               {location || 'Detecting location...'}
             </Typography>
           </Box>
-          <IconButton 
-            onClick={handleRefresh} 
+          <IconButton
+            onClick={handleRefresh}
             disabled={refreshing}
             sx={{
               bgcolor: alpha(theme.palette.primary.main, 0.1),
@@ -309,9 +293,9 @@ const MobileHomePage = () => {
         {/* Welcome Message with Gradient */}
         <Fade in={isVisible} timeout={800}>
           <Box>
-            <Typography 
-              variant="h5" 
-              fontWeight="bold" 
+            <Typography
+              variant="h5"
+              fontWeight="bold"
               gutterBottom
               sx={{
                 background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
@@ -343,10 +327,10 @@ const MobileHomePage = () => {
           {banners.map((banner, index) => (
             <Grid item xs={12} key={banner.id}>
               <Slide direction="right" in={isVisible} timeout={600 + index * 200}>
-                <Card 
-                  sx={{ 
-                    position: 'relative', 
-                    height: 180, 
+                <Card
+                  sx={{
+                    position: 'relative',
+                    height: 180,
                     overflow: 'hidden',
                     borderRadius: 4,
                     background: banner.gradient,
@@ -382,25 +366,25 @@ const MobileHomePage = () => {
                         backdropFilter: 'blur(10px)'
                       }}
                     />
-                    <Typography 
-                      variant="h5" 
-                      fontWeight="bold" 
-                      color="white" 
+                    <Typography
+                      variant="h5"
+                      fontWeight="bold"
+                      color="white"
                       gutterBottom
                       sx={{ textShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
                     >
                       {banner.title}
                     </Typography>
-                    <Typography 
-                      variant="body1" 
-                      color="white" 
+                    <Typography
+                      variant="body1"
+                      color="white"
                       paragraph
                       sx={{ opacity: 0.95, mb: 2 }}
                     >
                       {banner.subtitle}
                     </Typography>
-                    <Button 
-                      variant="contained" 
+                    <Button
+                      variant="contained"
                       size="small"
                       sx={{
                         bgcolor: '#fff',
@@ -417,7 +401,7 @@ const MobileHomePage = () => {
                       Shop Now
                     </Button>
                   </Box>
-                  
+
                   {/* Decorative Elements */}
                   <Box
                     sx={{
@@ -441,8 +425,8 @@ const MobileHomePage = () => {
       {/* Modern Categories */}
       <Box sx={{ px: 2, py: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography 
-            variant="h6" 
+          <Typography
+            variant="h6"
             fontWeight="bold"
             sx={{
               background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
@@ -453,8 +437,8 @@ const MobileHomePage = () => {
           >
             Categories
           </Typography>
-          <Button 
-            size="small" 
+          <Button
+            size="small"
             endIcon={<Category />}
             sx={{
               color: theme.palette.primary.main,
@@ -465,7 +449,7 @@ const MobileHomePage = () => {
             View All
           </Button>
         </Box>
-        
+
         <Grid container spacing={2}>
           {categories.map((category, index) => (
             <Grid item xs={3} key={category.id}>
@@ -491,25 +475,25 @@ const MobileHomePage = () => {
                   }}
                   onClick={() => handleCategoryClick(category)}
                 >
-                  <Typography 
-                    variant="h4" 
-                    sx={{ 
+                  <Typography
+                    variant="h4"
+                    sx={{
                       mb: 1,
                       animation: `${float} 3s ease-in-out infinite ${index * 0.2}s`
                     }}
                   >
                     {category.icon}
                   </Typography>
-                  <Typography 
-                    variant="caption" 
-                    fontWeight="bold" 
+                  <Typography
+                    variant="caption"
+                    fontWeight="bold"
                     display="block"
                     sx={{ color: category.color }}
                   >
                     {category.name}
                   </Typography>
-                  <Typography 
-                    variant="caption" 
+                  <Typography
+                    variant="caption"
                     color="text.secondary"
                     sx={{ fontSize: '0.65rem' }}
                   >
@@ -525,8 +509,8 @@ const MobileHomePage = () => {
       {/* Featured Products */}
       <Box sx={{ px: 2, py: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography 
-            variant="h6" 
+          <Typography
+            variant="h6"
             fontWeight="bold"
             sx={{
               background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
@@ -537,8 +521,8 @@ const MobileHomePage = () => {
           >
             Featured Products
           </Typography>
-          <Button 
-            size="small" 
+          <Button
+            size="small"
             endIcon={<TrendingUp />}
             sx={{
               color: theme.palette.primary.main,
@@ -549,7 +533,7 @@ const MobileHomePage = () => {
             View All
           </Button>
         </Box>
-        
+
         <Grid container spacing={2}>
           {products.map((product, index) => (
             <Grid item xs={6} key={product.id}>
@@ -570,9 +554,9 @@ const MobileHomePage = () => {
 
       {/* Quick Actions with Glassmorphism */}
       <Box sx={{ px: 2, py: 2 }}>
-        <Typography 
-          variant="h6" 
-          fontWeight="bold" 
+        <Typography
+          variant="h6"
+          fontWeight="bold"
           gutterBottom
           sx={{
             background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
@@ -583,13 +567,13 @@ const MobileHomePage = () => {
         >
           Quick Actions
         </Typography>
-        
+
         <Grid container spacing={2}>
           <Grid item xs={6}>
-            <Card 
-              sx={{ 
-                p: 2, 
-                textAlign: 'center', 
+            <Card
+              sx={{
+                p: 2,
+                textAlign: 'center',
                 cursor: 'pointer',
                 borderRadius: 3,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.1)} 0%, ${alpha(theme.palette.warning.main, 0.05)} 100%)`,
@@ -602,13 +586,13 @@ const MobileHomePage = () => {
                 }
               }}
             >
-              <LocalOffer 
-                sx={{ 
-                  fontSize: 40, 
+              <LocalOffer
+                sx={{
+                  fontSize: 40,
                   mb: 1,
                   color: theme.palette.warning.main,
                   animation: `${pulse} 2s ease-in-out infinite`
-                }} 
+                }}
               />
               <Typography variant="body2" fontWeight="bold" sx={{ color: theme.palette.warning.main }}>
                 Special Offers
@@ -616,10 +600,10 @@ const MobileHomePage = () => {
             </Card>
           </Grid>
           <Grid item xs={6}>
-            <Card 
-              sx={{ 
-                p: 2, 
-                textAlign: 'center', 
+            <Card
+              sx={{
+                p: 2,
+                textAlign: 'center',
                 cursor: 'pointer',
                 borderRadius: 3,
                 background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.main, 0.05)} 100%)`,
@@ -632,13 +616,13 @@ const MobileHomePage = () => {
                 }
               }}
             >
-              <Star 
-                sx={{ 
-                  fontSize: 40, 
+              <Star
+                sx={{
+                  fontSize: 40,
                   mb: 1,
                   color: theme.palette.primary.main,
                   animation: `${pulse} 2s ease-in-out infinite 0.5s`
-                }} 
+                }}
               />
               <Typography variant="body2" fontWeight="bold" sx={{ color: theme.palette.primary.main }}>
                 Top Rated

@@ -1,38 +1,64 @@
 import { createTheme, alpha } from '@mui/material/styles';
 
-const glassEffect = (opacity = 0.7) => ({
+const glassEffect = (mode, opacity = 0.7) => ({
   backdropFilter: 'blur(20px)',
-  backgroundColor: alpha('#FFFFFF', opacity),
+  backgroundColor: alpha(mode === 'dark' ? '#121212' : '#FFFFFF', opacity),
   boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
-  border: '1px solid rgba(255, 255, 255, 0.18)',
+  border: `1px solid ${alpha(mode === 'dark' ? '#FFFFFF' : '#FFFFFF', 0.18)}`,
 });
 
-const theme = createTheme({
+export const getTheme = (mode) => createTheme({
   palette: {
-    mode: 'light',
-    primary: {
-      main: '#2E7D32', // Deep nature green
-      light: '#4CAF50',
-      dark: '#1B5E20',
-      contrastText: '#ffffff',
-    },
-    secondary: {
-      main: '#6200EA', // Deep violet for premium feel
-      light: '#A78BFA',
-      dark: '#4A00B0',
-      contrastText: '#ffffff',
-    },
+    mode,
+    ...(mode === 'light'
+      ? {
+        // Light Mode Palette
+        primary: {
+          main: '#2E7D32',
+          light: '#4CAF50',
+          dark: '#1B5E20',
+          contrastText: '#ffffff',
+        },
+        secondary: {
+          main: '#6200EA',
+          light: '#A78BFA',
+          dark: '#4A00B0',
+          contrastText: '#ffffff',
+        },
+        background: {
+          default: '#F4F7F5',
+          paper: '#FFFFFF',
+          glass: 'rgba(255, 255, 255, 0.7)',
+        },
+      }
+      : {
+        // Dark Mode Palette
+        primary: {
+          main: '#66bb6a', // Lighter green for dark mode
+          light: '#81c784',
+          dark: '#388e3c',
+          contrastText: '#000000',
+        },
+        secondary: {
+          main: '#7c4dff',
+          light: '#b388ff',
+          dark: '#651fff',
+          contrastText: '#ffffff',
+        },
+        background: {
+          default: '#121212',
+          paper: '#1E1E1E',
+          glass: 'rgba(30, 30, 30, 0.7)',
+        },
+      }),
     tertiary: {
-      main: '#FF6D00', // Vibrant Orange
+      main: '#FF6D00',
       contrastText: '#fff'
     },
-    background: {
-      default: '#F4F7F5', // Soft gray-green tint
-      paper: '#FFFFFF',
-      glass: 'rgba(255, 255, 255, 0.7)',
-    },
     gradients: {
-      primary: 'linear-gradient(135deg, #2E7D32 0%, #00C853 100%)',
+      primary: mode === 'light'
+        ? 'linear-gradient(135deg, #2E7D32 0%, #00C853 100%)'
+        : 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
       secondary: 'linear-gradient(135deg, #6200EA 0%, #B388FF 100%)',
       orange: 'linear-gradient(135deg, #FF6D00 0%, #FFAB40 100%)',
       glass: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 100%)',
@@ -66,7 +92,9 @@ const theme = createTheme({
           },
         },
         containedPrimary: {
-          background: 'linear-gradient(135deg, #2E7D32 0%, #00C853 100%)',
+          background: mode === 'light'
+            ? 'linear-gradient(135deg, #2E7D32 0%, #00C853 100%)'
+            : 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
           color: 'white',
         }
       },
@@ -76,7 +104,7 @@ const theme = createTheme({
         root: {
           borderRadius: 24,
           boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)',
-          ...glassEffect(0.9),
+          ...glassEffect(mode, 0.9),
           transition: 'transform 0.3s ease, box-shadow 0.3s ease',
         },
       },
@@ -89,7 +117,8 @@ const theme = createTheme({
       },
     },
   },
-  glass: glassEffect,
+  glass: (opacity) => glassEffect(mode, opacity),
 });
 
+const theme = getTheme('light'); // Default for backward compatibility if imported directly
 export default theme;

@@ -34,8 +34,8 @@ import {
   Navigation as NavigationIcon
 } from '@mui/icons-material';
 import { useLanguage } from '../context/LanguageContext';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 
 // Predefined responses in multiple languages
 const chatResponses = {
@@ -94,6 +94,7 @@ const AIChatbot = () => {
   const theme = useTheme();
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -101,6 +102,9 @@ const AIChatbot = () => {
   const [chatLanguage, setChatLanguage] = useState(language || 'en');
   const [langMenuAnchor, setLangMenuAnchor] = useState(null);
   const messagesEndRef = useRef(null);
+
+  // Drag Controls
+  const dragControls = useDragControls();
 
   // Helper to get current language data safely
   const getCurrentLanguageData = useCallback(() => {
@@ -206,12 +210,22 @@ const AIChatbot = () => {
     }, 1000);
   };
 
+  // Hide chatbot on auth pages
+  const authPaths = ['/login', '/register', '/otp', '/auth', '/vendor/login', '/delivery/login'];
+  if (authPaths.some(path => location.pathname.startsWith(path))) {
+    return null;
+  }
+
   return (
     <>
-      <Box sx={{ position: 'fixed', bottom: 90, right: 24, zIndex: 1300, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+      <Box sx={{ position: 'fixed', bottom: { xs: 220, sm: 90 }, right: { xs: 16, sm: 24 }, zIndex: 1300, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
         <AnimatePresence>
           {isOpen && (
             <motion.div
+              drag
+              dragListener={false} // Only drag via controls (header)
+              dragControls={dragControls}
+              dragMomentum={false}
               initial={{ opacity: 0, scale: 0.8, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -233,15 +247,19 @@ const AIChatbot = () => {
                   boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
                 }}
               >
-                {/* Header */}
-                <Box sx={{
-                  background: 'linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)',
-                  p: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  color: 'white'
-                }}>
+                {/* Header - DRAGGABLE HANDLE */}
+                <Box
+                  onPointerDown={(e) => dragControls.start(e)}
+                  sx={{
+                    background: 'linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)',
+                    p: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    color: 'white',
+                    cursor: 'move', // Visual cue for dragging
+                    userSelect: 'none' // Prevent text selection
+                  }}>
                   <Stack direction="row" spacing={1.5} alignItems="center">
                     <Avatar sx={{ bgcolor: 'white', color: '#2E7D32', width: 36, height: 36 }}>
                       <BotIcon />

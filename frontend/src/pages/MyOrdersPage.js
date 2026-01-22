@@ -144,9 +144,10 @@ const MyOrdersPage = () => {
           sx={{
             p: 6,
             textAlign: 'center',
-            borderRadius: 4,
-            bgcolor: '#f8f9fa',
-            border: '1px dashed #e0e0e0'
+            borderRadius: 1,
+            bgcolor: 'background.paper',
+            border: '1px dashed',
+            borderColor: 'divider'
           }}
         >
           <OrderIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />

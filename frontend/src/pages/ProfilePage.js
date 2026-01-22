@@ -78,10 +78,10 @@ const OrderCard = ({ order }) => {
       sx={{
         mb: 3,
         border: 'none',
-        borderRadius: 4,
+        borderRadius: 1,
         overflow: 'hidden',
         boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-        background: '#ffffff'
+        background: 'background.paper'
       }}
     >
       <Box sx={{ p: 2 }}>
@@ -331,7 +331,7 @@ const ProfilePage = () => {
             <Card
               elevation={4}
               sx={{
-                borderRadius: 4,
+                borderRadius: 2,
                 overflow: 'hidden',
                 position: 'relative',
                 mb: 3
@@ -455,7 +455,7 @@ const ProfilePage = () => {
             </Card>
 
             {/* Farm Details Card */}
-            <Card elevation={2} sx={{ borderRadius: 3, mb: 3 }}>
+            <Card elevation={2} sx={{ borderRadius: 2, mb: 3 }}>
               <CardContent>
                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
                   <AgricultureIcon sx={{ mr: 1, color: 'primary.main' }} /> Farm Details
@@ -483,7 +483,7 @@ const ProfilePage = () => {
 
           {/* Right Column: Content Tabs */}
           <Grid item xs={12} md={8}>
-            <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden', minHeight: 400 }}>
+            <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden', minHeight: 400 }}>
               <Tabs
                 value={activeTab}
                 onChange={handleTabChange}
@@ -504,7 +504,7 @@ const ProfilePage = () => {
                 <Tab icon={<SettingsIcon />} iconPosition="start" label="Settings" />
               </Tabs>
 
-              <Box sx={{ p: 3, bgcolor: '#fafafa', minHeight: 500 }}>
+              <Box sx={{ p: 3, bgcolor: 'background.default', minHeight: 500 }}>
                 <AnimatePresence mode="wait">
                   {/* Orders Tab */}
                   {activeTab === 0 && (

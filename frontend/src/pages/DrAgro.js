@@ -131,7 +131,10 @@ const DrAgro = () => {
                             <Typography variant="body2" color="text.secondary" paragraph>
                                 Upload a clear photo or PDF of your soil test report provided by a lab.
                             </Typography>
-                            <SoilUpload onAnalysisComplete={handleAnalysisComplete} />
+                            <SoilUpload
+                                onAnalysisComplete={handleAnalysisComplete}
+                                onSwitchToManual={() => setTabIndex(1)}
+                            />
                         </TabPanel>
 
                         <TabPanel value={tabIndex} index={1}>

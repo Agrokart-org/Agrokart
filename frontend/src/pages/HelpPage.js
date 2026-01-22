@@ -9,7 +9,7 @@ const HelpPage = () => {
     const navigate = useNavigate();
 
     return (
-        <Container maxWidth="lg" sx={{ mt: 12, mb: 4 }}>
+        <Container maxWidth="lg" sx={{ mt: { xs: 10, md: 12 }, mb: 4, px: { xs: 2, md: 3 }, pb: { xs: 10, md: 4 } }}>
             <Button
                 startIcon={<ArrowBackIcon />}
                 onClick={() => navigate(-1)}

@@ -7,7 +7,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useTranslation } from 'react-i18next';
 
 
-const SoilUpload = ({ onAnalysisComplete }) => {
+const SoilUpload = ({ onAnalysisComplete, onSwitchToManual }) => {
     const { t } = useTranslation();
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState(null);
@@ -69,6 +69,15 @@ const SoilUpload = ({ onAnalysisComplete }) => {
 
             if (data.success) {
                 onAnalysisComplete(data.data);
+            } else if (data.isInvalidReport) {
+                // Handle specific validation error
+                setError({
+                    type: 'validation',
+                    message: data.message || t('drAgro.invalidReportError'),
+                    details: 'Please upload a valid soil test report or enter data manually.'
+                });
+            } else {
+                throw new Error(data.message || 'Upload failed');
             }
         } catch (err) {
             console.error('Dr.Agro Upload Error:', err);
@@ -154,7 +163,29 @@ const SoilUpload = ({ onAnalysisComplete }) => {
                 </Grid>
             </Box>
 
-            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+            {error && (
+                error.type === 'validation' ? (
+                    <Alert severity="warning" sx={{ mt: 2, textAlign: 'left' }}>
+                        <Typography variant="subtitle2" fontWeight="bold">
+                            {error.message}
+                        </Typography>
+                        <Typography variant="body2" sx={{ mt: 1, mb: 1 }}>
+                            {error.details}
+                        </Typography>
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                            onClick={onSwitchToManual}
+                            sx={{ mt: 1 }}
+                        >
+                            {t('drAgro.switchToManual') || 'Enter Data Manually'}
+                        </Button>
+                    </Alert>
+                ) : (
+                    <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
+                )
+            )}
 
             <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
                 <Button

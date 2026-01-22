@@ -104,7 +104,7 @@ const MobileProfilePage = () => {
           variants={itemVariants}
           sx={{
             mb: 3,
-            borderRadius: 4,
+            borderRadius: 2,
             background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
             color: 'white',
             boxShadow: '0 8px 32px rgba(46, 125, 50, 0.2)'
@@ -151,7 +151,7 @@ const MobileProfilePage = () => {
             <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ mb: 1.5, ml: 1, textTransform: 'uppercase', letterSpacing: 1 }}>
               {group.title}
             </Typography>
-            <Card sx={{ borderRadius: 4, overflow: 'hidden', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            <Card sx={{ borderRadius: 2, overflow: 'hidden', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
               <List sx={{ p: 0 }}>
                 {group.items.map((item, index) => (
                   <React.Fragment key={index}>
@@ -191,7 +191,7 @@ const MobileProfilePage = () => {
               color: '#D32F2F',
               bgcolor: '#FFEBEE',
               py: 1.8,
-              borderRadius: 3,
+              borderRadius: 2,
               textTransform: 'none',
               fontWeight: 700,
               fontSize: '1rem',
