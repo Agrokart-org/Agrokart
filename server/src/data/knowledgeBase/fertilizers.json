@@ -1,0 +1,78 @@
+{
+    "meta": {
+        "version": "1.0",
+        "description": "Composition of common fertilizers in India"
+    },
+    "fertilizers": [
+        {
+            "id": "urea",
+            "name": "Urea",
+            "composition": {
+                "n": 46,
+                "p": 0,
+                "k": 0
+            },
+            "type": "Nitrogenous",
+            "form": "Granular",
+            "efficiency": 0.4
+        },
+        {
+            "id": "dap",
+            "name": "DAP (Di-Ammonium Phosphate)",
+            "composition": {
+                "n": 18,
+                "p": 46,
+                "k": 0
+            },
+            "type": "Complex",
+            "form": "Granular",
+            "efficiency": 0.3
+        },
+        {
+            "id": "mop",
+            "name": "MOP (Muriate of Potash)",
+            "composition": {
+                "n": 0,
+                "p": 0,
+                "k": 60
+            },
+            "type": "Potassic",
+            "form": "Powder/Granular",
+            "efficiency": 0.5
+        },
+        {
+            "id": "ssp",
+            "name": "SSP (Single Super Phosphate)",
+            "composition": {
+                "n": 0,
+                "p": 16,
+                "k": 0,
+                "s": 12,
+                "ca": 19
+            },
+            "type": "Phosphatic",
+            "form": "Powder",
+            "efficiency": 0.3
+        },
+        {
+            "id": "npk_10_26_26",
+            "name": "NPK 10:26:26",
+            "composition": {
+                "n": 10,
+                "p": 26,
+                "k": 26
+            },
+            "type": "Complex"
+        },
+        {
+            "id": "npk_12_32_16",
+            "name": "NPK 12:32:16",
+            "composition": {
+                "n": 12,
+                "p": 32,
+                "k": 16
+            },
+            "type": "Complex"
+        }
+    ]
+}

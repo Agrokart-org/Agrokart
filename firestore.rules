@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only the backend using Firebase Admin SDK should read/write data.
+    // Frontend apps should interact via the Node.js/Express APIs.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

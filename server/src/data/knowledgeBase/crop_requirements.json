@@ -1,0 +1,74 @@
+{
+    "meta": {
+        "source": "State Agriculture Universities & Crop Production Guides",
+        "version": "1.0"
+    },
+    "crops": {
+        "wheat": {
+            "name": "Wheat",
+            "scientific_name": "Triticum aestivum",
+            "preferred_soil_type": [
+                "Alluvial",
+                "Loam"
+            ],
+            "nutrient_requirement_kg_ha": {
+                "n": 120,
+                "p": 60,
+                "k": 40
+            },
+            "adjustments": {
+                "high_nitrogen_response": true,
+                "split_doses": [
+                    "50% Basal",
+                    "25% CRI Stage",
+                    "25% Flowering"
+                ]
+            }
+        },
+        "rice": {
+            "name": "Rice",
+            "scientific_name": "Oryza sativa",
+            "nutrient_requirement_kg_ha": {
+                "n": 100,
+                "p": 50,
+                "k": 50
+            },
+            "adjustments": {
+                "zinc_sensitive": true
+            }
+        },
+        "sugarcane": {
+            "name": "Sugarcane",
+            "scientific_name": "Saccharum officinarum",
+            "nutrient_requirement_kg_ha": {
+                "n": 250,
+                "p": 125,
+                "k": 125
+            },
+            "adjustments": {
+                "heavy_feeder": true,
+                "potassium_critical": true
+            }
+        },
+        "cotton": {
+            "name": "Cotton",
+            "nutrient_requirement_kg_ha": {
+                "n": 100,
+                "p": 50,
+                "k": 50
+            }
+        },
+        "soybean": {
+            "name": "Soybean",
+            "nutrient_requirement_kg_ha": {
+                "n": 30,
+                "p": 80,
+                "k": 60
+            },
+            "adjustments": {
+                "legume_nitrogen_fixation": true,
+                "reduce_n_recommendation_by_percent": 70
+            }
+        }
+    }
+}

@@ -1,0 +1,271 @@
+{
+  "app": {
+    "name": "KrushiDoot",
+    "tagline": "Your trusted partner for quality fertilizers",
+    "welcome": "Welcome to KrushiDoot! 🌾 Your trusted partner for quality fertilizers. We're here to help your crops grow better and increase your harvest. Let's make farming easier together!",
+    "deliveryLoc": "Deliver to",
+    "search": "Search products..."
+  },
+  "navigation": {
+    "home": "Home",
+    "products": "Products",
+    "labour": "Labour Management",
+    "cart": "Cart",
+    "myOrders": "My Orders",
+    "wishlist": "Wishlist",
+    "mandiRates": "Mandi Rates",
+    "profile": "Profile",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "help": "Help & Support",
+    "logout": "Logout",
+    "account": "Account",
+    "login": "Login",
+    "becomeASeller": "Become a Seller",
+    "more": "More",
+    "support": "Support"
+  },
+  "dashboard": {
+    "banners": {
+      "sale": {
+        "title": "Mega Fertilizer Sale",
+        "subtitle": "Up to 40% OFF on all NPK Fertilizers",
+        "cta": "Shop Now"
+      },
+      "organic": {
+        "title": "Organic Products",
+        "subtitle": "Best Quality Organic Fertilizers",
+        "cta": "Explore"
+      },
+      "bulk": {
+        "title": "Bulk Orders",
+        "subtitle": "Special Discounts on Bulk Purchase",
+        "cta": "Get Quote"
+      }
+    },
+    "categories": {
+      "npk": "NPK Fertilizers",
+      "organic": "Organic",
+      "urea": "Urea",
+      "seeds": "Seeds",
+      "pesticides": "Pesticides",
+      "tools": "Tools",
+      "micro": "Micronutrients",
+      "bio": "Bio-Fertilizers"
+    },
+    "sections": {
+      "bestDeals": "Best Deals on Fertilizers",
+      "viewAll": "View All",
+      "topRated": "Top Rated Products",
+      "addToCart": "Add to Cart"
+    }
+  },
+  "homepage": {
+    "heroTitle": "Quality Fertilizers for Better Harvest",
+    "heroSubtitle": "Fast delivery to your farm. Best prices guaranteed.",
+    "shopNow": "Shop Now",
+    "trustedBy": "Trusted by 10,000+ farmers across India",
+    "features": {
+      "fastDelivery": {
+        "title": "Lightning Fast Delivery",
+        "description": "Get your products delivered within 24 hours across India"
+      },
+      "certifiedQuality": {
+        "title": "Certified Quality",
+        "description": "All products are certified and tested for maximum effectiveness"
+      },
+      "seamlessShopping": {
+        "title": "Seamless Shopping",
+        "description": "Simple and secure checkout with multiple payment options"
+      }
+    }
+  },
+  "products": {
+    "urea": {
+      "name": "Urea",
+      "description": "Urea - Premium Quality Nitrogen Fertilizer 🌱\n• Promotes healthy green leafy growth\n• Increases crop yield and quality\n• Suitable for all crops - wheat, rice, cotton, vegetables\n• Easy to apply and fast-acting\n• Trusted by farmers across India"
+    },
+    "dap": {
+      "name": "DAP",
+      "description": "Di-ammonium phosphate for healthy plants"
+    },
+    "compost": {
+      "name": "Compost",
+      "description": "Organic compost for natural growth"
+    },
+    "npk": {
+      "name": "NPK",
+      "description": "Balanced nutrition for your crops"
+    },
+    "addToCart": "Add this product to cart"
+  },
+  "orders": {
+    "confirmation": "✅ Order Confirmed! Dear farmer, your fertilizer order #{{orderNumber}} has been placed successfully. Total: ₹{{amount}}. Expected delivery: 2-3 days. Track your order in KrushiDoot app. Thank you for trusting us! 🚚",
+    "onTheWay": "🚚 Great news! Your fertilizer order is on the way to your farm. Our delivery partner will reach you soon. Keep your phone handy for updates. Happy farming!",
+    "delivered": "🙏 Thank you for choosing KrushiDoot! Your fertilizer has been delivered successfully. We hope it helps your crops grow well. Rate your experience and share feedback. Wishing you a great harvest! 🌾"
+  },
+  "voice": {
+    "helpText": "🎤 Tap and speak in your language. Say crop name or fertilizer type. Example: 'I need fertilizer for tomatoes' or 'Show me urea prices'"
+  },
+  "search": {
+    "placeholder": "Search for products, brands and more"
+  },
+  "delivery": {
+    "freeDelivery": "Free delivery on orders above ₹5000",
+    "deliveryFee": "Delivery Fee: ₹{{fee}}",
+    "total": "Total: ₹{{amount}}"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "close": "Close"
+  },
+  "drAgro": {
+    "title": "Dr. Agro 👨‍⚕️",
+    "subtitle": "Your Personal Agriculture Expert",
+    "uploadTab": "Upload Soil Report",
+    "manualTab": "Manual Entry",
+    "uploadInstructions": "Upload a photo or PDF of your soil test report for AI analysis.",
+    "manualInstructions": "Enter your soil test values manually to get recommendations.",
+    "selectFile": "Select Soil Report",
+    "supportedFormats": "Supported: JPG, PNG, PDF (Max 5MB)",
+    "fileSizeError": "File size exceeds 5MB limit",
+    "uploadError": "Error uploading file. Please try again.",
+    "analyzeButton": "Analyze & Recommend",
+    "analyzing": "Analyzing...",
+    "analysisResultTitle": "Diagnosis & Recommendations",
+    "soilHealth": "Soil Health Score",
+    "recommendationsTitle": "Suggested Fertilizers",
+    "addToCart": "Add to Cart",
+    "dosage": "Dosage",
+    "disclaimerTitle": "Disclaimer",
+    "disclaimerText": "These recommendations are AI-generated based on the data provided. Always consult a local agriculture officer before major applications.",
+    "crops": {
+      "wheat": "Wheat",
+      "rice": "Rice",
+      "cotton": "Cotton",
+      "sugarcane": "Sugarcane",
+      "soybean": "Soybean",
+      "maize": "Maize",
+      "vegetables": "Vegetables",
+      "other": "Other"
+    },
+    "form": {
+      "crop": "Select Crop",
+      "ph": "Soil pH Level",
+      "nitrogen": "Nitrogen (N)",
+      "phosphorus": "Phosphorus (P)",
+      "potassium": "Potassium (K)"
+    },
+    "validation": {
+      "required": "This field is required",
+      "ph": "Valid pH is required (0-14)"
+    }
+  },
+  "settingsPage": {
+    "title": "Settings",
+    "preferences": "Preferences",
+    "pushNotifications": "Push Notifications",
+    "receiveUpdates": "Receive order updates and offers",
+    "darkMode": "Dark Mode",
+    "on": "On",
+    "off": "Off",
+    "language": "Language",
+    "securityPrivacy": "Security & Privacy",
+    "security": "Security",
+    "password2fa": "Password, 2FA, Login Activity",
+    "privacy": "Privacy",
+    "manageData": "Manage your data usage",
+    "support": "Support",
+    "helpSupport": "Help & Support",
+    "about": "About Agrokart",
+    "logOut": "Log Out",
+    "selectLanguage": "Select Language",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "changePassword": "Change Password",
+    "passwordRequirement": "Choose a strong password to keep your account secure",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "updatePassword": "Update Password",
+    "passwordChangedSuccess": "Password changed successfully!",
+    "passwordsDoNotMatch": "New passwords do not match",
+    "passwordTooShort": "Password should be at least 6 characters",
+    "incorrectPassword": "Incorrect current password",
+    "reauthRequired": "Please log in again before changing password",
+    "passwordChangeError": "Failed to change password. Please try again.",
+    "privacyPolicy": "Privacy Policy",
+    "privacyIntro": "At Agrokart, we take your privacy seriously. This policy describes how we collect, use, and handle your data.",
+    "dataCollection": "Data Collection",
+    "dataCollectionText": "We collect information you provide directly to us...",
+    "dataUsage": "Data Usage",
+    "dataUsageText": "We use the information we collect...",
+    "dataSecurity": "Data Security",
+    "dataSecurityText": "We implement appropriate technical measures...",
+    "cookies": "Cookies & Tracking",
+    "cookiesText": "We use cookies...",
+    "userRights": "Your Rights",
+    "userRightsText": "You have the right to access...",
+    "callUs": "Call Us",
+    "callNow": "Call Now",
+    "emailUs": "Email Us",
+    "sendEmail": "Send Email",
+    "chatSupport": "Chat Support",
+    "available247": "Available 24/7",
+    "startChat": "Start Chat",
+    "frequentlyAskedQuestions": "Frequently Asked Questions",
+    "faq1q": "How do I track my order?",
+    "faq1a": "You can track your order...",
+    "faq2q": "What payment methods are accepted?",
+    "faq2a": "We accept various payment methods...",
+    "faq3q": "How can I return an item?",
+    "faq3a": "If you are not satisfied...",
+    "faq4q": "Is there a delivery fee?",
+    "faq4a": "Delivery is free..."
+  },
+  "weather": {
+    "title": "Weather & Farming Advisory",
+    "searchCity": "Search city...",
+    "feelsLike": "Feels like",
+    "humidity": "Humidity",
+    "wind": "Wind",
+    "minMax": "Min/Max",
+    "visibility": "Visibility",
+    "forecast": "24-Hour Forecast",
+    "recommendations": "Smart Farming Advisory",
+    "cropSuggestions": "Best Crops to Plant Now"
+  },
+  "mandi": {
+    "title": "🌾 Daily Mandi Rates",
+    "subtitle": "Real-time crop market prices from mandis across India",
+    "filterTitle": "Search Mandi Prices",
+    "selectState": "Select State",
+    "selectCrop": "Select Crop",
+    "search": "Search",
+    "popular": "Popular:",
+    "selectFilter": "Please select a state or crop to search",
+    "noData": "No mandi data found for this selection",
+    "results": "results found",
+    "filterResults": "Filter results...",
+    "crop": "Crop",
+    "variety": "Variety",
+    "market": "Market",
+    "district": "District",
+    "minPrice": "Min ₹",
+    "modalPrice": "Modal ₹",
+    "maxPrice": "Max ₹",
+    "date": "Date",
+    "emptyTitle": "Select State & Crop to view prices",
+    "emptySubtitle": "Choose your state and crop from the filters above to see latest mandi rates"
+  }
+}

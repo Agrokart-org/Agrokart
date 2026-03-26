@@ -1,0 +1,65 @@
+﻿AI Service: Initialized Dr. Agro (Local Expert System).
+Testing Manual Analysis for: {
+  ph: 6.5,
+  nitrogen: 150,
+  phosphorus: 15,
+  potassium: 300,
+  crop: 'Wheat'
+}
+{
+  "success": true,
+  "isInvalidReport": false,
+  "data": {
+    "healthSummary": "Soil fertility is Low in Nitrogen, Medium in Phosphorus, and High in Potassium. pH is 6.5.",
+    "nutrients": [
+      {
+        "name": "Nitrogen (N)",
+        "value": "150 kg/ha",
+        "status": "Low"
+      },
+      {
+        "name": "Phosphorus (P)",
+        "value": "15 kg/ha",
+        "status": "Medium"
+      },
+      {
+        "name": "Potassium (K)",
+        "value": "300 kg/ha",
+        "status": "High"
+      },
+      {
+        "name": "pH",
+        "value": 6.5,
+        "status": "Neutral"
+      }
+    ],
+    "recommendations": [
+      {
+        "product": "Urea",
+        "type": "Fertilizer",
+        "totalQuantity": "326 kg/ha",
+        "dosage": "132 kg/acre",
+        "reason": "To meet Nitrogen requirement of 150 kg/ha for Wheat.",
+        "priority": "High"
+      },
+      {
+        "product": "DAP",
+        "type": "Fertilizer",
+        "totalQuantity": "130 kg/ha",
+        "dosage": "53 kg/acre",
+        "reason": "Primary source for Phosphorus (60 kg/ha needed).",
+        "priority": "High"
+      },
+      {
+        "product": "MOP (Potash)",
+        "type": "Fertilizer",
+        "totalQuantity": "50 kg/ha",
+        "dosage": "20 kg/acre",
+        "reason": "Required for Potassium deficiency (30 kg/ha needed).",
+        "priority": "Medium"
+      }
+    ],
+    "reasoning": "Based on standard requirements for Wheat. Nutrients calculated using target yield equation for Indian Soil conditions.",
+    "confidenceScore": "100% (Rule-Based)"
+  }
+}

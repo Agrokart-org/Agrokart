@@ -1,0 +1,48 @@
+{
+    "recommendation": {
+        "soil_health_summary": "मृदा स्वास्थ्य सारांश",
+        "nitrogen_low": "आपकी मिट्टी में नाइट्रोजन का स्तर कम ({{value}} kg/ha) है।",
+        "nitrogen_high": "आपकी मिट्टी में नाइट्रोजन का स्तर अधिक है।",
+        "phosphorus_low": "जड़ों के विकास के लिए फास्फोरस आवश्यक है लेकिन आपकी मिट्टी में यह कम है।",
+        "potassium_low": "रोग प्रतिरोधक क्षमता के लिए पोटाश आवश्यक है लेकिन स्तर अपर्याप्त है।",
+        "organic_carbon_low": "मिट्टी की उर्वरता के लिए जैविक कार्बन महत्वपूर्ण है लेकिन वर्तमान में कम है।",
+        "confidence_score": "विश्वास स्कोर",
+        "fertilizer_recommendation": "उर्वरक सुझाव",
+        "reasoning": "कारण",
+        "reasoning_template": "{{nutrient}} {{status}} है और {{crop}} को {{requirement}} स्तर के पोषक तत्वों की आवश्यकता है।"
+    },
+    "validation": {
+        "invalid_report": "यह वैध मृदा परीक्षण रिपोर्ट नहीं लगती।",
+        "low_confidence": "हम रिपोर्ट को उच्च विश्वास के साथ नहीं पढ़ सके। कृपया मैन्युअल रूप से डेटा दर्ज करें।"
+    },
+    "crops": {
+        "wheat": "गेहूँ",
+        "rice": "चावल",
+        "sugarcane": "गन्ना",
+        "cotton": "कपास",
+        "soybean": "सोयाबीन"
+    },
+    "fertilizers": {
+        "Urea": "यूरिया",
+        "DAP (Di-Ammonium Phosphate)": "डीएपी (DAP)",
+        "MOP (Muriate of Potash)": "एमओपी (MOP)",
+        "SSP (Single Super Phosphate)": "एसएसपी ({SSP})",
+        "Lime": "चूना",
+        "Gypsum": "जिप्सम"
+    },
+    "status": {
+        "Low": "कम",
+        "Medium": "मध्यम",
+        "High": "अधिक",
+        "Acidic": "अम्लीय",
+        "Alkaline": "क्षारीय",
+        "Neutral": "तटस्थ"
+    },
+    "nutrients": {
+        "nitrogen": "नाइट्रोजन",
+        "phosphorus": "फास्फोरस",
+        "potassium": "पोटाश",
+        "organic_carbon": "जैविक कार्बन",
+        "ph": "पीएच (pH)"
+    }
+}

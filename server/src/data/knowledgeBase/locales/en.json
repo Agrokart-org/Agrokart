@@ -1,0 +1,48 @@
+{
+    "recommendation": {
+        "soil_health_summary": "Soil Health Summary",
+        "nitrogen_low": "Your soil nitrogen level is Low ({{value}} kg/ha).",
+        "nitrogen_high": "Your soil nitrogen level is High.",
+        "phosphorus_low": "Phosphorus is required for root development but is low in your soil.",
+        "potassium_low": "Potassium is essential for disease resistance but levels are insufficient.",
+        "organic_carbon_low": "Organic carbon is critical for soil fertility but is currently low.",
+        "confidence_score": "Confidence Score",
+        "fertilizer_recommendation": "Fertilizer Recommendation",
+        "reasoning": "Reasoning",
+        "reasoning_template": "{{nutrient}} is {{status}} and {{crop}} requires {{requirement}} level of nutrients."
+    },
+    "validation": {
+        "invalid_report": "This does not appear to be a valid soil test report.",
+        "low_confidence": "We could not read the report with high confidence. Please enter data manually."
+    },
+    "crops": {
+        "wheat": "Wheat",
+        "rice": "Rice",
+        "sugarcane": "Sugarcane",
+        "cotton": "Cotton",
+        "soybean": "Soybean"
+    },
+    "fertilizers": {
+        "Urea": "Urea",
+        "DAP (Di-Ammonium Phosphate)": "DAP",
+        "MOP (Muriate of Potash)": "MOP",
+        "SSP (Single Super Phosphate)": "SSP",
+        "Lime": "Lime",
+        "Gypsum": "Gypsum"
+    },
+    "status": {
+        "Low": "Low",
+        "Medium": "Medium",
+        "High": "High",
+        "Acidic": "Acidic",
+        "Alkaline": "Alkaline",
+        "Neutral": "Neutral"
+    },
+    "nutrients": {
+        "nitrogen": "Nitrogen",
+        "phosphorus": "Phosphorus",
+        "potassium": "Potassium",
+        "organic_carbon": "Organic Carbon",
+        "ph": "pH"
+    }
+}

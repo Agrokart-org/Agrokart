@@ -1,0 +1,48 @@
+{
+    "recommendation": {
+        "soil_health_summary": "माती आरोग्य सारांश",
+        "nitrogen_low": "तुमच्या जमिनीत नायट्रोजनची पातळी कमी ({{value}} kg/ha) आहे.",
+        "nitrogen_high": "तुमच्या जमिनीत नायट्रोजनची पातळी जास्त आहे.",
+        "phosphorus_low": "मुळांच्या वाढीसाठी फॉस्फरस आवश्यक आहे परंतु जमिनीत त्याचे प्रमाण कमी आहे.",
+        "potassium_low": "रोगप्रतिकारक शक्तीसाठी पोटॅश आवश्यक आहे परंतु पातळी अपुरी आहे.",
+        "organic_carbon_low": "जमिनीच्या सुपीकतेसाठी सेंद्रिय कर्ब महत्त्वाचे आहे पण सध्या ते कमी आहे.",
+        "confidence_score": "विश्वास गुण",
+        "fertilizer_recommendation": "खत शिफारस",
+        "reasoning": "कारण",
+        "reasoning_template": "{{nutrient}} {{status}} आहे आणि {{crop}} पिकाला {{requirement}} पातळीच्या पोषक घटकांची गरज आहे."
+    },
+    "validation": {
+        "invalid_report": "हा माती परीक्षण अहवाल वैध वाटत नाही.",
+        "low_confidence": "आम्ही अहवाल उच्च विश्वासाने वाचू शकलो नाही. कृपया मॅन्युअलरित्या माहिती भरा."
+    },
+    "crops": {
+        "wheat": "गहू",
+        "rice": "तांदूळ",
+        "sugarcane": "ऊस",
+        "cotton": "कापूस",
+        "soybean": "सोयाबीन"
+    },
+    "fertilizers": {
+        "Urea": "युरिया",
+        "DAP (Di-Ammonium Phosphate)": "डीएपी (DAP)",
+        "MOP (Muriate of Potash)": "एमओपी (MOP)",
+        "SSP (Single Super Phosphate)": "एसएसपी ({SSP})",
+        "Lime": "चूना",
+        "Gypsum": "जिप्सम"
+    },
+    "status": {
+        "Low": "कमी",
+        "Medium": "मध्यम",
+        "High": "जास्त",
+        "Acidic": "आम्लयुक्त",
+        "Alkaline": "अल्कलीयुक्त",
+        "Neutral": "तटस्थ"
+    },
+    "nutrients": {
+        "nitrogen": "नायट्रोजन",
+        "phosphorus": "फॉस्फरस",
+        "potassium": "पोटॅश",
+        "organic_carbon": "सेंद्रिय कर्ब",
+        "ph": "सामू (pH)"
+    }
+}

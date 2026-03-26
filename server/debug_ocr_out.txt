@@ -1,0 +1,31 @@
+Init...
+Starting Debug Script...
+Requiring Tesseract...
+Tesseract loaded.
+Image loaded. Size: 3994 bytes
+Starting OCR...
+OCR Status: loading tesseract core - 0%
+OCR Status: loading tesseract core - 100%
+OCR Status: initializing tesseract - 0%
+OCR Status: initializing tesseract - 100%
+OCR Status: loading language traineddata - 0%
+OCR Status: loading language traineddata - 50%
+OCR Status: loading language traineddata - 100%
+OCR Status: initializing api - 0%
+OCR Status: initializing api - 100%
+OCR Status: recognizing text - 0%
+OCR Status: recognizing text - 10%
+OCR Status: recognizing text - 20%
+OCR Status: recognizing text - 30%
+OCR Status: recognizing text - 40%
+OCR Status: recognizing text - 50%
+OCR Status: recognizing text - 60%
+OCR Status: recognizing text - 100%
+
+--- OCR OUTPUT START ---
+~ —
+Home 8B = » 2
+
+--- OCR OUTPUT END ---
+
+Finished.

@@ -1,0 +1,1073 @@
+import React, { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Container,
+  Typography,
+  Box,
+  Paper,
+  Button,
+  Grid,
+  Stack,
+  useTheme,
+  alpha,
+  Divider,
+  Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  Card,
+  CardContent,
+  CircularProgress,
+} from "@mui/material";
+import {
+  Download as DownloadIcon,
+  Share as ShareIcon,
+  Home as HomeIcon,
+  LocalShipping as ShippingIcon,
+  Payment as PaymentIcon,
+  Receipt as ReceiptIcon,
+  CheckCircle as CheckCircleIcon,
+  Print as PrintIcon,
+  LocalShipping as LocalShippingIcon,
+  WhatsApp as WhatsAppIcon,
+  Email as EmailIcon,
+  Phone as PhoneIcon,
+} from "@mui/icons-material";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
+import { createOrder, getOrderById } from "../services/api";
+import { auth } from "../config/firebase"; // Direct auth access needed
+import AgrokartLogo from "../components/AgrokartLogo";
+
+const OrderConfirmationPage = () => {
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const { cart, getCartTotal, clearCart } = useCart();
+  const { token, user } = useAuth();
+  const socket = useSocket(); // Get socket instance
+  const [orderId, setOrderId] = useState("");
+  const [orderError, setOrderError] = useState(null);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [waitingForVendor, setWaitingForVendor] = useState(false);
+  const [vendorSearchTimer, setVendorSearchTimer] = useState(10);
+  const [searchAttempt, setSearchAttempt] = useState(1);
+  const [deliveryDetails, setDeliveryDetails] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  const [orderedItems, setOrderedItems] = useState([]);
+  const [orderData, setOrderData] = useState(null);
+  const [orderDate, setOrderDate] = useState(new Date());
+  const [isProcessing, setIsProcessing] = useState(false);
+  const billRef = useRef(null);
+
+  // Calculate order totals from order data or ordered items
+  const calculateTotals = () => {
+    // Helper to parse price safely
+    const parsePrice = (price) => {
+      if (typeof price === "number") return price;
+      if (typeof price === "string") {
+        const val = parseFloat(price.replace(/[^0-9.]/g, ""));
+        return isNaN(val) ? 0 : val;
+      }
+      return 0;
+    };
+
+    if (orderData && orderData.totalAmount) {
+      // Use backend order data if available
+      const orderTotal = parsePrice(orderData.totalAmount);
+      const deliveryFee = orderTotal > 5000 ? 0 : 200;
+      return {
+        subtotal: orderTotal - deliveryFee,
+        deliveryFee,
+        total: orderTotal,
+      };
+    } else if (orderedItems && orderedItems.length > 0) {
+      // Calculate from ordered items
+      const subtotal = orderedItems.reduce((total, item) => {
+        return total + parsePrice(item.price) * (item.quantity || 1);
+      }, 0);
+      const deliveryFee = subtotal > 5000 ? 0 : 200;
+      return {
+        subtotal,
+        deliveryFee,
+        total: subtotal + deliveryFee,
+      };
+    } else {
+      // Fallback to cart total (for initial load)
+      const subtotal = getCartTotal(); // This is now safe from CartContext
+      const deliveryFee = subtotal > 5000 ? 0 : 200;
+      return {
+        subtotal,
+        deliveryFee,
+        total: subtotal + deliveryFee,
+      };
+    }
+  };
+
+  const { subtotal, deliveryFee, total } = calculateTotals();
+
+  const [countdown, setCountdown] = useState(5);
+
+  // Auto-redirect to orders page
+  useEffect(() => {
+    let timer;
+    if (orderSuccess && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (orderSuccess && countdown === 0) {
+      console.log(
+        "OrderConfirmationPage: Countdown ended, redirecting to /my-orders",
+      );
+      navigate("/my-orders");
+    }
+    return () => clearInterval(timer);
+  }, [orderSuccess, countdown, navigate]);
+
+  // Vendor Search Timer (10s loop)
+  useEffect(() => {
+    let searchTimer;
+    if (waitingForVendor) {
+      if (vendorSearchTimer > 0) {
+        searchTimer = setInterval(() => {
+          setVendorSearchTimer((prev) => prev - 1);
+        }, 1000);
+      } else {
+        // Reset timer and increment attempt
+        setVendorSearchTimer(10);
+        setSearchAttempt((prev) => prev + 1);
+      }
+    }
+    return () => clearInterval(searchTimer);
+  }, [waitingForVendor, vendorSearchTimer]);
+
+  // Polling Fallback: Check status every 3 seconds if waiting for vendor
+  useEffect(() => {
+    let pollingTimer;
+    if (waitingForVendor && orderData?._id) {
+      console.log("Starting polling for order status:", orderData._id);
+      pollingTimer = setInterval(async () => {
+        try {
+          const authToken =
+            token ||
+            localStorage.getItem("token") ||
+            localStorage.getItem("firebaseToken");
+          const rawResponse = await getOrderById(orderData._id, authToken);
+          const updatedOrder = rawResponse.data || rawResponse;
+
+          if (updatedOrder) {
+            console.log("Polling status check:", updatedOrder.orderStatus);
+
+            if (
+              [
+                "confirmed",
+                "processing",
+                "assigned",
+                "accepted",
+                "shipping",
+                "shipped",
+                "out_for_delivery",
+                "delivered",
+              ].includes(updatedOrder.orderStatus)
+            ) {
+              console.log("Polling: Order accepted! Stopping wait.");
+              setOrderData(updatedOrder); // Update local data
+              setWaitingForVendor(false);
+              // setOrderSuccess(true); // Skip success screen
+              navigate("/my-orders");
+            } else if (updatedOrder.orderStatus === "cancelled") {
+              console.log("Polling: Order cancelled.");
+              setWaitingForVendor(false);
+              setOrderError("Order was cancelled.");
+            }
+          }
+        } catch (err) {
+          console.error("Polling error:", err);
+        }
+      }, 3000);
+    }
+    return () => clearInterval(pollingTimer);
+  }, [waitingForVendor, orderData, token]);
+
+  // Socket Listener for Order Status
+  useEffect(() => {
+    // ... (rest of socket code)
+    if (!socket || !orderId) {
+      console.log("OrderConfirmationPage: Socket or OrderId missing", {
+        socket: !!socket,
+        orderId,
+      });
+      return;
+    }
+
+    const handleStatusUpdate = (data) => {
+      console.log("socket: order_status_updated received", data);
+      console.log("Current orderId:", orderId, "Data orderId:", data.orderId);
+
+      if (data.orderId === orderId || data.orderId === orderData?._id) {
+        console.log("Order match found! Status:", data.status);
+        if (
+          [
+            "confirmed",
+            "processing",
+            "assigned",
+            "accepted",
+            "shipping",
+            "delivered",
+          ].includes(data.status)
+        ) {
+          console.log("Setting waitingForVendor to false");
+          setWaitingForVendor(false);
+          // setOrderSuccess(true);
+          navigate("/my-orders");
+        } else if (data.status === "cancelled") {
+          console.log("Order cancelled");
+          setWaitingForVendor(false);
+          setOrderError("Order was cancelled.");
+        }
+      } else {
+        console.log("Order ID mismatch. Ignoring event.");
+      }
+    };
+
+    const handleOrderAccepted = (data) => {
+      console.log("socket: order_accepted received", data);
+      if (data.orderId === orderId || data.orderId === orderData?._id) {
+        console.log("Order match found! Stopping wait.");
+        setWaitingForVendor(false);
+        // setOrderSuccess(true);
+        navigate("/my-orders");
+      }
+    };
+
+    console.log("Setting up socket listeners for:", orderId);
+    socket.on("order_status_updated", handleStatusUpdate);
+    // Some implementations might use a specific 'order_accepted' event
+    socket.on("order_accepted", handleOrderAccepted);
+
+    // Join tracking room
+    if (waitingForVendor) {
+      console.log(`Joining tracking for order: order_${orderId}`);
+      // Note: socketService expects just ID and adds prefix 'order_'
+      socket.emit("join_tracking", orderId);
+      if (orderData?._id && orderData._id !== orderId) {
+        console.log(
+          `Joining tracking for orderData ID: order_${orderData._id}`,
+        );
+        socket.emit("join_tracking", orderData._id);
+      }
+    }
+
+    return () => {
+      console.log("Cleaning up socket listeners");
+      socket.off("order_status_updated", handleStatusUpdate);
+      socket.off("order_accepted", handleOrderAccepted);
+    };
+  }, [socket, orderId, orderData, waitingForVendor]);
+
+  useEffect(() => {
+    console.log("OrderConfirmationPage: useEffect triggered");
+    console.log("Cart length:", cart.length);
+    console.log("Cart items:", cart);
+    console.log("Token:", token ? "Present" : "Missing");
+    console.log(
+      "Stored delivery details:",
+      localStorage.getItem("deliveryDetails"),
+    );
+    console.log(
+      "Stored payment method:",
+      localStorage.getItem("paymentMethod"),
+    );
+    console.log("Stored cart items:", localStorage.getItem("orderCartItems"));
+
+    const createOrderInBackend = async () => {
+      console.log("OrderConfirmationPage: Starting order creation process");
+      console.log("Cart items:", cart);
+      console.log("Token:", token ? "Present" : "Missing");
+
+      // Retrieve token with fallback
+      let authToken = token;
+      if (!authToken && auth.currentUser) {
+        try {
+          authToken = await auth.currentUser.getIdToken();
+          console.log(
+            "OrderConfirmationPage: Retrieved fresh token from firebase",
+          );
+        } catch (e) {
+          console.error("Failed to get fresh token", e);
+        }
+      }
+      if (!authToken) {
+        authToken = localStorage.getItem("firebaseToken");
+      }
+
+      if (!authToken) {
+        console.log("OrderConfirmationPage: No authentication token available");
+        setOrderError(
+          "Authentication required to create order. Please login again.",
+        );
+        return;
+      }
+
+      try {
+        // Get stored data
+        const storedDeliveryDetails = localStorage.getItem("deliveryDetails");
+        const storedPaymentMethod = localStorage.getItem("paymentMethod");
+
+        console.log("Stored delivery details:", storedDeliveryDetails);
+        console.log("Stored payment method:", storedPaymentMethod);
+
+        if (!storedDeliveryDetails) {
+          console.log("OrderConfirmationPage: No delivery details found");
+          setOrderError("Delivery details not found");
+          return;
+        }
+
+        const deliveryDetails = JSON.parse(storedDeliveryDetails);
+        setDeliveryDetails(deliveryDetails);
+        setPaymentMethod(storedPaymentMethod);
+
+        // Try to get cart items from current cart or localStorage
+        let cartItems = cart;
+        if (!cartItems || cartItems.length === 0) {
+          const storedCartItems = localStorage.getItem("orderCartItems");
+          if (storedCartItems) {
+            cartItems = JSON.parse(storedCartItems);
+            console.log(
+              "OrderConfirmationPage: Using stored cart items:",
+              cartItems,
+            );
+          }
+        }
+
+        // Save a copy of the cart before clearing it
+        setOrderedItems(cartItems);
+        console.log("OrderConfirmationPage: Cart items saved:", cartItems);
+
+        // Prepare order data for backend
+        const orderData = {
+          items: cartItems.map((item) => ({
+            product: item.id || item._id, // Product ID from backend
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          deliveryAddress: {
+            street: deliveryDetails.address,
+            city: deliveryDetails.city,
+            state: deliveryDetails.state,
+            pincode: deliveryDetails.pincode,
+            coordinates: deliveryDetails.coordinates || {
+              type: "Point",
+              coordinates: [78.9629, 20.5937], // Central India fallback
+            },
+          },
+          deliverySlot: {
+            date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+            timeSlot: "morning",
+          },
+          paymentMethod: storedPaymentMethod || "cod",
+        };
+
+        console.log("OrderConfirmationPage: Prepared order data:", orderData);
+
+        // Send order to backend
+        console.log("OrderConfirmationPage: Sending order to backend...");
+        const response = await createOrder(orderData, authToken);
+        console.log("OrderConfirmationPage: Backend response:", response);
+
+        console.log(
+          "OrderConfirmationPage: Checking response for _id:",
+          response._id,
+        );
+        console.log(
+          "OrderConfirmationPage: Response keys:",
+          Object.keys(response),
+        );
+
+        let finalOrderId =
+          response.order?._id || response._id || response.order?.id;
+        const trackingNumber =
+          response.order?.trackingNumber || response.trackingNumber;
+
+        // Fallback: If message indicates success but no ID found, force success state
+        if (
+          !finalOrderId &&
+          response.message &&
+          response.message.toLowerCase().includes("success")
+        ) {
+          finalOrderId = trackingNumber || "ORD-PENDING";
+          console.warn(
+            "OrderConfirmationPage: Order ID missing but success message found. Using fallback.",
+          );
+        }
+
+        if (finalOrderId) {
+          console.log("OrderConfirmationPage: Order created successfully");
+          setOrderId(trackingNumber || finalOrderId);
+          const createdOrder = response.order || response;
+          setOrderData(createdOrder);
+          setOrderDate(new Date(createdOrder.createdAt || Date.now()));
+
+          console.log(
+            "OrderConfirmationPage: Order created. Status:",
+            createdOrder.orderStatus,
+          );
+
+          if (createdOrder.orderStatus === "finding_vendor") {
+            setWaitingForVendor(true);
+            setVendorSearchTimer(10);
+            setSearchAttempt(1);
+          } else {
+            setOrderSuccess(true);
+          }
+
+          console.log(
+            "OrderConfirmationPage: Order ID set to:",
+            trackingNumber || finalOrderId,
+          );
+
+          // Clear cart after successful order
+          clearCart();
+
+          // Clear stored data
+          localStorage.removeItem("deliveryDetails");
+          localStorage.removeItem("paymentMethod");
+          localStorage.removeItem("orderCartItems");
+
+          // Reset processing flag
+          setIsProcessing(false);
+        } else {
+          console.error(
+            "Order creation failed - no _id in response:",
+            response,
+          );
+          console.error("Response type:", typeof response);
+          console.error("Response is array:", Array.isArray(response));
+          setOrderError(response.message || "Failed to create order");
+          setIsProcessing(false);
+        }
+      } catch (error) {
+        console.error("Error creating order:", error);
+        console.error("Error type:", typeof error);
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+
+        if (error.response && error.response.data) {
+          // Show specific error from backend if available
+          const errorMsg =
+            error.response.data.message ||
+            error.response.data.details ||
+            JSON.stringify(error.response.data);
+          setOrderError(`Order Creation Failed: ${errorMsg}`);
+        } else if (error.message) {
+          setOrderError(`Error: ${error.message}`);
+        } else {
+          setOrderError(
+            "Failed to create order. Please check your connection and try again.",
+          );
+        }
+        setIsProcessing(false);
+      }
+    };
+
+    // Check if we have cart items either in current cart or stored
+    const hasCartItems =
+      cart.length > 0 || localStorage.getItem("orderCartItems");
+
+    if (hasCartItems && !isProcessing && !orderSuccess && !orderError) {
+      setIsProcessing(true);
+      createOrderInBackend();
+    } else if (!hasCartItems && !isProcessing && !orderSuccess && !orderError) {
+      setOrderError("No items in cart");
+    }
+  }, [cart, token, isProcessing, orderSuccess, orderError]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownload = async () => {
+    try {
+      const element = billRef.current;
+      if (!element) return;
+
+      // Show processing feedback if needed
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10; // Top margin
+
+      pdf.addImage(
+        imgData,
+        "PNG",
+        0,
+        0,
+        pdfWidth,
+        (canvas.height * pdfWidth) / canvas.width,
+      );
+      pdf.save(`Invoice-${orderId}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Error generating PDF. Please try again.");
+    }
+  };
+
+  const handleShare = () => {
+    const shareData = {
+      title: "Agrokart Order Confirmation",
+      text: `Order ${orderId} confirmed! Total: ₹${total}`,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      navigator.share(shareData);
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      const shareText = `Order ${orderId} confirmed! Total: ₹${total}\n${window.location.href}`;
+      navigator.clipboard.writeText(shareText).then(() => {
+        alert("Order details copied to clipboard!");
+      });
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const message = `🌾 Agrokart Order Confirmed!\n\nOrder ID: ${orderId}\nTotal Amount: ₹${total}\nDelivery: 2-3 business days\n\nThank you for choosing Agrokart for your agricultural needs!`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
+  };
+
+  if (waitingForVendor) {
+    return (
+      <Container maxWidth="md" sx={{ py: 8, textAlign: "center" }}>
+        <Box sx={{ position: "relative", display: "inline-flex", mb: 4 }}>
+          <CircularProgress
+            size={120}
+            thickness={2}
+            sx={{ color: "primary.main" }}
+          />
+          <Box
+            sx={{
+              top: 0,
+              left: 0,
+              bottom: 0,
+              right: 0,
+              position: "absolute",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Typography
+              variant="h3"
+              component="div"
+              color="text.secondary"
+              fontWeight="bold"
+            >
+              {vendorSearchTimer}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Typography variant="h4" gutterBottom fontWeight="bold" color="primary">
+          Finding a nearby vendor...
+        </Typography>
+        <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
+          Please wait while we connect you with the best vendor.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Check Attempt: #{searchAttempt}
+        </Typography>
+        <Typography
+          variant="caption"
+          display="block"
+          sx={{ mt: 1, mb: 1, color: "text.disabled" }}
+        >
+          Order ID: {orderId}
+        </Typography>
+
+        <Box
+          sx={{
+            mt: 3,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            alignItems: "center",
+          }}
+        >
+          <Button
+            variant="contained"
+            onClick={async () => {
+              try {
+                const authToken =
+                  token ||
+                  localStorage.getItem("token") ||
+                  localStorage.getItem("firebaseToken");
+                const rawResponse = await getOrderById(
+                  orderData._id,
+                  authToken,
+                );
+                const updatedOrder = rawResponse.data || rawResponse;
+                if (updatedOrder) {
+                  console.log("Manual check status:", updatedOrder.orderStatus);
+                  if (
+                    [
+                      "confirmed",
+                      "processing",
+                      "assigned",
+                      "accepted",
+                      "shipping",
+                      "shipped",
+                      "out_for_delivery",
+                      "delivered",
+                    ].includes(updatedOrder.orderStatus)
+                  ) {
+                    setOrderData(updatedOrder);
+                    setWaitingForVendor(false);
+                    // setOrderSuccess(true);
+                    navigate("/my-orders");
+                  } else {
+                    alert(`Current Status: ${updatedOrder.orderStatus}`);
+                  }
+                }
+              } catch (e) {
+                console.error("Manual check failed", e);
+                alert(
+                  "Failed to check status. Please check internet connection.",
+                );
+              }
+            }}
+          >
+            Check Status Now
+          </Button>
+
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={() => navigate("/")}
+          >
+            Cancel Wait
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
+
+  if (orderError) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Alert severity="error" sx={{ mb: 4 }}>
+          {orderError}
+        </Alert>
+        <Button variant="contained" onClick={() => navigate("/")}>
+          Go Home
+        </Button>
+      </Container>
+    );
+  }
+
+  if (!orderSuccess) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Box sx={{ textAlign: "center" }}>
+          <Typography variant="h5">Processing your order...</Typography>
+        </Box>
+      </Container>
+    );
+  }
+
+  return (
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      {/* Success Message */}
+      <Box sx={{ textAlign: "center", mb: 4 }}>
+        <CheckCircleIcon color="success" sx={{ fontSize: 80, mb: 2 }} />
+        <Typography
+          variant="h3"
+          gutterBottom
+          sx={{ fontWeight: 700, color: "success.main" }}
+        >
+          Order Confirmed!
+        </Typography>
+        <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
+          Thank you for choosing Agrokart
+        </Typography>
+        <Chip
+          label={`Order ID: #${orderId.slice(-6).toUpperCase()}`}
+          color="primary"
+          size="large"
+          sx={{ fontSize: "1rem", py: 2, px: 1 }}
+        />
+      </Box>
+
+      {/* Invoice/Bill */}
+      <Paper
+        ref={billRef}
+        className="print-content"
+        sx={{
+          p: 4,
+          mb: 4,
+          "@media print": {
+            boxShadow: "none",
+            p: 2,
+          },
+        }}
+      >
+        {/* Invoice Header */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            mb: 4,
+          }}
+        >
+          <Box>
+            <Box sx={{ mb: 1 }}>
+              <AgrokartLogo variant="full" />
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Premium Agricultural Products
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              📧 support@agrokart.com | 📞 1800-XXX-XXXX
+            </Typography>
+          </Box>
+          <Box sx={{ textAlign: "right" }}>
+            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+              INVOICE
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Invoice #: #{orderId.slice(-6).toUpperCase()}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Date: {orderDate.toLocaleDateString("en-IN")}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Divider sx={{ mb: 4 }} />
+
+        {/* Customer & Delivery Details */}
+        <Grid container spacing={4} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={6}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              Bill To:
+            </Typography>
+            <Box sx={{ bgcolor: "grey.50", p: 2, borderRadius: 1 }}>
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                {user?.name || "Customer"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {user?.email || "customer@email.com"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {user?.phone || "+91 XXXXXXXXXX"}
+              </Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              Deliver To:
+            </Typography>
+            <Box sx={{ bgcolor: "grey.50", p: 2, borderRadius: 1 }}>
+              {deliveryDetails && (
+                <>
+                  <Typography variant="body2">
+                    {deliveryDetails.address}
+                  </Typography>
+                  <Typography variant="body2">
+                    {deliveryDetails.city}, {deliveryDetails.state}
+                  </Typography>
+                  <Typography variant="body2">
+                    PIN: {deliveryDetails.pincode}
+                  </Typography>
+                </>
+              )}
+            </Box>
+          </Grid>
+        </Grid>
+
+        {/* Order Items Table */}
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+          Order Details:
+        </Typography>
+        <TableContainer component={Paper} variant="outlined" sx={{ mb: 4 }}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: "primary.main" }}>
+                <TableCell sx={{ color: "white", fontWeight: 600 }}>
+                  Product
+                </TableCell>
+                <TableCell
+                  align="center"
+                  sx={{ color: "white", fontWeight: 600 }}
+                >
+                  Quantity
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{ color: "white", fontWeight: 600 }}
+                >
+                  Unit Price
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{ color: "white", fontWeight: 600 }}
+                >
+                  Total
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {orderedItems.map((item, index) => (
+                <TableRow
+                  key={index}
+                  sx={{ "&:nth-of-type(odd)": { bgcolor: "grey.50" } }}
+                >
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {item.name ||
+                        `Product ${item.id || item.product || index + 1}`}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {item.category || "Agricultural Product"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip
+                      label={`${item.quantity} ${item.unit || "units"}`}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell align="right">₹{item.price}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    ₹{(item.price * item.quantity).toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* Billing Summary */}
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ bgcolor: "info.light", p: 3, borderRadius: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                Payment & Delivery Info:
+              </Typography>
+              <Stack spacing={1}>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2">Payment Method:</Typography>
+                  <Chip
+                    label={
+                      paymentMethod === "cod"
+                        ? "Cash on Delivery"
+                        : paymentMethod?.toUpperCase()
+                    }
+                    size="small"
+                    color="primary"
+                  />
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2">Delivery:</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    2-3 Business Days
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2">Status:</Typography>
+                  <Chip label="Confirmed" color="success" size="small" />
+                </Box>
+              </Stack>
+            </Box>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ bgcolor: "grey.50", p: 3, borderRadius: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                Bill Summary:
+              </Typography>
+              <Stack spacing={1}>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2">Subtotal:</Typography>
+                  <Typography variant="body2">
+                    ₹{subtotal.toLocaleString()}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2">Delivery Fee:</Typography>
+                  <Typography
+                    variant="body2"
+                    color={deliveryFee === 0 ? "success.main" : "text.primary"}
+                  >
+                    {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
+                  </Typography>
+                </Box>
+                <Divider />
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Total Amount:
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 700, color: "primary.main" }}
+                  >
+                    ₹{total.toLocaleString()}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+          </Grid>
+        </Grid>
+
+        {/* Footer */}
+        <Box
+          sx={{
+            mt: 4,
+            pt: 3,
+            borderTop: "1px solid",
+            borderColor: "grey.300",
+            textAlign: "center",
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Thank you for choosing Agrokart! Your order will be processed within
+            24 hours.
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            For any queries, contact us at support@agrokart.com or call
+            1800-XXX-XXXX
+          </Typography>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              🌾 Agrokart - Empowering Farmers with Quality Products
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Navigation Buttons */}
+      <Box
+        className="no-print"
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          gap: 2,
+          mt: 4,
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Redirecting to your orders in {countdown} seconds...
+        </Typography>
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<HomeIcon />}
+            onClick={() => navigate("/")}
+            size="large"
+          >
+            Continue Shopping
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<LocalShippingIcon />}
+            onClick={() => navigate("/my-orders")}
+            size="large"
+          >
+            Track My Orders
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Contact Support */}
+      <Card
+        className="no-print"
+        sx={{ mt: 4, bgcolor: "primary.light", color: "primary.contrastText" }}
+      >
+        <CardContent sx={{ textAlign: "center" }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+            Need Help?
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            Our customer support team is here to help you 24/7
+          </Typography>
+          <Stack direction="row" spacing={2} justifyContent="center">
+            <Button
+              variant="contained"
+              startIcon={<PhoneIcon />}
+              onClick={() => window.open("tel:1800-XXX-XXXX")}
+              sx={{ bgcolor: "white", color: "primary.main" }}
+            >
+              Call Us
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<WhatsAppIcon />}
+              onClick={() => window.open("https://wa.me/1234567890")}
+              sx={{ bgcolor: "#25D366", "&:hover": { bgcolor: "#128C7E" } }}
+            >
+              WhatsApp
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<EmailIcon />}
+              onClick={() => window.open("mailto:support@agrokart.com")}
+              sx={{ bgcolor: "white", color: "primary.main" }}
+            >
+              Email
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <style jsx>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-content,
+          .print-content * {
+            visibility: visible;
+          }
+          .print-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+          .no-print {
+            display: none !important;
+          }
+          @page {
+            margin: 0.5in;
+            size: A4;
+          }
+        }
+      `}</style>
+    </Container>
+  );
+};
+
+export default OrderConfirmationPage;

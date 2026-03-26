@@ -1,0 +1,90 @@
+{
+    "meta": {
+        "version": "1.0",
+        "description": "Composition of common fertilizers in India"
+    },
+    "fertilizers": [
+        {
+            "id": "urea",
+            "name": "Urea",
+            "composition": {
+                "n": 46,
+                "p": 0,
+                "k": 0
+            },
+            "type": "Nitrogenous",
+            "form": "Granular",
+            "efficiency": 0.4,
+            "price": 266,
+            "category": "fertilizer",
+            "imageUrl": "https://5.imimg.com/data5/SELLER/Default/2023/9/344832579/OW/QZ/VI/25442526/neem-coated-urea-fertilizer.jpeg",
+            "description": "High nitrogen fertilizer for vegetative growth."
+        },
+        {
+            "id": "dap",
+            "name": "DAP (Di-Ammonium Phosphate)",
+            "composition": {
+                "n": 18,
+                "p": 46,
+                "k": 0
+            },
+            "type": "Complex",
+            "form": "Granular",
+            "efficiency": 0.3,
+            "price": 1350,
+            "category": "fertilizer",
+            "imageUrl": "https://5.imimg.com/data5/SELLER/Default/2022/11/YI/ZF/XV/4308119/dap-fertilizer.jpg",
+            "description": "Source of phosphorus and nitrogen."
+        },
+        {
+            "id": "mop",
+            "name": "MOP (Muriate of Potash)",
+            "composition": {
+                "n": 0,
+                "p": 0,
+                "k": 60
+            },
+            "type": "Potassic",
+            "form": "Powder/Granular",
+            "efficiency": 0.5,
+            "price": 1700,
+            "category": "fertilizer",
+            "imageUrl": "https://tiimg.tistatic.com/fp/1/007/574/mop-muriate-of-potash-fertilizer-681.jpg",
+            "description": "Essential potassium for improved crop quality."
+        },
+        {
+            "id": "ssp",
+            "name": "SSP (Single Super Phosphate)",
+            "composition": {
+                "n": 0,
+                "p": 16,
+                "k": 0,
+                "s": 12,
+                "ca": 19
+            },
+            "type": "Phosphatic",
+            "form": "Powder",
+            "efficiency": 0.3
+        },
+        {
+            "id": "npk_10_26_26",
+            "name": "NPK 10:26:26",
+            "composition": {
+                "n": 10,
+                "p": 26,
+                "k": 26
+            },
+            "type": "Complex"
+        },
+        {
+            "id": "npk_12_32_16",
+            "name": "NPK 12:32:16",
+            "composition": {
+                "n": 12,
+                "p": 32,
+                "k": 16
+            },
+            "type": "Complex"
+        }
+    ]
+}

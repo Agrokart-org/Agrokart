@@ -1,0 +1,24 @@
+{
+  "specifications": {
+    "composition": []
+  },
+  "_id": "69835c1edf58249beb789e53",
+  "name": "Test Urea Fertilizer",
+  "description": "High quality urea fertilizer",
+  "category": "urea",
+  "brand": "Test Brand",
+  "price": 500,
+  "stock": 1000,
+  "unit": "kg",
+  "images": [],
+  "recommendedCrops": [],
+  "isActive": true,
+  "averageRating": 0,
+  "image": "/images/urea.jpg",
+  "rating": 0,
+  "numReviews": 0,
+  "ratings": [],
+  "createdAt": "2026-02-04T14:47:58.441Z",
+  "updatedAt": "2026-02-04T14:47:58.441Z",
+  "__v": 0
+}
