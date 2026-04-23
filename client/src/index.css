@@ -68,9 +68,11 @@ button, a, .MuiBottomNavigationAction-root, .MuiIconButton-root, .MuiButton-root
   -webkit-overflow-scrolling: touch;
 }
 
-/* Prevent pull-to-refresh on mobile */
-html, body {
-  overscroll-behavior-y: none;
+/* Ensure scrolling works on all mobile views */
+html, body, #root {
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto;
+  min-height: 100vh;
 }
 
 /* Fix inputs zooming on iOS (font-size < 16px causes zoom) */

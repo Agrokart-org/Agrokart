@@ -423,6 +423,10 @@ const OrderConfirmationPage = () => {
             setWaitingForVendor(true);
             setVendorSearchTimer(10);
             setSearchAttempt(1);
+          } else if (["confirmed", "processing", "assigned", "accepted"].includes(createdOrder.orderStatus)) {
+            // Order was auto-assigned to a vendor — skip vendor search, go to orders
+            console.log("OrderConfirmationPage: Order auto-confirmed by vendor! Redirecting...");
+            setOrderSuccess(true);
           } else {
             setOrderSuccess(true);
           }

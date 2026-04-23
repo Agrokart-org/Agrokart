@@ -38,6 +38,7 @@ import VendorDashboard from "./pages/VendorDashboard";
 import UnifiedAuthPage from "./pages/UnifiedAuthPage";
 import DrAgro from "./pages/DrAgro";
 import DrAgroResults from "./pages/DrAgroResults";
+import WeatherDetectionPage from "./pages/WeatherDetectionPage";
 import MandiRatesPage from "./pages/MandiRatesPage";
 import DeliveryRegistrationPage from "./pages/DeliveryRegistrationPage";
 import DeliveryLogin from "./pages/DeliveryLogin";
@@ -320,6 +321,15 @@ const Routes = () => {
         element={
           <CustomerRoute useSidebar={true}>
             <DrAgroResults />
+          </CustomerRoute>
+        }
+      />
+
+      <Route
+        path="/customer/dr-agro/weather"
+        element={
+          <CustomerRoute useSidebar={true}>
+            <WeatherDetectionPage />
           </CustomerRoute>
         }
       />

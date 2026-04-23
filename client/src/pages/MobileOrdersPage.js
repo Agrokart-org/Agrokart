@@ -127,7 +127,9 @@ const MobileOrdersPage = () => {
       case 0:
         return orders; // All
       case 1:
-        return filterOrdersByStatus("pending"); // Processing
+        return orders.filter((order) =>
+          ["pending", "confirmed", "preparing"].includes(order.orderStatus?.toLowerCase()),
+        ); // Processing
       case 2:
         return filterOrdersByStatus("shipped"); // Shipped
       case 3:

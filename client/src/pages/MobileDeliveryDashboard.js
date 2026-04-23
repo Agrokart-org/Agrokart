@@ -172,19 +172,33 @@ const MobileDeliveryDashboard = () => {
 
   // Fetch available assignments
   useEffect(() => {
+    let isMounted = true;
     const fetchAssignments = async () => {
-      if (isOnline && token) {
+      if (isOnline && token && isMounted) {
         try {
+          console.log("🔄 Fetching assignments from API...");
           const response = await getAvailableAssignments(token);
-          setAvailableAssignments(response.assignments || []);
-        } catch (error) {
-          console.error("Error fetching assignments:", error);
+          console.log("✅ Fetched assignments API response:", response);
+          if (isMounted) {
+            setAvailableAssignments(response.assignments || []);
+            console.log("✅ State updated with assignments:", response.assignments?.length || 0);
+          }
+        } catch (err) {
+          console.error("❌ Failed to fetch available assignments:", err);
         }
+      } else if (!isOnline) {
+        console.log("⏸️ Delivery partner is offline. Skipping assignment fetch.");
       }
     };
+    
+    // Initial fetch
     fetchAssignments();
+
     const interval = setInterval(fetchAssignments, 10000);
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    }
   }, [isOnline, token]);
 
   // Socket listeners
@@ -338,9 +352,16 @@ const MobileDeliveryDashboard = () => {
 
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [deliveryPin, setDeliveryPin] = useState("");
+  const [pickupPinDialogOpen, setPickupPinDialogOpen] = useState(false);
+  const [vendorPickupPin, setVendorPickupPin] = useState("");
 
   const handleStatusUpdate = async (newStatus) => {
     if (!currentAssignment || !token) return;
+
+    if (newStatus === "picked_up") {
+      setPickupPinDialogOpen(true);
+      return;
+    }
 
     if (newStatus === "delivered") {
       setPinDialogOpen(true);
@@ -422,6 +443,46 @@ const MobileDeliveryDashboard = () => {
     } catch (error) {
       console.error("Error completing delivery:", error);
       alert(error.message || "Invalid PIN or failed to complete delivery");
+    }
+  };
+
+  const handlePickupWithPin = async () => {
+    if (!vendorPickupPin || vendorPickupPin.length !== 4) {
+      alert("Please enter a valid 4-digit PIN");
+      return;
+    }
+
+    try {
+      const response = await updateDeliveryStatus(
+        currentAssignment._id,
+        { status: "picked_up", vendorPickupPin },
+        token,
+      );
+      if (response.success || response.assignment) {
+        // Broadcast status change to customer via socket
+        if (socket) {
+          const orderId = currentAssignment.order?._id || currentAssignment.order;
+          socket.emit("delivery_status_change", {
+            orderId,
+            assignmentId: currentAssignment._id,
+            status: "picked_up",
+            timestamp: Date.now(),
+          });
+        }
+
+        setPickupPinDialogOpen(false);
+        setVendorPickupPin("");
+        setCurrentAssignment((prev) => ({ ...prev, status: "in_transit" })); // The next status after picked_up is in_transit from delivery partner's point of view, although the DB tracks it.
+        // Also refresh dashboard to ensure consistency
+        const dashboard = await getDeliveryDashboard(token);
+        if (dashboard.currentAssignments && dashboard.currentAssignments.length > 0) {
+          setCurrentAssignment(dashboard.currentAssignments[0]);
+        }
+        alert("Order picked up successfully!");
+      }
+    } catch (error) {
+      console.error("Error completing pickup:", error);
+      alert(error.message || "Invalid Vendor PIN or failed to confirm pickup");
     }
   };
 
@@ -1672,6 +1733,85 @@ const MobileDeliveryDashboard = () => {
             }}
           >
             Verify & Complete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Pickup PIN Dialog */}
+      <Dialog
+        open={pickupPinDialogOpen}
+        onClose={() => setPickupPinDialogOpen(false)}
+        PaperProps={{
+          sx: { borderRadius: 4, bgcolor: cardBg, color: textColor },
+        }}
+      >
+        <DialogTitle sx={{ textAlign: "center", fontWeight: "bold" }}>
+          Verify Pickup PIN
+        </DialogTitle>
+        <DialogContent>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            align="center"
+            sx={{ mb: 3 }}
+          >
+            Ask the vendor for the 4-digit Pickup PIN to confirm collection.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            value={vendorPickupPin}
+            onChange={(e) =>
+              setVendorPickupPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))
+            }
+            placeholder="0000"
+            inputProps={{
+              style: {
+                textAlign: "center",
+                fontSize: "2rem",
+                letterSpacing: "0.5rem",
+                color: textColor,
+              },
+            }}
+            variant="outlined"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 3,
+                bgcolor: isDark ? "rgba(255,255,255,0.05)" : "#f5f5f5",
+                "& fieldset": {
+                  borderColor: isDark
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(0,0,0,0.1)",
+                },
+                "&:hover fieldset": {
+                  borderColor: isDark ? AMBER_ACCENT : "#6A1B9A",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: isDark ? AMBER_ACCENT : "#6A1B9A",
+                },
+              },
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3, justifyContent: "center" }}>
+          <Button
+            onClick={() => setPickupPinDialogOpen(false)}
+            sx={{ color: "text.secondary", mr: 2 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handlePickupWithPin}
+            disabled={vendorPickupPin.length !== 4}
+            sx={{
+              background: PURPLE_GRADIENT,
+              borderRadius: 3,
+              px: 4,
+              py: 1,
+            }}
+          >
+            Confirm Pickup
           </Button>
         </DialogActions>
       </Dialog>

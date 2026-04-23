@@ -32,6 +32,7 @@ import {
   Tabs,
   LinearProgress,
   TextField,
+  MenuItem,
   InputAdornment,
   Dialog,
   DialogTitle,
@@ -141,6 +142,296 @@ const hackerTheme = createTheme({
 });
 
 const drawerWidth = 280;
+
+// ── PRODUCT DB PANEL (admin sub-component) ────────────────────────────────────
+const PRODUCT_CATEGORIES = [
+  "Bio-Fertilizers","Micronutrients","NPK Fertilizers",
+  "Pesticides","Seeds","Tools","Urea",
+];
+
+const AdminProductsPanel = ({ apiBaseUrl }) => {
+  const [products, setProducts] = React.useState([]);
+  const [loadingProds, setLoadingProds] = React.useState(false);
+  const [showForm, setShowForm] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState({ text: "", type: "success" });
+  const [imageFile, setImageFile] = React.useState(null);
+  const [imagePreview, setImagePreview] = React.useState(null);
+  const fileRef = React.useRef(null);
+
+  const [form, setForm] = React.useState({
+    name: "", description: "", category: "", brand: "",
+    price: "", stock: "", unit: "kg",
+  });
+
+  const fetchProducts = React.useCallback(async () => {
+    setLoadingProds(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/products`);
+      const data = await res.json();
+      setProducts(data.data?.products || data.products || []);
+    } catch (e) {
+      console.error("Products fetch:", e);
+    } finally {
+      setLoadingProds(false);
+    }
+  }, [apiBaseUrl]);
+
+  React.useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMsg({ text: "", type: "success" });
+    try {
+      const fd = new FormData();
+      Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+      if (imageFile) fd.append("productImage", imageFile);
+      const res = await fetch(`${apiBaseUrl}/products`, { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed");
+      setMsg({ text: "✅ Product added successfully!", type: "success" });
+      setForm({ name:"",description:"",category:"",brand:"",price:"",stock:"",unit:"kg" });
+      setImageFile(null); setImagePreview(null);
+      setShowForm(false);
+      fetchProducts();
+    } catch (err) {
+      setMsg({ text: `❌ ${err.message}`, type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id) => {
+    if (!window.confirm("Delete this product?")) return;
+    try {
+      const token = localStorage.getItem("adminToken") || localStorage.getItem("authToken");
+      await fetch(`${apiBaseUrl}/products/${id}`, {
+        method: "DELETE",
+        headers: { "x-auth-token": token },
+      });
+      fetchProducts();
+    } catch (e) { console.error(e); }
+  };
+
+  return (
+    <Box>
+      {/* Header */}
+      <Box sx={{ display:"flex", justifyContent:"space-between", alignItems:"center", mb:3 }}>
+        <Box>
+          <Typography sx={{ color:"#00ff00", fontFamily:"monospace", fontSize:"1.3rem", fontWeight:700 }}>
+            PRODUCT_DB
+          </Typography>
+          <Typography variant="caption" sx={{ color:"#666", fontFamily:"monospace" }}>
+            {products.length} products in Firestore
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={fetchProducts}
+            sx={{ color:"#00ff00", borderColor:"#00ff00", fontFamily:"monospace", fontSize:"0.7rem" }}
+          >
+            REFRESH
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => setShowForm(!showForm)}
+            sx={{ bgcolor:"#00ff00", color:"#000", fontFamily:"monospace", fontWeight:700, fontSize:"0.7rem", "&:hover":{ bgcolor:"#00cc00" } }}
+          >
+            {showForm ? "CANCEL" : "+ ADD_PRODUCT"}
+          </Button>
+        </Stack>
+      </Box>
+
+      {msg.text && (
+        <Alert severity={msg.type} sx={{ mb:2, fontFamily:"monospace", fontSize:"0.8rem" }} onClose={() => setMsg({ text:"" })}>
+          {msg.text}
+        </Alert>
+      )}
+
+      {/* Add Product Form */}
+      {showForm && (
+        <Card sx={{ bgcolor:"#0a0a0a", border:"1px solid #00ff00", mb:3 }}>
+          <CardContent>
+            <Typography sx={{ color:"#00ff00", fontFamily:"monospace", mb:2, fontSize:"1rem" }}>
+              &gt; ADD_NEW_PRODUCT
+            </Typography>
+            <form onSubmit={handleSubmit}>
+              <Grid container spacing={2}>
+                {/* Image upload */}
+                <Grid item xs={12}>
+                  <Box
+                    sx={{
+                      border:"2px dashed", borderColor: imagePreview ? "#00ff00" : "#333",
+                      borderRadius:1, p:2, textAlign:"center",
+                      bgcolor: imagePreview ? "rgba(0,255,0,0.03)" : "transparent",
+                      cursor:"pointer",
+                    }}
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    {imagePreview ? (
+                      <Box>
+                        <Box component="img" src={imagePreview} alt="preview"
+                          sx={{ height:100, objectFit:"contain", mb:1 }} />
+                        <Typography sx={{ color:"#00ff00", fontSize:"0.75rem", fontFamily:"monospace" }}>
+                          {imageFile?.name} — click to change
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Typography sx={{ color:"#666", fontFamily:"monospace", fontSize:"0.8rem" }}>
+                        📷 CLICK TO UPLOAD PRODUCT IMAGE (JPG/PNG/WEBP)
+                      </Typography>
+                    )}
+                  </Box>
+                  <input
+                    ref={fileRef} type="file" accept="image/*" style={{ display:"none" }}
+                    onChange={e => {
+                      const f = e.target.files[0];
+                      if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); }
+                    }}
+                  />
+                </Grid>
+
+                {[
+                  { label:"Product Name", key:"name", required:true },
+                  { label:"Brand", key:"brand", required:true },
+                  { label:"Price (₹)", key:"price", type:"number", required:true },
+                  { label:"Stock Qty", key:"stock", type:"number", required:true },
+                ].map(field => (
+                  <Grid item xs={12} sm={6} key={field.key}>
+                    <TextField
+                      fullWidth size="small" label={field.label} required={field.required}
+                      type={field.type || "text"} value={form[field.key]}
+                      onChange={e => setForm(p => ({ ...p, [field.key]: e.target.value }))}
+                      InputProps={{ style:{ color:"#ccc", fontFamily:"monospace", fontSize:"0.85rem" } }}
+                      InputLabelProps={{ style:{ color:"#666", fontFamily:"monospace", fontSize:"0.8rem" } }}
+                      sx={{ "& .MuiOutlinedInput-notchedOutline":{ borderColor:"#333" }, "& .Mui-focused .MuiOutlinedInput-notchedOutline":{ borderColor:"#00ff00" } }}
+                    />
+                  </Grid>
+                ))}
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    select fullWidth size="small" label="Category" required value={form.category}
+                    onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+                    InputProps={{ style:{ color:"#ccc", fontFamily:"monospace", fontSize:"0.85rem" } }}
+                    InputLabelProps={{ style:{ color:"#666", fontFamily:"monospace", fontSize:"0.8rem" } }}
+                    sx={{ "& .MuiOutlinedInput-notchedOutline":{ borderColor:"#333" } }}
+                    SelectProps={{ native: false }}
+                  >
+                    {PRODUCT_CATEGORIES.map(c => (
+                      <MenuItem key={c} value={c} sx={{ fontFamily:"monospace", fontSize:"0.85rem" }}>{c}</MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    select fullWidth size="small" label="Unit" value={form.unit}
+                    onChange={e => setForm(p => ({ ...p, unit: e.target.value }))}
+                    InputProps={{ style:{ color:"#ccc", fontFamily:"monospace", fontSize:"0.85rem" } }}
+                    InputLabelProps={{ style:{ color:"#666", fontFamily:"monospace", fontSize:"0.8rem" } }}
+                    sx={{ "& .MuiOutlinedInput-notchedOutline":{ borderColor:"#333" } }}
+                  >
+                    {["kg","g","ton","L","mL","packet","piece"].map(u => (
+                      <MenuItem key={u} value={u} sx={{ fontFamily:"monospace", fontSize:"0.85rem" }}>{u}</MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth size="small" label="Description" multiline rows={2} value={form.description}
+                    onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                    InputProps={{ style:{ color:"#ccc", fontFamily:"monospace", fontSize:"0.85rem" } }}
+                    InputLabelProps={{ style:{ color:"#666", fontFamily:"monospace", fontSize:"0.8rem" } }}
+                    sx={{ "& .MuiOutlinedInput-notchedOutline":{ borderColor:"#333" } }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Button
+                    type="submit" variant="contained" fullWidth disabled={saving}
+                    sx={{ bgcolor:"#00ff00", color:"#000", fontFamily:"monospace", fontWeight:700, py:1.5, "&:hover":{ bgcolor:"#00cc00" } }}
+                  >
+                    {saving ? "SAVING..." : "EXECUTE: ADD_PRODUCT"}
+                  </Button>
+                </Grid>
+              </Grid>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Products Table */}
+      {loadingProds ? (
+        <Box sx={{ display:"flex", justifyContent:"center", py:4 }}>
+          <CircularProgress sx={{ color:"#00ff00" }} />
+        </Box>
+      ) : (
+        <Card sx={{ bgcolor:"#0a0a0a", border:"1px solid #1a1a1a" }}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  {["IMAGE","NAME","CATEGORY","PRICE","STOCK","BRAND","ACTIONS"].map(h => (
+                    <TableCell key={h} sx={{ color:"#00ff00", fontFamily:"monospace", fontSize:"0.7rem", borderColor:"#222" }}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {products.slice(0,50).map(p => (
+                  <TableRow key={p._id || p.id} hover sx={{ "&:hover":{ bgcolor:"rgba(0,255,0,0.03)" } }}>
+                    <TableCell sx={{ borderColor:"#1a1a1a", py:1 }}>
+                      {(p.images?.[0] || p.image) ? (
+                        <Box component="img"
+                          src={`${p.images?.[0] || p.image}`.startsWith("/uploads") ? `http://${window.location.hostname}:5000${p.images?.[0] || p.image}` : (p.images?.[0] || p.image)}
+                          alt={p.name} sx={{ width:36, height:36, objectFit:"contain", borderRadius:0.5, bgcolor:"#111" }}
+                          onError={e => { e.target.style.display="none"; }}
+                        />
+                      ) : (
+                        <Box sx={{ width:36, height:36, bgcolor:"#111", borderRadius:0.5, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <Typography sx={{ color:"#333", fontSize:"1.2rem" }}>📦</Typography>
+                        </Box>
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ color:"#ccc", fontFamily:"monospace", fontSize:"0.75rem", borderColor:"#1a1a1a", maxWidth:160 }}>
+                      <Typography noWrap sx={{ fontSize:"0.75rem", color:"#ccc", fontFamily:"monospace" }}>{p.name}</Typography>
+                    </TableCell>
+                    <TableCell sx={{ borderColor:"#1a1a1a" }}>
+                      <Chip label={p.category} size="small" sx={{ bgcolor:"rgba(0,255,0,0.1)", color:"#00ff00", fontFamily:"monospace", fontSize:"0.6rem", height:18 }} />
+                    </TableCell>
+                    <TableCell sx={{ color:"#ccc", fontFamily:"monospace", fontSize:"0.75rem", borderColor:"#1a1a1a" }}>₹{p.price}</TableCell>
+                    <TableCell sx={{ color: p.stock <= 0 ? "#ff4444" : p.stock <= 20 ? "#ffaa00" : "#00ff00", fontFamily:"monospace", fontSize:"0.75rem", borderColor:"#1a1a1a" }}>{p.stock}</TableCell>
+                    <TableCell sx={{ color:"#888", fontFamily:"monospace", fontSize:"0.7rem", borderColor:"#1a1a1a" }}>{p.brand || "—"}</TableCell>
+                    <TableCell sx={{ borderColor:"#1a1a1a" }}>
+                      <Tooltip title="Delete product">
+                        <IconButton size="small" onClick={() => handleDeleteProduct(p._id || p.id)}
+                          sx={{ color:"#ff4444", p:0.3 }}>
+                          <DeleteIcon sx={{ fontSize:16 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {products.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} sx={{ textAlign:"center", color:"#666", fontFamily:"monospace", py:4, borderColor:"#1a1a1a" }}>
+                      No products found. Add one above.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Card>
+      )}
+    </Box>
+  );
+};
 
 const AdminDashboard = () => {
   const { logout } = useAuth();
@@ -467,12 +758,13 @@ const AdminDashboard = () => {
     return colors[status] || "default";
   };
 
-  const tabLabels = ["OVERVIEW", "USER_DB", "ORDER_DB", "APPROVALS", "CONFIG"];
+  const tabLabels = ["OVERVIEW", "USER_DB", "ORDER_DB", "APPROVALS", "PRODUCT_DB", "CONFIG"];
   const tabIcons = [
     DashboardIcon,
     PeopleIcon,
     OrderIcon,
     VerifiedIcon,
+    StoreIcon,
     SettingsIcon,
   ];
 
@@ -1929,8 +2221,11 @@ const AdminDashboard = () => {
               </Grid>
             )}
 
-            {/* 4: Settings */}
-            {activeTab === 4 && (
+            {/* 4: Product DB */}
+            {activeTab === 4 && <AdminProductsPanel apiBaseUrl={API_BASE_URL} />}
+
+            {/* 5: Settings */}
+            {activeTab === 5 && (
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
                   <Card sx={{ bgcolor: "#0a0a0a" }}>

@@ -24,7 +24,6 @@ import { useTranslation } from "react-i18next";
 import SoilUpload from "../components/drAgro/SoilUpload";
 import ManualForm from "../components/drAgro/ManualForm";
 import RecommendationCard from "../components/drAgro/RecommendationCard";
-import WeatherCard from "../components/drAgro/WeatherCard";
 import AgricultureIcon from "@mui/icons-material/Agriculture";
 import ScienceIcon from "@mui/icons-material/Science";
 import MedicalServicesIcon from "@mui/icons-material/MedicalServices";
@@ -165,7 +164,34 @@ const DrAgro = () => {
       </Box>
 
       {/* Weather & Farming Advisory Section */}
-      <WeatherCard />
+      
+      
+      {/* Full Weather Detection Button */}
+      <Box display="flex" justifyContent="center" mb={4}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate("/customer/dr-agro/weather")}
+          startIcon={<AgricultureIcon />}
+          sx={{
+            py: 1.5,
+            px: 4,
+            borderRadius: "30px",
+            fontSize: "1.1rem",
+            fontWeight: "bold",
+            background: "linear-gradient(135deg, #43a047 0%, #1b5e20 100%)",
+            boxShadow: "0 8px 16px rgba(27, 94, 32, 0.3)",
+            "&:hover": {
+              background: "linear-gradient(135deg, #4caf50 0%, #2e7d32 100%)",
+              transform: "translateY(-2px)",
+              boxShadow: "0 10px 20px rgba(27, 94, 32, 0.4)",
+            },
+            transition: "all 0.3s ease"
+          }}
+        >
+          {t("drAgro.exploreWeather") || "Go to Full Weather Detection"}
+        </Button>
+      </Box>
 
       {/* Crop Selection Section */}
       <Paper

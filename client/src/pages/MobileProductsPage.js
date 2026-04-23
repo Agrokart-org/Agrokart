@@ -53,7 +53,7 @@ const MobileProductsPage = () => {
   const [sortOpen, setSortOpen] = useState(false);
   const [filters, setFilters] = useState({
     category: searchParams.get("category") || "",
-    searchTerm: searchParams.get("q") || "",
+    searchTerm: searchParams.get("search") || searchParams.get("q") || "",
     priceRange: [0, 5000],
     rating: 0,
     inStock: false,
@@ -65,12 +65,15 @@ const MobileProductsPage = () => {
     severity: "success",
   });
 
-  // Update category filter when search params change (e.g. from Home page click)
+  // Update filters when search params change (e.g. from Home page click)
   useEffect(() => {
     const cat = searchParams.get("category");
-    if (cat !== null) {
-      setFilters((prev) => ({ ...prev, category: cat }));
-    }
+    const search = searchParams.get("search") || searchParams.get("q");
+    setFilters((prev) => ({
+      ...prev,
+      category: cat || "",
+      searchTerm: search || "",
+    }));
   }, [searchParams]);
 
   useEffect(() => {

@@ -83,7 +83,8 @@ const PaymentPage = () => {
 
       // Handle Online Payment (Razorpay)
       // 0. CHECK CONFIGURATION
-      const razorpayKey = process.env.REACT_APP_RAZORPAY_KEY_ID;
+      const razorpayKey = process.env.REACT_APP_RAZORPAY_KEY_ID || "rzp_test_SW7KyLnf7PikYM";
+      
       if (!razorpayKey || razorpayKey === "rzp_test_PLACEHOLDER") {
         console.error("Razorpay key is missing or invalid");
         setSnackbar({

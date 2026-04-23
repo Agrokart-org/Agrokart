@@ -165,6 +165,14 @@ const VendorDashboard = () => {
     }
     fetchAvailableOrders();
     fetchMyOrders();
+
+    // Setup 10-second polling for robustness (Fail-safe against missed socket events)
+    const pollInterval = setInterval(() => {
+      fetchAvailableOrders();
+      fetchMyOrders();
+    }, 10000);
+
+    return () => clearInterval(pollInterval);
   }, [user]); // Add user dependency
 
   // Socket Listener
@@ -215,6 +223,7 @@ const VendorDashboard = () => {
       ]);
 
       fetchAvailableOrders(); // Refresh list
+      fetchMyOrders(); // Refresh My Orders to catch auto-assigned confirmed orders
     };
 
     socket.on("new_order_available", handleNewOrder);

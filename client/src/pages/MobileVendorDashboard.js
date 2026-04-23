@@ -16,6 +16,7 @@ import {
   Fab,
   List,
   ListItem,
+  ListItemButton,
   DialogContent,
   TextField,
   Snackbar,
@@ -36,6 +37,8 @@ import {
   ListItemIcon,
   Divider,
   CircularProgress,
+  LinearProgress,
+  Tooltip,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -61,6 +64,10 @@ import {
   Person,
   Dashboard,
   Inventory,
+  BarChart as StockIcon,
+  AddPhotoAlternate,
+  Remove,
+  AddCircleOutline,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
@@ -71,6 +78,7 @@ import {
   getVendorOrders,
   verifyPickup,
   getVendorInventory,
+  claimVendorOrder,
 } from "../services/api";
 import { getProductImage } from "../data/productImages";
 
@@ -90,6 +98,64 @@ const MobileVendorDashboard = () => {
   console.log("Token in LocalStorage:", localStorage.getItem("authToken"));
   console.log("--- END DEBUG ---");
   const [value, setValue] = useState(0);
+
+  // Orders State (declared early - used in renderDashboard and effects above)
+  const [orderTab, setOrderTab] = useState(0); // 0: Active, 1: History
+  const [myOrders, setMyOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
+  // Fetch Orders
+  const fetchMyOrders = async () => {
+    try {
+      setLoadingOrders(true);
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        console.log("Fetching vendor orders...");
+        const data = await getVendorOrders({}, token);
+        console.log("Vendor orders response:", data);
+
+        if (data.orders) {
+          console.log(`Fetched ${data.orders.length} orders`);
+          data.orders.forEach((o) =>
+            console.log(`Order ${o._id}: ${o.orderStatus}`),
+          );
+        } else {
+          console.warn("No orders array in response:", data);
+        }
+
+        setMyOrders(data.orders || []);
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      setNotification({
+        open: true,
+        message: "Failed to fetch orders",
+        severity: "error",
+      });
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const handleClaimOrder = async (orderId) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      await claimVendorOrder(orderId, token);
+      setNotification({
+        open: true,
+        message: "Order Claimed Successfully!",
+        severity: "success",
+      });
+      fetchMyOrders();
+      setOrderTab(0);
+    } catch (error) {
+      setNotification({
+        open: true,
+        message: error.message || "Failed to claim order",
+        severity: "error",
+      });
+    }
+  };
 
   const [mode, setMode] = useState(localStorage.getItem("theme") || "light");
   const isDark = mode === "dark";
@@ -175,9 +241,17 @@ const MobileVendorDashboard = () => {
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const [notificationsList, setNotificationsList] = useState([]); // Real notifications
 
-  // Fetch Orders on mount to populate Dashboard
+  // Setup Polling as fallback
   useEffect(() => {
+    // Initial fetch
     fetchMyOrders();
+
+    // Setup 10-second polling for robustness
+    const pollInterval = setInterval(() => {
+        fetchMyOrders();
+    }, 10000);
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   // Socket Effect
@@ -191,6 +265,7 @@ const MobileVendorDashboard = () => {
     socket.on("new_order_available", (data) => {
       console.log("📱 Mobile: New order!", data);
       setOrderAlert(data);
+      fetchMyOrders();
       // Add to notifications list
       setNotificationsList((prev) => [
         {
@@ -267,62 +342,64 @@ const MobileVendorDashboard = () => {
           </Typography>
         </Box>
       </Box>
-      <List>
-        <ListItem
-          button
-          onClick={() => {
-            setValue(0);
-            setMobileOpen(false);
-          }}
+      <List sx={{ pt: 0 }}>
+        <ListItemButton
+          onClick={() => { setValue(0); setMobileOpen(false); }}
+          selected={value === 0}
+          sx={{ borderRadius: 2, mx: 1, mb: 0.5 }}
         >
           <ListItemIcon>
             <DashboardIcon color={value === 0 ? "primary" : "inherit"} />
           </ListItemIcon>
           <ListItemText primary="Dashboard" />
-        </ListItem>
-        <ListItem
-          button
-          onClick={() => {
-            setValue(1);
-            setMobileOpen(false);
-          }}
+        </ListItemButton>
+        <ListItemButton
+          onClick={() => { setValue(1); setMobileOpen(false); }}
+          selected={value === 1}
+          sx={{ borderRadius: 2, mx: 1, mb: 0.5 }}
         >
           <ListItemIcon>
             <ProductsIcon color={value === 1 ? "primary" : "inherit"} />
           </ListItemIcon>
           <ListItemText primary="Products" />
-        </ListItem>
-        <ListItem
-          button
-          onClick={() => {
-            setValue(2);
-            setMobileOpen(false);
-          }}
+        </ListItemButton>
+        <ListItemButton
+          onClick={() => { setValue(4); setMobileOpen(false); }}
+          selected={value === 4}
+          sx={{ borderRadius: 2, mx: 1, mb: 0.5 }}
+        >
+          <ListItemIcon>
+            <StockIcon color={value === 4 ? "primary" : "inherit"} />
+          </ListItemIcon>
+          <ListItemText primary="Daily Stock" />
+        </ListItemButton>
+        <ListItemButton
+          onClick={() => { setValue(2); setMobileOpen(false); }}
+          selected={value === 2}
+          sx={{ borderRadius: 2, mx: 1, mb: 0.5 }}
         >
           <ListItemIcon>
             <OrdersIcon color={value === 2 ? "primary" : "inherit"} />
           </ListItemIcon>
           <ListItemText primary="Orders" />
-        </ListItem>
-        <ListItem
-          button
-          onClick={() => {
-            setValue(3);
-            setMobileOpen(false);
-          }}
+        </ListItemButton>
+        <ListItemButton
+          onClick={() => { setValue(3); setMobileOpen(false); }}
+          selected={value === 3}
+          sx={{ borderRadius: 2, mx: 1, mb: 0.5 }}
         >
           <ListItemIcon>
             <ProfileIcon color={value === 3 ? "primary" : "inherit"} />
           </ListItemIcon>
           <ListItemText primary="Profile" />
-        </ListItem>
+        </ListItemButton>
         <Divider sx={{ my: 1 }} />
-        <ListItem button onClick={logout}>
+        <ListItemButton onClick={logout} sx={{ borderRadius: 2, mx: 1 }}>
           <ListItemIcon>
             <ExitToApp color="error" />
           </ListItemIcon>
           <ListItemText primary="Logout" sx={{ color: "error.main" }} />
-        </ListItem>
+        </ListItemButton>
       </List>
     </Box>
   );
@@ -607,12 +684,27 @@ const MobileVendorDashboard = () => {
   const [inventoryItems, setInventoryItems] = useState([]);
   const [loadingInventory, setLoadingInventory] = useState(false);
 
+  // ── Daily Stock State ──
+  const [dailyStockEdits, setDailyStockEdits] = useState({}); // { inventoryId: qty }
+  const [savingStock, setSavingStock] = useState(false);
+  const [todayDelivered, setTodayDelivered] = useState({}); // { productName: qty }
+
   const fetchInventory = async () => {
     setLoadingInventory(true);
     try {
       const token = localStorage.getItem("authToken");
       const data = await getVendorInventory({}, token);
-      setInventoryItems(data.inventory || data || []);
+      const items = data.inventory || data || [];
+      setInventoryItems(items);
+      // Seed daily stock edits from current stock
+      const edits = {};
+      const todayDate = new Date().toDateString();
+      items.forEach((item) => {
+        const isToday = item.dailyStockDate === todayDate;
+        const currentStock = item.availableStock ?? item.stock ?? 0;
+        edits[item._id] = isToday ? (item.dailyAllocatedStock ?? currentStock) : currentStock;
+      });
+      setDailyStockEdits(edits);
     } catch (err) {
       console.error("Fetch inventory error:", err);
     } finally {
@@ -620,9 +712,64 @@ const MobileVendorDashboard = () => {
     }
   };
 
+  // Calculate how many units of each product were delivered today (from orders)
+  const calcTodayDelivered = (orders) => {
+    const today = new Date().toDateString();
+    const result = {};
+    orders.forEach((order) => {
+      if (
+        order.orderStatus === "delivered" &&
+        new Date(order.updatedAt || order.createdAt).toDateString() === today
+      ) {
+        (order.items || []).forEach((item) => {
+          const name = item.product?.name || item.productName || "";
+          if (name) result[name] = (result[name] || 0) + (item.quantity || 0);
+        });
+      }
+    });
+    setTodayDelivered(result);
+  };
+
+  const handleDailyStockChange = (itemId, delta) => {
+    setDailyStockEdits((prev) => ({
+      ...prev,
+      [itemId]: Math.max(0, (prev[itemId] || 0) + delta),
+    }));
+  };
+
+  const saveDailyStock = async () => {
+    setSavingStock(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const API_BASE = process.env.REACT_APP_API_URL
+        ? `${process.env.REACT_APP_API_URL}/api`
+        : `http://${window.location.hostname}:5000/api`;
+      const todayDate = new Date().toDateString();
+      await Promise.all(
+        Object.entries(dailyStockEdits).map(([id, qty]) =>
+          fetch(`${API_BASE}/vendor/inventory/${id}/daily-stock`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", "x-auth-token": token },
+            body: JSON.stringify({ dailyAllocatedStock: qty, dailyStockDate: todayDate }),
+          })
+        )
+      );
+      setNotification({ open: true, message: "Daily stock saved!", severity: "success" });
+      fetchInventory();
+    } catch (err) {
+      setNotification({ open: true, message: "Failed to save stock", severity: "error" });
+    } finally {
+      setSavingStock(false);
+    }
+  };
+
   useEffect(() => {
-    if (value === 1) fetchInventory();
+    if (value === 1 || value === 4) fetchInventory();
   }, [value]);
+
+  useEffect(() => {
+    calcTodayDelivered(myOrders);
+  }, [myOrders]);
 
   const getStockColor = (stock) => {
     if (stock <= 0) return "#D32F2F";
@@ -1168,43 +1315,141 @@ const MobileVendorDashboard = () => {
     );
   };
 
-  // Orders State
-  const [orderTab, setOrderTab] = useState(0); // 0: Active, 1: History
-  const [myOrders, setMyOrders] = useState([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
+  // ── Daily Stock Render ──────────────────────────────────────────────────────
+  const renderDailyStock = () => (
+    <Box sx={{ p: 2, pb: 10 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Box>
+          <Typography variant="h6" fontWeight="800">Daily Stock</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Set how many units you have ready today
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          size="small"
+          onClick={saveDailyStock}
+          disabled={savingStock}
+          sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700, px: 2 }}
+        >
+          {savingStock ? "Saving..." : "Save All"}
+        </Button>
+      </Box>
 
-  // Fetch Orders
-  const fetchMyOrders = async () => {
-    try {
-      setLoadingOrders(true);
-      const token = localStorage.getItem("authToken");
-      if (token) {
-        console.log("Fetching vendor orders...");
-        const data = await getVendorOrders({}, token);
-        console.log("Vendor orders response:", data);
+      {loadingInventory ? (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
+          <CircularProgress size={36} />
+        </Box>
+      ) : inventoryItems.length === 0 ? (
+        <Box sx={{ textAlign: "center", mt: 6, opacity: 0.6 }}>
+          <Typography sx={{ fontSize: 48 }}>📦</Typography>
+          <Typography variant="h6" color="text.secondary">No products in inventory</Typography>
+        </Box>
+      ) : (
+        inventoryItems.map((item, idx) => {
+          const productName = item.product?.name || "Unknown Product";
+          const cat = item.product?.category || "other";
+          const currentStock = item.availableStock ?? item.stock ?? 0;
+          const dailyAlloc = dailyStockEdits[item._id] ?? currentStock;
+          const deliveredToday = todayDelivered[productName] || 0;
+          const remaining = Math.max(0, dailyAlloc - deliveredToday);
+          const pct = dailyAlloc > 0 ? Math.min(100, (remaining / dailyAlloc) * 100) : 0;
+          const stockColor = remaining <= 0 ? "#D32F2F" : remaining <= 10 ? "#F57C00" : "#388E3C";
 
-        if (data.orders) {
-          console.log(`Fetched ${data.orders.length} orders`);
-          data.orders.forEach((o) =>
-            console.log(`Order ${o._id}: ${o.orderStatus}`),
+          return (
+            <Card key={item._id || idx} sx={{ mb: 2, borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+              <CardContent sx={{ p: 2 }}>
+                {/* Product name + category */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+                  <Box
+                    component="img"
+                    src={getProductImage(productName, cat, item.product?.image || item.product?.images?.[0])}
+                    alt={productName}
+                    onError={(e) => { e.target.style.display = "none"; }}
+                    sx={{ width: 44, height: 44, objectFit: "contain", borderRadius: 1.5, border: "1px solid #eee" }}
+                  />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle2" fontWeight="700" noWrap>{productName}</Typography>
+                    <Chip label={cat} size="small" sx={{ height: 18, fontSize: "0.6rem", mt: 0.3 }} />
+                  </Box>
+                </Box>
+
+                {/* Progress bar */}
+                <Box sx={{ mb: 1.5 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                      Remaining Today
+                    </Typography>
+                    <Typography variant="caption" fontWeight="800" sx={{ color: stockColor }}>
+                      {remaining} / {dailyAlloc} units
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={pct}
+                    sx={{
+                      height: 8,
+                      borderRadius: 4,
+                      bgcolor: "grey.100",
+                      "& .MuiLinearProgress-bar": {
+                        background: remaining <= 0
+                          ? "#D32F2F"
+                          : remaining <= 10
+                          ? "linear-gradient(90deg, #F57C00, #FFA726)"
+                          : "linear-gradient(90deg, #388E3C, #66BB6A)",
+                        borderRadius: 4,
+                      },
+                    }}
+                  />
+                </Box>
+
+                {/* Delivered today info */}
+                {deliveredToday > 0 && (
+                  <Box sx={{ bgcolor: "#E8F5E9", borderRadius: 1.5, px: 1.5, py: 0.8, mb: 1.5 }}>
+                    <Typography variant="caption" sx={{ color: "#2E7D32", fontWeight: 700 }}>
+                      ✅ {deliveredToday} units delivered today
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Daily allocation controls */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <Typography variant="body2" fontWeight={600} color="text.secondary">
+                    Today's Allocation:
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDailyStockChange(item._id, -5)}
+                      sx={{ bgcolor: "#FFEBEE", color: "#D32F2F", width: 32, height: 32 }}
+                    >
+                      <Remove fontSize="small" />
+                    </IconButton>
+                    <Typography variant="h6" fontWeight="900" sx={{ minWidth: 40, textAlign: "center" }}>
+                      {dailyAlloc}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDailyStockChange(item._id, 5)}
+                      sx={{ bgcolor: "#E8F5E9", color: "#2E7D32", width: 32, height: 32 }}
+                    >
+                      <AddCircleOutline fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+
+                {/* Total stock reference */}
+                <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: "block" }}>
+                  Total inventory stock: {currentStock} units
+                </Typography>
+              </CardContent>
+            </Card>
           );
-        } else {
-          console.warn("No orders array in response:", data);
-        }
+        })
+      )}
+    </Box>
+  );
 
-        setMyOrders(data.orders || []);
-      }
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      setNotification({
-        open: true,
-        message: "Failed to fetch orders",
-        severity: "error",
-      });
-    } finally {
-      setLoadingOrders(false);
-    }
-  };
 
   useEffect(() => {
     if (value === 2) {
@@ -1481,22 +1726,11 @@ const MobileVendorDashboard = () => {
                     <Box sx={{ display: "flex", gap: 1 }}>
                       {!["picked_up", "out_for_delivery", "delivered"].includes(
                         order.orderStatus,
-                      ) &&
-                        order.deliveryPartner && (
-                          <Button
-                            fullWidth
-                            variant="contained"
-                            size="small"
-                            onClick={() => handleOpenVerifyDialog(order)}
-                            sx={{
-                              mb: 1,
-                              background:
-                                "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
-                              color: "white",
-                            }}
-                          >
-                            Verify Pickup
-                          </Button>
+                      ) && (
+                          <Box sx={{ flex: 1, p: 1, bgcolor: '#f0f8ff', borderRadius: 2, border: '1px dashed #2196F3', textAlign: 'center', mb: 1 }}>
+                            <Typography variant="caption" color="text.secondary">Pickup PIN for Delivery Partner</Typography>
+                            <Typography variant="h6" color="primary" sx={{ letterSpacing: 3, fontWeight: 'bold' }}>{order.pickupPin || "N/A"}</Typography>
+                          </Box>
                         )}
                     </Box>
                     <Button fullWidth variant="outlined" size="small">
@@ -1658,6 +1892,7 @@ const MobileVendorDashboard = () => {
         {value === 1 && renderProducts()}
         {value === 2 && renderOrders()}
         {value === 3 && renderProfile()}
+        {value === 4 && renderDailyStock()}
       </Box>
 
       {/* New Order Alert Modal (Now just Informational) */}
@@ -1904,7 +2139,7 @@ const MobileVendorDashboard = () => {
       >
         <BottomNavigation
           showLabels
-          value={value}
+          value={value > 3 ? false : value}
           onChange={(event, newValue) => setValue(newValue)}
           sx={{
             height: 70,

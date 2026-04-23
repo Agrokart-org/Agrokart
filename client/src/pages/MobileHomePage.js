@@ -129,50 +129,55 @@ const MobileHomePage = () => {
 
       setProducts(processedProducts);
 
-      // 2. Set categories matching real DB categories
+      // 2. Set categories — only the 7 real product folders (no Organic)
+      const VALID_CATEGORIES = [
+        "Bio-Fertilizers",
+        "Micronutrients",
+        "NPK Fertilizers",
+        "Pesticides",
+        "Seeds",
+        "Tools",
+        "Urea",
+      ];
+
       const catMap = {
-        urea: "💧",
-        dap: "💎",
-        npk: "⚗️",
-        organic: "🌿",
-        other: "📦",
         "Bio-Fertilizers": "🦠",
         Micronutrients: "🔬",
         "NPK Fertilizers": "⚗️",
-        Organic: "🌿",
         Pesticides: "🛡️",
         Seeds: "🌱",
         Tools: "🛠️",
         Urea: "💧",
       };
       const catColors = {
-        urea: "#0288D1",
-        dap: "#7B1FA2",
-        npk: "#2E7D32",
-        organic: "#388E3C",
-        other: "#5D4037",
         "Bio-Fertilizers": "#4CAF50",
         Micronutrients: "#9C27B0",
         "NPK Fertilizers": "#2E7D32",
-        Organic: "#388E3C",
         Pesticides: "#E53935",
         Seeds: "#8BC34A",
         Tools: "#607D8B",
         Urea: "#0288D1",
       };
+
+      // Count products per valid category
       const catCounts = {};
       processedProducts.forEach((p) => {
-        catCounts[p.category] = (catCounts[p.category] || 0) + 1;
+        if (VALID_CATEGORIES.includes(p.category)) {
+          catCounts[p.category] = (catCounts[p.category] || 0) + 1;
+        }
       });
-      setCategories(
-        Object.entries(catCounts).map(([rawName, count]) => ({
-          id: rawName, // The exact DB string
-          name: rawName.charAt(0).toUpperCase() + rawName.slice(1), // Formatted for display
-          icon: catMap[rawName] || "📦",
-          count,
-          color: catColors[rawName] || "#5D4037",
-        })),
-      );
+
+      // Always show all 7 categories even if count is 0
+      const categoryList = VALID_CATEGORIES.map((name) => ({
+        id: name,
+        name,
+        icon: catMap[name] || "📦",
+        count: catCounts[name] || 0,
+        color: catColors[name] || "#5D4037",
+      }));
+
+      setCategories(categoryList);
+
 
       // 3. Set Banners (using imported assets)
       setBanners([

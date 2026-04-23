@@ -399,7 +399,8 @@ export const getUserOrders = async (token) => {
       throw new Error("Failed to fetch orders");
     }
 
-    return response.json();
+    const result = await response.json();
+    return result.data || result.orders || result || [];
   } catch (error) {
     // Mock orders data for demo purposes
     console.log("Using mock orders data");
@@ -622,44 +623,66 @@ export const getAllCategories = async () => {
     console.log("Backend not available, using mock categories:", error.message);
   }
 
-  // Return mock categories
+  // Return mock categories (8 real product folders)
   return [
     {
-      id: "urea",
-      name: "Urea",
-      icon: "🌱",
-      description: "Nitrogen-rich fertilizers",
-      count: 15,
+      id: "Bio-Fertilizers",
+      name: "Bio-Fertilizers",
+      icon: "🦠",
+      description: "Beneficial microorganism-based fertilizers",
+      count: 5,
     },
     {
-      id: "dap",
-      name: "DAP",
-      icon: "🌾",
-      description: "Phosphorus fertilizers",
-      count: 12,
+      id: "Micronutrients",
+      name: "Micronutrients",
+      icon: "🔬",
+      description: "Essential trace element supplements",
+      count: 5,
     },
     {
-      id: "npk",
-      name: "NPK",
-      icon: "🌿",
-      description: "Balanced nutrition",
-      count: 18,
+      id: "NPK Fertilizers",
+      name: "NPK Fertilizers",
+      icon: "⚗️",
+      description: "Balanced Nitrogen-Phosphorus-Potassium",
+      count: 5,
     },
     {
-      id: "organic",
+      id: "Organic",
       name: "Organic",
       icon: "🍃",
-      description: "Natural fertilizers",
-      count: 10,
+      description: "Natural and organic fertilizers",
+      count: 5,
     },
     {
-      id: "other",
-      name: "Other",
-      icon: "🔧",
-      description: "Specialized products",
-      count: 8,
+      id: "Pesticides",
+      name: "Pesticides",
+      icon: "🛡️",
+      description: "Crop protection solutions",
+      count: 5,
+    },
+    {
+      id: "Seeds",
+      name: "Seeds",
+      icon: "🌱",
+      description: "Hybrid and certified crop seeds",
+      count: 7,
+    },
+    {
+      id: "Tools",
+      name: "Tools",
+      icon: "🛠️",
+      description: "Farm tools and equipment",
+      count: 5,
+    },
+    {
+      id: "Urea",
+      name: "Urea",
+      icon: "💧",
+      description: "Nitrogen-rich urea fertilizers",
+      count: 5,
     },
   ];
+
 };
 
 // Get products by category
@@ -907,7 +930,6 @@ export const getVendorOrders = async (params, token) => {
     throw new Error(errorData.message || "Failed to fetch vendor orders");
   }
 
-  return response.json();
   return response.json();
 };
 
