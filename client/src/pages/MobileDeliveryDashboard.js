@@ -1080,21 +1080,10 @@ const MobileDeliveryDashboard = () => {
                       Call Customer
                     </Button>
                     {currentAssignment.status === "accepted" && (
-                      <Button
-                        variant="contained"
-                        color="warning"
-                        fullWidth
-                        disabled
-                        sx={{
-                          borderRadius: 2,
-                          bgcolor: isDark
-                            ? "rgba(255, 179, 0, 0.2)"
-                            : "rgba(255, 152, 0, 0.1)",
-                          color: isDark ? "#FFB300" : "#E65100",
-                        }}
-                      >
-                        Wait for Vendor Scan
-                      </Button>
+                      <Box sx={{ flex: 1, p: 1, bgcolor: isDark ? 'rgba(255, 152, 0, 0.1)' : '#fff3e0', borderRadius: 2, border: '1px dashed #ff9800', textAlign: 'center' }}>
+                        <Typography variant="caption" color="warning.main">Show this PIN to Vendor:</Typography>
+                        <Typography variant="h5" color="warning.main" sx={{ letterSpacing: 3, fontWeight: 'bold' }}>{currentAssignment.vendorPickupPin || "WAITING"}</Typography>
+                      </Box>
                     )}
                     {currentAssignment.status === "picked_up" && (
                       <Button

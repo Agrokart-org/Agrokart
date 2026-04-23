@@ -129,7 +129,7 @@ const MobileVendorDashboard = () => {
       console.error("Error fetching orders:", error);
       setNotification({
         open: true,
-        message: "Failed to fetch orders",
+        message: error.message || "Failed to fetch orders",
         severity: "error",
       });
     } finally {
@@ -1723,14 +1723,19 @@ const MobileVendorDashboard = () => {
                       ))}
                     </Box>
 
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      {!["picked_up", "out_for_delivery", "delivered"].includes(
+                    <Box sx={{ display: "flex", gap: 1, mt: 1, mb: 1 }}>
+                      {!["picked_up", "out_for_delivery", "delivered", "pending", "finding_vendor", "cancelled", "rejected"].includes(
                         order.orderStatus,
                       ) && (
-                          <Box sx={{ flex: 1, p: 1, bgcolor: '#f0f8ff', borderRadius: 2, border: '1px dashed #2196F3', textAlign: 'center', mb: 1 }}>
-                            <Typography variant="caption" color="text.secondary">Pickup PIN for Delivery Partner</Typography>
-                            <Typography variant="h6" color="primary" sx={{ letterSpacing: 3, fontWeight: 'bold' }}>{order.pickupPin || "N/A"}</Typography>
-                          </Box>
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            color="primary"
+                            onClick={() => handleOpenVerifyDialog(order)}
+                            sx={{ borderRadius: 2, py: 1 }}
+                          >
+                            Verify Pickup
+                          </Button>
                         )}
                     </Box>
                     <Button fullWidth variant="outlined" size="small">
@@ -1852,6 +1857,19 @@ const MobileVendorDashboard = () => {
 
   return (
     <Box sx={{ pb: 7, bgcolor: "background.default", minHeight: "100vh" }}>
+      {/* Sidebar Drawer */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          "& .MuiDrawer-paper": { boxSizing: "border-box", width: 280 },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+
       {/* Top Bar Navigation */}
       <AppBar
         position="sticky"
@@ -1860,15 +1878,9 @@ const MobileVendorDashboard = () => {
       >
         <Toolbar sx={{ justifyContent: "space-between", px: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Avatar
-              sx={{
-                bgcolor: theme.palette.primary.main,
-                width: 32,
-                height: 32,
-              }}
-            >
-              <Home sx={{ fontSize: 20 }} />
-            </Avatar>
+            <IconButton onClick={handleDrawerToggle} edge="start" sx={{ mr: 0.5 }}>
+              <MenuIcon />
+            </IconButton>
             <Typography variant="h6" fontWeight="bold" color="text.primary">
               Agrokart
             </Typography>
@@ -1877,11 +1889,54 @@ const MobileVendorDashboard = () => {
             <IconButton onClick={toggleTheme} sx={{ color: "text.secondary" }}>
               {mode === "dark" ? <LightMode /> : <DarkMode />}
             </IconButton>
-            <IconButton sx={{ color: "text.secondary", ml: 1 }}>
-              <Badge badgeContent={3} color="error">
+            <IconButton onClick={handleNotifClick} sx={{ color: "text.secondary", ml: 1 }}>
+              <Badge badgeContent={notificationsList.filter((n) => !n.read).length} color="error">
                 <Notifications />
               </Badge>
             </IconButton>
+            {/* Notification Menu */}
+            <Menu
+              anchorEl={notifAnchorEl}
+              open={Boolean(notifAnchorEl)}
+              onClose={handleNotifClose}
+              transformOrigin={{ horizontal: "right", vertical: "top" }}
+              anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+              PaperProps={{
+                elevation: 0,
+                sx: {
+                  overflow: "visible",
+                  filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                  mt: 1.5,
+                  maxHeight: 300,
+                  width: 300,
+                },
+              }}
+            >
+              {notificationsList.length === 0 ? (
+                <MenuItem disabled>
+                  <Typography variant="body2">No new notifications</Typography>
+                </MenuItem>
+              ) : (
+                notificationsList.map((notif) => (
+                  <MenuItem key={notif.id} onClick={() => {
+                    // Mark as read
+                    setNotificationsList((prev) =>
+                      prev.map((n) => n.id === notif.id ? { ...n, read: true } : n)
+                    );
+                    handleNotifClose();
+                  }}>
+                    <Box>
+                      <Typography variant="body2" fontWeight={notif.read ? "normal" : "bold"}>
+                        {notif.message}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {notif.time.toLocaleTimeString()}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))
+              )}
+            </Menu>
           </Box>
         </Toolbar>
       </AppBar>

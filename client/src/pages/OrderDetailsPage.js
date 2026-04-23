@@ -225,7 +225,8 @@ const OrderDetailsPage = () => {
     }
   };
 
-  const getTrackingSteps = (orderStatus) => {
+  const getTrackingSteps = (status) => {
+    const actualStatus = status || "pending";
     const baseSteps = [
       { label: "Placed", icon: <OrderIcon />, date: order?.createdAt },
       { label: "Confirmed", icon: <CheckCircle /> },
@@ -234,9 +235,9 @@ const OrderDetailsPage = () => {
     ];
 
     let activeIndex = 0;
-    if (orderStatus === "confirmed") activeIndex = 1;
-    if (orderStatus === "shipped") activeIndex = 2;
-    if (orderStatus === "delivered") activeIndex = 4; // All done
+    if (actualStatus === "confirmed" || actualStatus === "processing") activeIndex = 1;
+    if (actualStatus === "shipped" || actualStatus === "out_for_delivery") activeIndex = 2;
+    if (actualStatus === "delivered") activeIndex = 4; // All done
 
     return baseSteps.map((step, index) => ({
       ...step,
@@ -433,16 +434,16 @@ const OrderDetailsPage = () => {
           </Typography>
           <Stepper
             alternativeLabel
-            activeStep={
-              order.status === "delivered"
-                ? 4
-                : order.status === "shipped"
-                  ? 2
-                  : 1
-            }
+            activeStep={(() => {
+              const s = order.orderStatus || order.status || "pending";
+              if (s === "delivered") return 4;
+              if (s === "shipped" || s === "out_for_delivery") return 2;
+              if (s === "confirmed" || s === "processing") return 1;
+              return 0;
+            })()}
             connector={<ColorlibConnector />}
           >
-            {getTrackingSteps(order.status).map((step) => (
+            {getTrackingSteps(order.orderStatus || order.status).map((step) => (
               <Step key={step.label}>
                 <StepLabel
                   StepIconComponent={() => (

@@ -130,15 +130,18 @@ const MandiRatesPage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
   const [crops, setCrops] = useState([]);
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [districtsLoading, setDistrictsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [totalRecords, setTotalRecords] = useState(0);
   const [page, setPage] = useState(1);
   const [expandedCard, setExpandedCard] = useState(null);
   const LIMIT = 20;
   const [selectedState, setSelectedState] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedCrop, setSelectedCrop] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState(null);
@@ -201,7 +204,38 @@ const MandiRatesPage = () => {
     };
     fetchMeta();
     detectLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detectLocation]);
+
+  // Fetch districts when state changes
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      if (!selectedState) {
+        setDistricts([]);
+        setSelectedDistrict("");
+        return;
+      }
+      setDistrictsLoading(true);
+      setSelectedDistrict("");
+      try {
+        const res = await safeFetch(
+          `${API_BASE_URL}/mandi/districts?state=${encodeURIComponent(selectedState)}`,
+        );
+        const data =
+          typeof res.json === "function" ? await res.json() : res.data || res;
+        if (data.success) {
+          setDistricts(data.data || []);
+        } else {
+          setDistricts([]);
+        }
+      } catch {
+        setDistricts([]);
+      } finally {
+        setDistrictsLoading(false);
+      }
+    };
+    fetchDistricts();
+  }, [selectedState]);
 
   const fetchPrices = useCallback(
     async (pageNum = 1) => {
@@ -217,6 +251,7 @@ const MandiRatesPage = () => {
           offset: (pageNum - 1) * LIMIT,
         });
         if (selectedState) params.set("state", selectedState);
+        if (selectedDistrict) params.set("district", selectedDistrict);
         if (selectedCrop) params.set("commodity", selectedCrop);
         if (userLocation?.district)
           params.set("userDistrict", userLocation.district);
@@ -235,7 +270,7 @@ const MandiRatesPage = () => {
         setLoading(false);
       }
     },
-    [selectedState, selectedCrop, userLocation],
+    [selectedState, selectedDistrict, selectedCrop, userLocation],
   );
 
   const handleSearch = () => {
@@ -407,7 +442,7 @@ const MandiRatesPage = () => {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr auto",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr auto",
             gap: 2,
             alignItems: "end",
             mb: 2,
@@ -426,6 +461,31 @@ const MandiRatesPage = () => {
             {states.map((s) => (
               <MenuItem key={s} value={s}>
                 {s}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Select District"
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            size="small"
+            fullWidth
+            disabled={!selectedState || districtsLoading}
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+            helperText={
+              districtsLoading
+                ? "Loading districts..."
+                : !selectedState
+                  ? "Select a state first"
+                  : ""
+            }
+            FormHelperTextProps={{ sx: { fontSize: "0.65rem", mt: 0.5 } }}
+          >
+            <MenuItem value="">All Districts</MenuItem>
+            {districts.map((d) => (
+              <MenuItem key={d} value={d}>
+                {d}
               </MenuItem>
             ))}
           </TextField>

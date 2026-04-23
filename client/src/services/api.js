@@ -926,8 +926,15 @@ export const getVendorOrders = async (params, token) => {
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "Failed to fetch vendor orders");
+    let errorMessage = "Failed to fetch vendor orders";
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.message || errorMessage;
+    } catch (e) {
+      const errorText = await response.text();
+      console.error("Non-JSON error from vendor/orders:", errorText);
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();

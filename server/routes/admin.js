@@ -181,6 +181,12 @@ router.delete("/collections/:name/:id", adminAuth, async (req, res) => {
       _id: new mongoose.Types.ObjectId(id),
     });
 
+    // Cascade delete related records if deleting an order
+    if (name === "orders" || name === "Order") {
+      const DeliveryAssignment = require("../models/DeliveryAssignment");
+      await DeliveryAssignment.deleteMany({ order: id });
+    }
+
     res.json({
       success: true,
       deletedCount: result.deletedCount,
@@ -466,6 +472,9 @@ router.delete("/orders/:id", adminAuth, async (req, res) => {
     const { id } = req.params;
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ error: "Order not found" });
+
+    // Cascade delete associated delivery assignments
+    await DeliveryAssignment.deleteMany({ order: id });
 
     await Order.findByIdAndDelete(id);
     res.json({ success: true, message: "Order deleted" });

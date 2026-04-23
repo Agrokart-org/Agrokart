@@ -978,6 +978,85 @@ router.post("/orders/:orderId/claim", auth, async (req, res) => {
   }
 });
 
+// Verify Pickup from Delivery Partner
+router.post("/orders/:orderId/verify-pickup", auth, async (req, res) => {
+  try {
+    const { pin } = req.body;
+    const vendor = await User.findById(req.user.id);
+
+    if (!vendor || vendor.role !== "vendor") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // Find the delivery assignment for this order and vendor
+    const assignment = await DeliveryAssignment.findOne({
+      order: req.params.orderId,
+      vendor: vendor._id,
+    });
+
+    if (!assignment) {
+      return res.status(404).json({ message: "Delivery assignment not found" });
+    }
+
+    if (!assignment.vendorPickupPin || assignment.vendorPickupPin !== pin) {
+      return res.status(400).json({ message: "Invalid pickup PIN" });
+    }
+
+    // Update assignment status
+    assignment.status = "picked_up";
+    assignment.actualPickupTime = new Date();
+    await assignment.save();
+
+    // Update order status
+    const order = await Order.findById(req.params.orderId);
+    if (order) {
+      order.orderStatus = "out_for_delivery";
+      await order.save();
+      
+      // Reduce inventory stock for the vendor
+      for (const item of order.items) {
+        if (item.vendor && item.vendor.toString() === vendor._id.toString()) {
+          const inventoryItem = await VendorInventory.findOne({
+            vendor: vendor._id,
+            product: item.product
+          });
+          if (inventoryItem) {
+            inventoryItem.confirmStockUsage(item.quantity);
+            await inventoryItem.save();
+          }
+        }
+      }
+
+      // Notify customer
+      const io = getIo();
+      io.to(`order_${order._id}`).emit("order_status_updated", {
+        status: "out_for_delivery",
+        orderId: order._id,
+      });
+
+      await Notification.createNotification({
+        recipient: order.user,
+        recipientType: "customer",
+        type: "order_out_for_delivery",
+        title: "Order Picked Up",
+        message: `Your order has been picked up by the delivery partner and is out for delivery!`,
+        data: {
+          orderId: order._id,
+        },
+      });
+    }
+
+    res.json({
+      message: "Pickup verified successfully",
+      assignment,
+      order,
+    });
+  } catch (error) {
+    console.error("Verify pickup error:", error);
+    res.status(500).json({ message: "Server error", details: error.message });
+  }
+});
+
 // Get available orders for vendor (Geospatial)
 router.get("/orders/available", auth, async (req, res) => {
   try {
