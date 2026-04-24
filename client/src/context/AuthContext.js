@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
           const response = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }), // Sending just idToken triggers the sync logic
+            body: JSON.stringify({ idToken, expectedRole: currentRole }), // Send role so backend creates user with correct role
           });
 
           if (response.ok) {
@@ -82,11 +82,20 @@ export const AuthProvider = ({ children }) => {
             userData = { ...userData, ...data.user };
             // Ensure ID is consistent (MongoDB ID takes precedence)
             userData.id = data.user.id || data.user._id || currentUser.uid;
+            // Ensure role is synced back to localStorage
+            if (data.user.role) {
+              localStorage.setItem("userRole", data.user.role);
+              setUserRole(data.user.role);
+            }
           } else {
             console.warn("Backend sync failed:", response.status);
+            // Keep the localStorage role when backend is unavailable
+            userData.role = currentRole;
           }
         } catch (err) {
           console.error("Failed to sync with backend:", err);
+          // Keep the localStorage role when backend is unavailable
+          userData.role = currentRole;
         }
 
         setUser(userData);

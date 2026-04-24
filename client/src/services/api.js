@@ -97,7 +97,7 @@ setTimeout(() => console.log(`API URL: ${API_BASE_URL}`), 2000);
 // Helper function to check if backend is available
 const isBackendAvailable = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await safeFetch(`${API_BASE_URL}/health`, {
       method: "GET",
       timeout: 3000,
     });
@@ -109,7 +109,7 @@ const isBackendAvailable = async () => {
 
 export const login = async (credentials) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await safeFetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -157,7 +157,7 @@ export const login = async (credentials) => {
 
 export const register = async (userData) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const response = await safeFetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -182,7 +182,7 @@ export const register = async (userData) => {
 
 export const vendorLogin = async (credentials) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/vendor/login`, {
+    const response = await safeFetch(`${API_BASE_URL}/vendor/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -213,7 +213,7 @@ export const vendorLogin = async (credentials) => {
 
 export const deliveryLogin = async (credentials) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/delivery/login`, {
+    const response = await safeFetch(`${API_BASE_URL}/delivery/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -264,7 +264,7 @@ export const getProducts = async (params = {}) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const healthResponse = await fetch(`${API_BASE_URL}/health`, {
+    const healthResponse = await safeFetch(`${API_BASE_URL}/health`, {
       method: "GET",
       signal: controller.signal,
     });
@@ -272,7 +272,7 @@ export const getProducts = async (params = {}) => {
     clearTimeout(timeoutId);
 
     if (healthResponse.ok) {
-      const response = await fetch(url);
+      const response = await safeFetch(url);
       if (response.ok) {
         const data = await response.json();
         console.log(
@@ -337,7 +337,7 @@ export const getProducts = async (params = {}) => {
 
 export const getProduct = async (id) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`);
+    const response = await safeFetch(`${API_BASE_URL}/products/${id}`);
     if (response.ok) {
       return response.json();
     }
@@ -364,7 +364,7 @@ export const getCategories = async () => {
   try {
     const backendAvailable = await isBackendAvailable();
     if (backendAvailable) {
-      const response = await fetch(`${API_BASE_URL}/categories`);
+      const response = await safeFetch(`${API_BASE_URL}/categories`);
       return response.json();
     }
   } catch (error) {
@@ -379,7 +379,7 @@ export const getCategories = async () => {
 };
 
 export const getUserProfile = async (token) => {
-  const response = await fetch(`${API_BASE_URL}/users/profile`, {
+  const response = await safeFetch(`${API_BASE_URL}/users/profile`, {
     headers: {
       "x-auth-token": token,
     },
@@ -389,7 +389,7 @@ export const getUserProfile = async (token) => {
 
 export const getUserOrders = async (token) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders/my-orders`, {
+    const response = await safeFetch(`${API_BASE_URL}/orders/my-orders`, {
       headers: {
         "x-auth-token": token,
       },
@@ -467,7 +467,7 @@ export const getUserOrders = async (token) => {
 
 export const getOrderById = async (orderId, token) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+    const response = await safeFetch(`${API_BASE_URL}/orders/${orderId}`, {
       headers: {
         "x-auth-token": token,
       },
@@ -552,7 +552,7 @@ export const deleteOrder = async (orderId, token) => {
   console.log("API: Deleting order with ID:", orderId);
   console.log("API: Using token:", token ? "Present" : "Missing");
 
-  const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
+  const response = await safeFetch(`${API_BASE_URL}/orders/${orderId}`, {
     method: "DELETE",
     headers: {
       "x-auth-token": token,
@@ -577,7 +577,7 @@ export const deleteOrder = async (orderId, token) => {
 export const cancelOrder = async (orderId, token) => {
   try {
     console.log("API: Canceling order:", orderId);
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
+    const response = await safeFetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -613,7 +613,7 @@ export const cancelOrder = async (orderId, token) => {
 // Get all categories with product counts
 export const getAllCategories = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/products/categories/all`);
+    const response = await safeFetch(`${API_BASE_URL}/products/categories/all`);
     if (response.ok) {
       const data = await response.json();
       console.log("Categories loaded from backend:", data.length);
@@ -700,7 +700,7 @@ export const getProductsByCategory = async (category, params = {}) => {
     const queryString = queryParams.toString();
     const url = `${API_BASE_URL}/products/category/${category}${queryString ? `?${queryString}` : ""}`;
 
-    const response = await fetch(url);
+    const response = await safeFetch(url);
     if (response.ok) {
       const data = await response.json();
       console.log(
@@ -734,7 +734,7 @@ export const getProductsByCategory = async (category, params = {}) => {
 // Get featured products
 export const getFeaturedProducts = async (limit = 10) => {
   try {
-    const response = await fetch(
+    const response = await safeFetch(
       `${API_BASE_URL}/products/featured/all?limit=${limit}`,
     );
     if (response.ok) {
@@ -768,7 +768,7 @@ export const searchProducts = async (query, params = {}) => {
 
     const url = `${API_BASE_URL}/products?${queryParams.toString()}`;
 
-    const response = await fetch(url);
+    const response = await safeFetch(url);
     if (response.ok) {
       const data = await response.json();
       console.log(
@@ -793,7 +793,7 @@ export const searchProducts = async (query, params = {}) => {
 
 // Vendor API functions
 export const vendorRegister = async (data) => {
-  const response = await fetch(`${API_BASE_URL}/vendor/register`, {
+  const response = await safeFetch(`${API_BASE_URL}/vendor/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -810,7 +810,7 @@ export const vendorRegister = async (data) => {
 };
 
 export const vendorUploadDocuments = async (formData, firebaseToken) => {
-  const response = await fetch(`${API_BASE_URL}/vendor/upload-documents`, {
+  const response = await safeFetch(`${API_BASE_URL}/vendor/upload-documents`, {
     method: "POST",
     headers: {
       "firebase-auth-token": firebaseToken,
@@ -827,7 +827,7 @@ export const vendorUploadDocuments = async (formData, firebaseToken) => {
 };
 
 export const verifyPickup = async (orderId, pin, token) => {
-  const response = await fetch(
+  const response = await safeFetch(
     `${API_BASE_URL}/vendor/orders/${orderId}/verify-pickup`,
     {
       method: "POST",
@@ -848,7 +848,7 @@ export const verifyPickup = async (orderId, pin, token) => {
 };
 
 export const getVendorDashboard = async (firebaseToken) => {
-  const response = await fetch(`${API_BASE_URL}/vendor/dashboard`, {
+  const response = await safeFetch(`${API_BASE_URL}/vendor/dashboard`, {
     headers: {
       "firebase-auth-token": firebaseToken,
     },
@@ -864,7 +864,7 @@ export const getVendorDashboard = async (firebaseToken) => {
 
 export const getVendorInventory = async (params, token) => {
   const queryParams = new URLSearchParams(params);
-  const response = await fetch(
+  const response = await safeFetch(
     `${API_BASE_URL}/vendor/inventory?${queryParams}`,
     {
       headers: {
@@ -882,7 +882,7 @@ export const getVendorInventory = async (params, token) => {
 };
 
 export const addToVendorInventory = async (data, token) => {
-  const response = await fetch(`${API_BASE_URL}/vendor/inventory`, {
+  const response = await safeFetch(`${API_BASE_URL}/vendor/inventory`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -900,7 +900,7 @@ export const addToVendorInventory = async (data, token) => {
 };
 
 export const updateVendorInventory = async (id, data, token) => {
-  const response = await fetch(`${API_BASE_URL}/vendor/inventory/${id}`, {
+  const response = await safeFetch(`${API_BASE_URL}/vendor/inventory/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -919,7 +919,7 @@ export const updateVendorInventory = async (id, data, token) => {
 
 export const getVendorOrders = async (params, token) => {
   const queryParams = new URLSearchParams(params);
-  const response = await fetch(`${API_BASE_URL}/vendor/orders?${queryParams}`, {
+  const response = await safeFetch(`${API_BASE_URL}/vendor/orders?${queryParams}`, {
     headers: {
       "x-auth-token": token,
     },
@@ -941,7 +941,7 @@ export const getVendorOrders = async (params, token) => {
 };
 
 export const getVendorAvailableOrders = async (token) => {
-  const response = await fetch(`${API_BASE_URL}/vendor/orders/available`, {
+  const response = await safeFetch(`${API_BASE_URL}/vendor/orders/available`, {
     headers: {
       "x-auth-token": token,
     },
@@ -956,7 +956,7 @@ export const getVendorAvailableOrders = async (token) => {
 };
 
 export const claimVendorOrder = async (orderId, token) => {
-  const response = await fetch(
+  const response = await safeFetch(
     `${API_BASE_URL}/vendor/orders/${orderId}/claim`,
     {
       method: "POST",
@@ -976,7 +976,7 @@ export const claimVendorOrder = async (orderId, token) => {
 };
 
 export const respondToVendorOrder = async (orderId, data, token) => {
-  const response = await fetch(
+  const response = await safeFetch(
     `${API_BASE_URL}/vendor/orders/${orderId}/respond`,
     {
       method: "POST",
@@ -998,7 +998,7 @@ export const respondToVendorOrder = async (orderId, data, token) => {
 
 // Delivery API functions
 export const deliveryRegister = async (data) => {
-  const response = await fetch(`${API_BASE_URL}/delivery/register`, {
+  const response = await safeFetch(`${API_BASE_URL}/delivery/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -1017,7 +1017,7 @@ export const deliveryRegister = async (data) => {
 };
 
 export const deliveryUploadDocuments = async (formData, firebaseToken) => {
-  const response = await fetch(`${API_BASE_URL}/delivery/upload-documents`, {
+  const response = await safeFetch(`${API_BASE_URL}/delivery/upload-documents`, {
     method: "POST",
     headers: {
       "firebase-auth-token": firebaseToken,
@@ -1034,7 +1034,7 @@ export const deliveryUploadDocuments = async (formData, firebaseToken) => {
 };
 
 export const getDeliveryDashboard = async (firebaseToken) => {
-  const response = await fetch(`${API_BASE_URL}/delivery/dashboard`, {
+  const response = await safeFetch(`${API_BASE_URL}/delivery/dashboard`, {
     headers: {
       "firebase-auth-token": firebaseToken,
     },
@@ -1100,7 +1100,7 @@ export const verifyPayment = async (data, token) => {
 };
 
 export const getAvailableAssignments = async (token) => {
-  const response = await fetch(
+  const response = await safeFetch(
     `${API_BASE_URL}/delivery/assignments/available`,
     {
       headers: {
@@ -1120,7 +1120,7 @@ export const getAvailableAssignments = async (token) => {
 };
 
 export const acceptAssignment = async (id, token) => {
-  const response = await fetch(
+  const response = await safeFetch(
     `${API_BASE_URL}/delivery/assignments/${id}/accept`,
     {
       method: "POST",
@@ -1139,7 +1139,7 @@ export const acceptAssignment = async (id, token) => {
 };
 
 export const rejectAssignment = async (id, token) => {
-  const response = await fetch(
+  const response = await safeFetch(
     `${API_BASE_URL}/delivery/assignments/${id}/reject`,
     {
       method: "POST",
@@ -1158,7 +1158,7 @@ export const rejectAssignment = async (id, token) => {
 };
 
 export const updateDeliveryStatus = async (id, data, token) => {
-  const response = await fetch(
+  const response = await safeFetch(
     `${API_BASE_URL}/delivery/assignments/${id}/status`,
     {
       method: "POST",
@@ -1179,7 +1179,7 @@ export const updateDeliveryStatus = async (id, data, token) => {
 };
 
 export const updateDeliveryAvailability = async (data, token) => {
-  const response = await fetch(`${API_BASE_URL}/delivery/availability`, {
+  const response = await safeFetch(`${API_BASE_URL}/delivery/availability`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

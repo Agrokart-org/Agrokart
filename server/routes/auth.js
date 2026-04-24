@@ -127,6 +127,7 @@ router.post("/login", async (req, res) => {
           });
 
           // Create new user in our database
+          const userRole = expectedRole || "customer";
           user = await saveUser({
             name:
               firebaseUser.displayName ||
@@ -134,12 +135,13 @@ router.post("/login", async (req, res) => {
             email: tokenEmail,
             firebaseUid: uid,
             phone: firebaseUser.phoneNumber,
-            role: "customer", // Default role - be careful here if vendors use this!
+            role: userRole, // Use the role from frontend selection
           });
 
           console.log("Created new user from Firebase auth:", {
             id: user._id,
             email: tokenEmail,
+            role: userRole,
           });
         }
 
@@ -149,18 +151,16 @@ router.post("/login", async (req, res) => {
           role: user.role,
         });
 
-        // Validate role if expectedRole is provided (Security Check)
+        // If expectedRole is provided and user exists but has a different role, update it
         if (expectedRole && user.role !== expectedRole) {
-          console.warn(
-            "❌ Role mismatch in token login - Expected:",
-            expectedRole,
-            "Found:",
-            user.role,
-          );
-          return res.status(403).json({
-            message: `Access denied. This account is registered as ${user.role}, not ${expectedRole}.`,
-            userRole: user.role,
-          });
+          console.log(`Updating user role from '${user.role}' to '${expectedRole}' for ${user.email}`);
+          // Update role in Firestore
+          const userDocs = await db.collection("users").where("email", "==", user.email).limit(1).get();
+          if (!userDocs.empty) {
+            await userDocs.docs[0].ref.update({ role: expectedRole });
+            user.role = expectedRole;
+            console.log(`✅ Role updated to '${expectedRole}' in Firestore`);
+          }
         }
 
         return res.json({
@@ -174,7 +174,7 @@ router.post("/login", async (req, res) => {
             address: user.address, // Include address explicitly
             vendorProfile: user.vendorProfile, // Include vendor profile if valid
           },
-          token: "customer-jwt-token",
+          token: `${user.role}-jwt-token`,
         });
       } catch (innerError) {
         console.error("Inner Login Error (Token/DB):", innerError);

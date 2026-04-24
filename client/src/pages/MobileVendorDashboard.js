@@ -105,7 +105,7 @@ const MobileVendorDashboard = () => {
   const [loadingOrders, setLoadingOrders] = useState(false);
 
   // Fetch Orders
-  const fetchMyOrders = async () => {
+  const fetchMyOrders = async (silent = false) => {
     try {
       setLoadingOrders(true);
       const token = localStorage.getItem("authToken");
@@ -127,11 +127,15 @@ const MobileVendorDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching orders:", error);
-      setNotification({
-        open: true,
-        message: error.message || "Failed to fetch orders",
-        severity: "error",
-      });
+      if (!silent) {
+        setNotification({
+          open: true,
+          message: error.message?.includes("Failed to fetch")
+            ? "Unable to connect to server. Please check your internet connection."
+            : (error.message || "Failed to fetch orders"),
+          severity: "error",
+        });
+      }
     } finally {
       setLoadingOrders(false);
     }
@@ -242,14 +246,15 @@ const MobileVendorDashboard = () => {
   const [notificationsList, setNotificationsList] = useState([]); // Real notifications
 
   // Setup Polling as fallback
+  const initialFetchDone = React.useRef(false);
   useEffect(() => {
     // Initial fetch
-    fetchMyOrders();
+    fetchMyOrders().finally(() => { initialFetchDone.current = true; });
 
-    // Setup 10-second polling for robustness
+    // Setup 30-second polling for robustness (reduced from 10s to avoid flooding)
     const pollInterval = setInterval(() => {
-        fetchMyOrders();
-    }, 10000);
+        fetchMyOrders(true); // silent=true for poll fetches
+    }, 30000);
 
     return () => clearInterval(pollInterval);
   }, []);
