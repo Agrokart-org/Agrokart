@@ -154,11 +154,17 @@ router.post("/login", async (req, res) => {
         // If expectedRole is provided and user exists but has a different role, update it
         if (expectedRole && user.role !== expectedRole) {
           console.log(`Updating user role from '${user.role}' to '${expectedRole}' for ${user.email}`);
+          
+          // Update role in MongoDB
+          const User = require("../models/User");
+          await User.updateOne({ email: user.email }, { $set: { role: expectedRole } });
+          user.role = expectedRole;
+          console.log(`✅ Role updated to '${expectedRole}' in MongoDB`);
+
           // Update role in Firestore
           const userDocs = await db.collection("users").where("email", "==", user.email).limit(1).get();
           if (!userDocs.empty) {
             await userDocs.docs[0].ref.update({ role: expectedRole });
-            user.role = expectedRole;
             console.log(`✅ Role updated to '${expectedRole}' in Firestore`);
           }
         }
