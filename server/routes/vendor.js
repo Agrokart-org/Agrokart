@@ -572,10 +572,27 @@ router.get("/orders", auth, async (req, res) => {
       query.orderStatus = status;
     }
 
-    console.log(`DEBUG: Fetching vendor orders.`);
-    console.log(`DEBUG: Token User ID: ${req.user.id}`);
-    console.log(`DEBUG: Target Vendor ID: ${vendor._id}`);
-    console.log(`DEBUG: Query:`, JSON.stringify(query));
+    console.log(`\n========= VENDOR ORDERS DEBUG =========`);
+    console.log(`Auth req.user.id: ${req.user.id}`);
+    console.log(`Resolved vendor._id: ${vendor._id}`);
+    console.log(`Vendor email: ${vendor.email}`);
+    console.log(`Query: ${JSON.stringify(query)}`);
+
+    // DEBUG: Check ALL orders in DB to see what vendor IDs are assigned
+    const allOrders = await Order.find({}).select("orderStatus items.vendor createdAt trackingNumber").lean();
+    console.log(`Total orders in DB: ${allOrders.length}`);
+    allOrders.forEach(o => {
+      const vendorIds = o.items.map(i => i.vendor ? i.vendor.toString() : "NO_VENDOR");
+      console.log(`  Order ${o.trackingNumber || o._id}: status=${o.orderStatus}, item vendors=[${vendorIds.join(", ")}]`);
+    });
+
+    // DEBUG: Check all vendors in DB
+    const allVendors = await User.find({ role: "vendor" }).select("_id email name").lean();
+    console.log(`All vendors in DB:`);
+    allVendors.forEach(v => {
+      console.log(`  Vendor: ${v._id} - ${v.email} (${v.name})`);
+    });
+    console.log(`========= END DEBUG =========\n`);
 
     const orders = await Order.find(query)
       .populate("user", "name phone address")
@@ -586,6 +603,8 @@ router.get("/orders", auth, async (req, res) => {
       .limit(parseInt(limit));
 
     const total = await Order.countDocuments(query);
+
+    console.log(`Vendor orders found: ${orders.length} (total matching: ${total})`);
 
     res.json({
       orders,
@@ -599,7 +618,12 @@ router.get("/orders", auth, async (req, res) => {
   }
 });
 
-// Accept/Reject order (Deprecated with auto-assign logic, but kept for reference/fallback if needed)
+// ══════════════════════════════════════════════════════════════════════════
+// VENDOR ACCEPT / REJECT ORDER — Production Flow
+// On Accept: confirm order → reserve stock → create earnings → create
+//            DeliveryAssignment (₹25/km) → broadcast to delivery partners
+// On Reject: cancel order → notify customer with reason
+// ══════════════════════════════════════════════════════════════════════════
 router.post("/orders/:orderId/respond", auth, async (req, res) => {
   try {
     const vendor = await User.findById(req.user.id);
@@ -610,9 +634,18 @@ router.post("/orders/:orderId/respond", auth, async (req, res) => {
 
     const { action, reason } = req.body; // action: 'accept' or 'reject'
 
+    if (!action || !["accept", "reject"].includes(action)) {
+      return res.status(400).json({ message: "Invalid action. Must be 'accept' or 'reject'." });
+    }
+
     const order = await Order.findById(req.params.orderId);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Only allow responding to pending_vendor_approval or finding_vendor orders
+    if (!["pending_vendor_approval", "finding_vendor", "pending"].includes(order.orderStatus)) {
+      return res.status(400).json({ message: `Cannot respond to order with status: ${order.orderStatus}` });
     }
 
     // Check if vendor has items in this order
@@ -626,14 +659,18 @@ router.post("/orders/:orderId/respond", auth, async (req, res) => {
         .json({ message: "Order does not belong to this vendor" });
     }
 
+    const io = getIo();
+
     if (action === "accept") {
+      // ── 1. Update order status ──────────────────────────────────────
       order.orderStatus = "confirmed";
+      order.items.forEach((item) => {
+        if (item.vendor && item.vendor.toString() === vendor._id.toString()) {
+          item.status = "confirmed";
+        }
+      });
 
-      // Generate 4-digit delivery PIN for customer verification
-      const deliveryPin = String(Math.floor(1000 + Math.random() * 9000));
-      order.deliveryPin = deliveryPin;
-
-      // Reserve stock for order items
+      // ── 2. Reserve stock ────────────────────────────────────────────
       for (const item of order.items) {
         if (item.vendor && item.vendor.toString() === vendor._id.toString()) {
           const inventoryItem = await VendorInventory.findOne({
@@ -645,7 +682,7 @@ router.post("/orders/:orderId/respond", auth, async (req, res) => {
             const reserved = inventoryItem.reserveStock(item.quantity);
             if (!reserved) {
               return res.status(400).json({
-                message: `Insufficient stock for ${item.product.name}`,
+                message: `Insufficient stock for product`,
               });
             }
             await inventoryItem.save();
@@ -653,7 +690,28 @@ router.post("/orders/:orderId/respond", auth, async (req, res) => {
         }
       }
 
-      // Create earnings record
+      // ── 3. Update vendor payout status ──────────────────────────────
+      const subtotal = order.subtotalAmount || order.totalAmount;
+      const vendorPayoutAmount = order.vendorPayout?.amount || Math.round(subtotal * 0.90);
+      
+      if (order.paymentMethod !== 'cod') {
+        // Online payment: instant payout
+        order.vendorPayout = {
+          amount: vendorPayoutAmount,
+          status: 'processing',
+          method: 'instant',
+          processedAt: new Date(),
+        };
+      } else {
+        // COD: payout pending until delivery partner deposits cash
+        order.vendorPayout = {
+          amount: vendorPayoutAmount,
+          status: 'pending',
+          method: 'cash_deposit',
+        };
+      }
+
+      // ── 4. Create earnings record ───────────────────────────────────
       const totalAmount = order.items
         .filter(
           (item) =>
@@ -670,23 +728,94 @@ router.post("/orders/:orderId/respond", auth, async (req, res) => {
         commissionRate: vendor.vendorProfile.commissionRate || 10,
         description: `Sale for order ${order.trackingNumber}`,
       });
+
+      // ── 5. Create DeliveryAssignment with ₹25/km earnings ──────────
+      const vendorPickupPin = order.pickupPin || String(Math.floor(1000 + Math.random() * 9000));
+      
+      // Calculate distance-based delivery fee (₹25/km for partner earnings)
+      let deliveryFee = 50; // minimum ₹50
+      if (
+        vendor.address?.coordinates?.coordinates &&
+        order.deliveryAddress?.coordinates?.coordinates
+      ) {
+        const [vlng, vlat] = vendor.address.coordinates.coordinates;
+        const [clng, clat] = order.deliveryAddress.coordinates.coordinates;
+        const distKm = getDistanceFromLatLonInKm(vlat, vlng, clat, clng);
+        deliveryFee = Math.max(50, Math.round(distKm * 25)); // ₹25/km, min ₹50
+        console.log(`📏 Delivery distance: ${distKm.toFixed(2)} km → Partner earnings: ₹${deliveryFee}`);
+      }
+
+      const assignment = new DeliveryAssignment({
+        order: order._id,
+        vendor: vendor._id,
+        customer: order.user,
+        status: "assigned", // Open pool — waiting for delivery partner
+        vendorPickupPin,
+        pickupLocation: {
+          address: vendor.address,
+          coordinates: vendor.address?.coordinates,
+          contactPerson: vendor.vendorProfile?.businessName || vendor.name,
+          contactPhone: vendor.phone,
+        },
+        deliveryLocation: {
+          address: order.deliveryAddress,
+          coordinates: order.deliveryAddress?.coordinates,
+          contactPerson: "Customer",
+          contactPhone: "N/A",
+        },
+        deliveryFee,
+        priority: "high",
+        tracking: {
+          currentLocation: {
+            type: "Point",
+            coordinates: vendor.address?.coordinates?.coordinates || [0, 0],
+          },
+          lastUpdated: new Date(),
+        },
+      });
+
+      await assignment.save();
+      console.log(`🚴 DeliveryAssignment ${assignment._id} created. Partner earnings: ₹${deliveryFee}. Pickup PIN: ${vendorPickupPin}`);
+
+      // ── 6. Broadcast to ALL delivery partners ──────────────────────
+      if (io) {
+        const deliveryNotification = {
+          orderId: order._id,
+          _id: assignment._id,
+          pickupLocation: vendor.address,
+          dropLocation: order.deliveryAddress,
+          vendorShopName: vendor.vendorProfile?.businessName || "Agro Shop",
+          vendorContact: vendor.phone,
+          earnings: deliveryFee,
+          trackingNumber: order.trackingNumber,
+          actionUrl: "/delivery/dashboard",
+          message: `New Delivery: Pickup from ${vendor.vendorProfile?.businessName || "Agro Shop"}`,
+        };
+
+        io.to("all_delivery_partners").emit("new_assignment", deliveryNotification);
+        io.to("all_delivery_partners").emit("delivery_request", deliveryNotification);
+        console.log("📡 Broadcasted delivery_request to all_delivery_partners room");
+      }
+
     } else if (action === "reject") {
+      // ── Reject flow ──────────────────────────────────────────────────
       order.orderStatus = "cancelled";
+      order.rejectionReason = reason || "Rejected by vendor";
       order.notes = reason || "Rejected by vendor";
     }
 
     await order.save();
 
-    // Notify customer
+    // ── Notify customer ──────────────────────────────────────────────
     await Notification.createNotification({
       recipient: order.user,
       recipientType: "customer",
       type: action === "accept" ? "order_confirmed" : "order_cancelled",
-      title: action === "accept" ? "Order Confirmed" : "Order Cancelled",
+      title: action === "accept" ? "Order Confirmed! 🎉" : "Order Cancelled",
       message:
         action === "accept"
-          ? `Your order ${order.trackingNumber} has been confirmed! Your delivery PIN is ${order.deliveryPin}. Share this PIN with the delivery partner upon arrival.`
-          : `Your order ${order.trackingNumber} has been cancelled. Reason: ${reason}`,
+          ? `Your order ${order.trackingNumber} has been accepted by the vendor! Your delivery PIN is ${order.deliveryPin}. A delivery partner will be assigned shortly.`
+          : `Your order ${order.trackingNumber} has been cancelled by the vendor. Reason: ${reason || "No reason provided"}`,
       data: {
         orderId: order._id,
         trackingNumber: order.trackingNumber,
@@ -695,20 +824,13 @@ router.post("/orders/:orderId/respond", auth, async (req, res) => {
       priority: "high",
     });
 
-    // 6. Generate 4-digit Vendor Pickup PIN
-    const vendorPickupPin = String(Math.floor(1000 + Math.random() * 9000));
-
-    // If accepted, create delivery assignment and notify nearby delivery partners
-    if (action === "accept") {
-      // Kept for legacy support...
+    // ── Notify Customer via Socket ─────────────────────────────────
+    if (io) {
+      io.to(`order_${order._id}`).emit("order_status_updated", {
+        status: action === "accept" ? "confirmed" : "cancelled",
+        orderId: order._id,
+      });
     }
-
-    // Notify Customer via Socket
-    const io = getIo();
-    io.to(`order_${order._id}`).emit("order_status_updated", {
-      status: action === "accept" ? "confirmed" : "cancelled",
-      orderId: order._id,
-    });
 
     res.json({
       message: `Order ${action}ed successfully`,
@@ -1141,6 +1263,64 @@ router.patch("/inventory/:id/daily-stock", auth, async (req, res) => {
     });
   } catch (error) {
     console.error("Daily stock update error:", error);
+    res.status(500).json({ message: "Server error", details: error.message });
+  }
+});
+// @route   GET /api/vendor/bank-account
+// @desc    Get vendor bank account details
+// @access  Private (Vendor only)
+router.get("/bank-account", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "vendor") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    res.json({
+      bankDetails: user.vendorProfile?.bankDetails || null,
+      isLinked: !!user.vendorProfile?.bankDetails?.accountNumber,
+    });
+  } catch (error) {
+    console.error("Fetch vendor bank account error:", error);
+    res.status(500).json({ message: "Server error", details: error.message });
+  }
+});
+
+// @route   PUT /api/vendor/bank-account
+// @desc    Add or update vendor bank account details
+// @access  Private (Vendor only)
+router.put("/bank-account", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "vendor") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { accountNumber, ifscCode, accountHolderName, bankName } = req.body;
+
+    if (!accountNumber || !ifscCode || !accountHolderName || !bankName) {
+      return res.status(400).json({ message: "All bank details are required" });
+    }
+
+    if (!user.vendorProfile) {
+      user.vendorProfile = {};
+    }
+
+    user.vendorProfile.bankDetails = {
+      accountNumber,
+      ifscCode,
+      accountHolderName,
+      bankName,
+    };
+
+    await user.save();
+
+    res.json({
+      message: "Bank account linked successfully",
+      bankDetails: user.vendorProfile.bankDetails,
+    });
+  } catch (error) {
+    console.error("Link vendor bank account error:", error);
     res.status(500).json({ message: "Server error", details: error.message });
   }
 });

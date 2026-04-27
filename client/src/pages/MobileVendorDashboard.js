@@ -65,6 +65,7 @@ import {
   Dashboard,
   Inventory,
   BarChart as StockIcon,
+  AccountBalanceWallet,
   AddPhotoAlternate,
   Remove,
   AddCircleOutline,
@@ -79,6 +80,9 @@ import {
   verifyPickup,
   getVendorInventory,
   claimVendorOrder,
+  respondToVendorOrder,
+  getVendorBankAccount,
+  linkVendorBankAccount,
 } from "../services/api";
 import { getProductImage } from "../data/productImages";
 
@@ -98,6 +102,42 @@ const MobileVendorDashboard = () => {
   console.log("Token in LocalStorage:", localStorage.getItem("authToken"));
   console.log("--- END DEBUG ---");
   const [value, setValue] = useState(0);
+
+  // Wallet State
+  const [bankDetails, setBankDetails] = useState(null);
+  const [showBankForm, setShowBankForm] = useState(false);
+  const [bankForm, setBankForm] = useState({ accountNumber: "", ifscCode: "", accountHolderName: "", bankName: "" });
+  const [walletStats, setWalletStats] = useState({ earnings: 0, pending: 0 });
+
+  const fetchWalletData = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+      const data = await getVendorBankAccount(token);
+      if (data.isLinked && data.bankDetails) {
+        setBankDetails(data.bankDetails);
+      }
+    } catch (e) {
+      console.error("Wallet error:", e);
+    }
+  };
+
+  const handleLinkBank = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await linkVendorBankAccount(bankForm, token);
+      setBankDetails(res.bankDetails);
+      setShowBankForm(false);
+      setNotification({ open: true, message: "Bank account linked successfully", severity: "success" });
+    } catch (e) {
+      setNotification({ open: true, message: e.message, severity: "error" });
+    }
+  };
+
+  useEffect(() => {
+    if (value === 4) fetchWalletData(); // Load wallet data when tab opens
+  }, [value]);
+
 
   // Orders State (declared early - used in renderDashboard and effects above)
   const [orderTab, setOrderTab] = useState(0); // 0: Active, 1: History
@@ -179,9 +219,64 @@ const MobileVendorDashboard = () => {
     severity: "info",
   });
   const [orderAlert, setOrderAlert] = useState(null); // Holds data for the new order modal
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [respondingToOrder, setRespondingToOrder] = useState(false);
 
   const handleIgnoreOrder = () => {
     setOrderAlert(null);
+  };
+
+  const handleAcceptOrder = async () => {
+    if (!orderAlert) return;
+    setRespondingToOrder(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const orderId = orderAlert._id || orderAlert.orderId;
+      await respondToVendorOrder(orderId, { action: "accept" }, token);
+      setNotification({
+        open: true,
+        message: "Order Accepted! Delivery partner will be assigned.",
+        severity: "success",
+      });
+      setOrderAlert(null);
+      fetchMyOrders();
+    } catch (error) {
+      setNotification({
+        open: true,
+        message: error.message || "Failed to accept order",
+        severity: "error",
+      });
+    } finally {
+      setRespondingToOrder(false);
+    }
+  };
+
+  const handleRejectOrder = async () => {
+    if (!orderAlert) return;
+    setRespondingToOrder(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const orderId = orderAlert._id || orderAlert.orderId;
+      await respondToVendorOrder(orderId, { action: "reject", reason: rejectReason || "Vendor rejected the order" }, token);
+      setNotification({
+        open: true,
+        message: "Order Rejected.",
+        severity: "warning",
+      });
+      setOrderAlert(null);
+      setRejectDialogOpen(false);
+      setRejectReason("");
+      fetchMyOrders();
+    } catch (error) {
+      setNotification({
+        open: true,
+        message: error.message || "Failed to reject order",
+        severity: "error",
+      });
+    } finally {
+      setRespondingToOrder(false);
+    }
   };
 
   const stats = [
@@ -369,12 +464,12 @@ const MobileVendorDashboard = () => {
           <ListItemText primary="Products" />
         </ListItemButton>
         <ListItemButton
-          onClick={() => { setValue(4); setMobileOpen(false); }}
-          selected={value === 4}
+          onClick={() => { setValue(5); setMobileOpen(false); }}
+          selected={value === 5}
           sx={{ borderRadius: 2, mx: 1, mb: 0.5 }}
         >
           <ListItemIcon>
-            <StockIcon color={value === 4 ? "primary" : "inherit"} />
+            <StockIcon color={value === 5 ? "primary" : "inherit"} />
           </ListItemIcon>
           <ListItemText primary="Daily Stock" />
         </ListItemButton>
@@ -398,6 +493,17 @@ const MobileVendorDashboard = () => {
           </ListItemIcon>
           <ListItemText primary="Profile" />
         </ListItemButton>
+        
+        <ListItemButton
+          onClick={() => { setValue(4); setMobileOpen(false); }}
+          selected={value === 4}
+          sx={{ borderRadius: 2, mx: 1, mb: 0.5 }}
+        >
+          <ListItemIcon>
+            <AccountBalanceWallet color={value === 4 ? "primary" : "inherit"} />
+          </ListItemIcon>
+          <ListItemText primary="Wallet" />
+        </ListItemButton>
         <Divider sx={{ my: 1 }} />
         <ListItemButton onClick={logout} sx={{ borderRadius: 2, mx: 1 }}>
           <ListItemIcon>
@@ -406,6 +512,87 @@ const MobileVendorDashboard = () => {
           <ListItemText primary="Logout" sx={{ color: "error.main" }} />
         </ListItemButton>
       </List>
+    </Box>
+  );
+
+  
+  const renderWallet = () => (
+    <Box sx={{ p: 2, pb: 10 }}>
+      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <AccountBalanceWallet color="primary" /> My Wallet
+      </Typography>
+
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={6}>
+          <Card elevation={0} sx={{ bgcolor: "success.light", color: "success.dark", borderRadius: 3 }}>
+            <CardContent sx={{ p: 2, pb: "16px !important" }}>
+              <Typography variant="caption" fontWeight="bold">TOTAL EARNINGS</Typography>
+              <Typography variant="h6" fontWeight="bold">₹{walletStats.earnings.toFixed(2)}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6}>
+          <Card elevation={0} sx={{ bgcolor: "warning.light", color: "warning.dark", borderRadius: 3 }}>
+            <CardContent sx={{ p: 2, pb: "16px !important" }}>
+              <Typography variant="caption" fontWeight="bold">PENDING PAYOUTS</Typography>
+              <Typography variant="h6" fontWeight="bold">₹{walletStats.pending.toFixed(2)}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <Card elevation={2} sx={{ borderRadius: 3 }}>
+        <CardContent>
+          <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+            Bank Account Details
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Link your bank account to receive automated payouts for your completed orders.
+          </Typography>
+
+          {bankDetails ? (
+            <Box sx={{ p: 2, bgcolor: "#f5f5f5", borderRadius: 2 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                <Typography variant="body2" fontWeight="bold">{bankDetails.bankName}</Typography>
+                <Chip label="Linked" size="small" color="success" icon={<CheckCircle />} />
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                A/C: ••••{bankDetails.accountNumber.slice(-4)}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                IFSC: {bankDetails.ifscCode}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Holder: {bankDetails.accountHolderName}
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              {!showBankForm ? (
+                <Button 
+                  variant="contained" 
+                  fullWidth 
+                  onClick={() => setShowBankForm(true)}
+                  sx={{ borderRadius: 8, textTransform: 'none' }}
+                >
+                  Link Bank Account
+                </Button>
+              ) : (
+                <Stack spacing={2}>
+                  <TextField size="small" label="Account Number" fullWidth value={bankForm.accountNumber} onChange={e => setBankForm({...bankForm, accountNumber: e.target.value})} />
+                  <TextField size="small" label="IFSC Code" fullWidth value={bankForm.ifscCode} onChange={e => setBankForm({...bankForm, ifscCode: e.target.value})} />
+                  <TextField size="small" label="Account Holder Name" fullWidth value={bankForm.accountHolderName} onChange={e => setBankForm({...bankForm, accountHolderName: e.target.value})} />
+                  <TextField size="small" label="Bank Name" fullWidth value={bankForm.bankName} onChange={e => setBankForm({...bankForm, bankName: e.target.value})} />
+                  <Stack direction="row" spacing={2}>
+                    <Button variant="outlined" fullWidth onClick={() => setShowBankForm(false)} sx={{ borderRadius: 8 }}>Cancel</Button>
+                    <Button variant="contained" fullWidth onClick={handleLinkBank} sx={{ borderRadius: 8 }}>Save</Button>
+                  </Stack>
+                </Stack>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </Box>
   );
 
@@ -696,7 +883,7 @@ const MobileVendorDashboard = () => {
   };
 
   useEffect(() => {
-    if (value === 1 || value === 4) fetchInventory();
+    if (value === 1 || value === 5) fetchInventory();
   }, [value]);
 
   useEffect(() => {
@@ -1656,9 +1843,10 @@ const MobileVendorDashboard = () => {
                     </Box>
 
                     <Box sx={{ display: "flex", gap: 1, mt: 1, mb: 1 }}>
-                      {!["picked_up", "out_for_delivery", "delivered", "pending", "finding_vendor", "cancelled", "rejected"].includes(
+                      {!["picked_up", "out_for_delivery", "delivered", "cancelled", "rejected"].includes(
                         order.orderStatus,
                       ) && (
+                        order.deliveryPartner ? (
                           <Button
                             fullWidth
                             variant="contained"
@@ -1668,7 +1856,17 @@ const MobileVendorDashboard = () => {
                           >
                             Verify Pickup
                           </Button>
-                        )}
+                        ) : (
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            disabled
+                            sx={{ borderRadius: 2, py: 1, bgcolor: "grey.300", color: "grey.600" }}
+                          >
+                            Awaiting Delivery Partner
+                          </Button>
+                        )
+                      )}
                     </Box>
                     <Button fullWidth variant="outlined" size="small">
                       View Details
@@ -1725,35 +1923,101 @@ const MobileVendorDashboard = () => {
 
   const renderProfile = () => (
     <Box sx={{ p: 2, pb: 10 }}>
-      <Box
+      {/* Profile Header */}
+      <MotionBox
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
         sx={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           mb: 4,
           mt: 2,
+          p: 3,
+          borderRadius: 4,
+          background: "linear-gradient(135deg, rgba(46, 125, 50, 0.1) 0%, rgba(129, 199, 132, 0.1) 100%)",
+          border: "1px solid rgba(46, 125, 50, 0.2)"
         }}
       >
         <Avatar
           src={user?.avatar}
           sx={{
-            width: 80,
-            height: 80,
+            width: 90,
+            height: 90,
             mb: 2,
-            border: `3px solid ${theme.palette.primary.main}`,
+            border: `4px solid white`,
+            boxShadow: "0 8px 16px rgba(46, 125, 50, 0.2)"
           }}
         />
-        <Typography variant="h5" fontWeight="bold">
-          {user?.name}
+        <Typography variant="h5" fontWeight="900" color="text.primary">
+          {user?.vendorProfile?.businessName || user?.name || "Vendor"}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+          {user?.address?.street ? `${user.address.street}, ${user.address.city}` : "No Address Provided"}
+        </Typography>
+        <Typography variant="caption" sx={{ mb: 1, fontWeight: "bold", color: "#1B5E20" }}>
+          {user?.email || "No Email Found"}
         </Typography>
         <Chip
-          label="Verified Vendor"
+          icon={<CheckCircle sx={{ fontSize: "1rem" }} />}
+          label="Verified Premium Vendor"
           color="success"
           size="small"
-          sx={{ mt: 1 }}
+          sx={{ fontWeight: "bold", bgcolor: "#E8F5E9", color: "#2E7D32" }}
         />
-      </Box>
+      </MotionBox>
 
+      {/* Business Stats Grid */}
+      <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" sx={{ mb: 2, ml: 1 }}>
+        PERFORMANCE OVERVIEW
+      </Typography>
+      <Grid container spacing={2} sx={{ mb: 4 }}>
+        <Grid item xs={6}>
+          <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0" }}>
+            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                <Box sx={{ p: 0.8, borderRadius: 2, bgcolor: "#E3F2FD", color: "#1976D2" }}>
+                  <TrendingUp fontSize="small" />
+                </Box>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary">TOTAL SALES</Typography>
+              </Box>
+              <Typography variant="h6" fontWeight="900">
+                ₹{historyOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0).toLocaleString()}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={6}>
+          <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0" }}>
+            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                <Box sx={{ p: 0.8, borderRadius: 2, bgcolor: "#E8F5E9", color: "#2E7D32" }}>
+                  <Receipt fontSize="small" />
+                </Box>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary">ORDERS</Typography>
+              </Box>
+              <Typography variant="h6" fontWeight="900">
+                {historyOrders.length}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12}>
+          <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0", background: "linear-gradient(90deg, #1B5E20 0%, #2E7D32 100%)", color: "white" }}>
+            <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 }, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Box>
+                <Typography variant="caption" sx={{ opacity: 0.8, fontWeight: "bold" }}>ACTIVE INVENTORY</Typography>
+                <Typography variant="h5" fontWeight="900" sx={{ mt: 0.5 }}>{inventoryItems.length} Products</Typography>
+              </Box>
+              <Inventory sx={{ fontSize: 40, opacity: 0.5 }} />
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" sx={{ mb: 2, ml: 1 }}>
+        ACCOUNT & SETTINGS
+      </Typography>
       <List
         component={Paper}
         elevation={0}
@@ -1761,26 +2025,36 @@ const MobileVendorDashboard = () => {
           borderRadius: 4,
           border: "1px solid #f0f0f0",
           overflow: "hidden",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
         }}
       >
-        <ListItem button divider>
+        <ListItemButton divider sx={{ py: 2 }}>
           <ListItemIcon>
-            <Settings />
+            <Settings color="primary" />
           </ListItemIcon>
-          <ListItemText primary="Settings" />
-        </ListItem>
-        <ListItem button divider>
+          <ListItemText primary="Business Settings" primaryTypographyProps={{ fontWeight: "bold" }} />
+          <ArrowForward fontSize="small" color="disabled" />
+        </ListItemButton>
+        <ListItemButton divider sx={{ py: 2 }}>
           <ListItemIcon>
-            <Notifications />
+            <Notifications color="primary" />
           </ListItemIcon>
-          <ListItemText primary="Notifications" />
-        </ListItem>
-        <ListItem button onClick={logout} sx={{ color: "error.main" }}>
+          <ListItemText primary="Notifications" primaryTypographyProps={{ fontWeight: "bold" }} />
+          <ArrowForward fontSize="small" color="disabled" />
+        </ListItemButton>
+        <ListItemButton divider sx={{ py: 2 }}>
+          <ListItemIcon>
+            <LocalShipping color="primary" />
+          </ListItemIcon>
+          <ListItemText primary="Delivery Zones" primaryTypographyProps={{ fontWeight: "bold" }} />
+          <ArrowForward fontSize="small" color="disabled" />
+        </ListItemButton>
+        <ListItemButton onClick={logout} sx={{ py: 2, color: "error.main", bgcolor: "#FFEBEE" }}>
           <ListItemIcon>
             <ExitToApp color="error" />
           </ListItemIcon>
-          <ListItemText primary="Logout" />
-        </ListItem>
+          <ListItemText primary="Logout" primaryTypographyProps={{ fontWeight: "bold" }} />
+        </ListItemButton>
       </List>
     </Box>
   );
@@ -1879,10 +2153,11 @@ const MobileVendorDashboard = () => {
         {value === 1 && renderProducts()}
         {value === 2 && renderOrders()}
         {value === 3 && renderProfile()}
-        {value === 4 && renderDailyStock()}
+        {value === 4 && renderWallet()}
+        {value === 5 && renderDailyStock()}
       </Box>
 
-      {/* New Order Alert Modal (Now just Informational) */}
+      {/* New Order Alert Modal — Accept / Reject */}
       <Dialog
         open={Boolean(orderAlert)}
         onClose={() => setOrderAlert(null)}
@@ -1905,15 +2180,15 @@ const MobileVendorDashboard = () => {
               width: 80,
               height: 80,
               borderRadius: "50%",
-              bgcolor: "#E3F2FD",
-              color: "#1976D2",
+              bgcolor: "#FFF3E0",
+              color: "#E65100",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               margin: "0 auto -40px",
               transform: "translateY(-60px)",
               border: "4px solid white",
-              boxShadow: "0 8px 24px rgba(25,118,210,0.2)",
+              boxShadow: "0 8px 24px rgba(230,81,0,0.2)",
             }}
           >
             <LocalOffer sx={{ fontSize: 40 }} />
@@ -1922,25 +2197,28 @@ const MobileVendorDashboard = () => {
           <Typography
             variant="h5"
             fontWeight="900"
-            sx={{ mt: 3, mb: 1, color: "#1976D2" }}
+            sx={{ mt: 3, mb: 0.5, color: "#E65100" }}
           >
-            New Order Assigned!
+            New Order Received!
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Please accept or reject this order
           </Typography>
 
-          <Box sx={{ bgcolor: "grey.50", p: 2, borderRadius: 2, mb: 3 }}>
+          <Box sx={{ bgcolor: "grey.50", p: 2, borderRadius: 2, mb: 2 }}>
             <Typography
               variant="caption"
               color="text.secondary"
               fontWeight="bold"
             >
-              ORDER DETALS
+              ORDER DETAILS
             </Typography>
             <Typography
               variant="h4"
               fontWeight="900"
               sx={{ my: 1, color: "#2E7D32" }}
             >
-              ₹{orderAlert?.amount || orderAlert?.totalAmount || "---"}
+              ₹{orderAlert?.subtotalAmount || orderAlert?.totalAmount || orderAlert?.amount || "---"}
             </Typography>
             <Typography variant="subtitle2" color="text.secondary">
               ID: #
@@ -1948,28 +2226,98 @@ const MobileVendorDashboard = () => {
                 orderAlert?.orderId?.slice(-6).toUpperCase() ||
                 "---"}
             </Typography>
+            {orderAlert?.deliveryCharge > 0 && (
+              <Typography variant="caption" color="text.secondary">
+                + ₹{orderAlert.deliveryCharge} delivery charge
+              </Typography>
+            )}
           </Box>
 
-          <Button
-            fullWidth
-            variant="contained"
-            size="large"
-            onClick={() => {
-              setOrderAlert(null);
-              setValue(2); // Go to orders tab
-            }}
-            sx={{
-              borderRadius: 3,
-              py: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-              fontSize: "1.1rem",
-              mb: 1.5,
-            }}
-          >
-            View Active Orders
-          </Button>
+          {/* Vendor Payout Info */}
+          <Box sx={{ bgcolor: "#E8F5E9", p: 1.5, borderRadius: 2, mb: 3 }}>
+            <Typography variant="caption" fontWeight="bold" color="#2E7D32">
+              YOUR PAYOUT (90%)
+            </Typography>
+            <Typography variant="h6" fontWeight="900" color="#1B5E20">
+              ₹{orderAlert?.vendorPayout?.amount || Math.round((orderAlert?.subtotalAmount || orderAlert?.totalAmount || 0) * 0.9)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {orderAlert?.vendorPayout?.method === 'instant' ? '⚡ Instant payout' : '💵 After cash deposit'}
+            </Typography>
+          </Box>
+
+          {/* Accept / Reject Buttons */}
+          <Stack direction="row" spacing={2}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="error"
+              size="large"
+              disabled={respondingToOrder}
+              onClick={() => setRejectDialogOpen(true)}
+              sx={{
+                borderRadius: 3,
+                py: 1.5,
+                fontWeight: "bold",
+                textTransform: "none",
+                fontSize: "1rem",
+              }}
+            >
+              Reject
+            </Button>
+            <Button
+              fullWidth
+              variant="contained"
+              color="success"
+              size="large"
+              disabled={respondingToOrder}
+              onClick={handleAcceptOrder}
+              sx={{
+                borderRadius: 3,
+                py: 1.5,
+                fontWeight: "bold",
+                textTransform: "none",
+                fontSize: "1rem",
+              }}
+            >
+              {respondingToOrder ? <CircularProgress size={24} color="inherit" /> : "Accept ✓"}
+            </Button>
+          </Stack>
         </DialogContent>
+      </Dialog>
+
+      {/* Reject Reason Dialog */}
+      <Dialog
+        open={rejectDialogOpen}
+        onClose={() => setRejectDialogOpen(false)}
+        PaperProps={{ sx: { borderRadius: 3, width: "90%", maxWidth: 400 } }}
+      >
+        <DialogTitle sx={{ fontWeight: "bold" }}>Reject Order</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Please provide a reason for rejecting this order (optional):
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="e.g., Out of stock, Cannot fulfill at this time..."
+            variant="outlined"
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={respondingToOrder}
+            onClick={handleRejectOrder}
+          >
+            {respondingToOrder ? <CircularProgress size={20} color="inherit" /> : "Confirm Reject"}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Verification Dialog */}
@@ -2138,6 +2486,7 @@ const MobileVendorDashboard = () => {
           <BottomNavigationAction label="Products" icon={<Inventory />} />
           <BottomNavigationAction label="Orders" icon={<Receipt />} />
           <BottomNavigationAction label="Profile" icon={<Person />} />
+          <BottomNavigationAction label="Wallet" icon={<AccountBalanceWallet />} />
         </BottomNavigation>
       </Paper>
 

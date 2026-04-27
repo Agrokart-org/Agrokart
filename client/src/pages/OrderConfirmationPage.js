@@ -81,10 +81,20 @@ const OrderConfirmationPage = () => {
     if (orderData && orderData.totalAmount) {
       // Use backend order data if available
       const orderTotal = parsePrice(orderData.totalAmount);
-      const deliveryFee = orderTotal > 5000 ? 0 : 200;
+      // If we have subtotalAmount and deliveryCharge from backend, use those
+      if (orderData.subtotalAmount !== undefined && orderData.deliveryCharge !== undefined) {
+        return {
+          subtotal: orderData.subtotalAmount,
+          deliveryFee: orderData.deliveryCharge,
+          total: orderData.totalAmount,
+        };
+      }
+      
+      // Fallback calculation for older orders
+      const assumedDeliveryFee = orderTotal >= 700 ? 0 : (orderTotal > 100 ? 100 : 0);
       return {
-        subtotal: orderTotal - deliveryFee,
-        deliveryFee,
+        subtotal: orderTotal - assumedDeliveryFee,
+        deliveryFee: assumedDeliveryFee,
         total: orderTotal,
       };
     } else if (orderedItems && orderedItems.length > 0) {
@@ -92,7 +102,7 @@ const OrderConfirmationPage = () => {
       const subtotal = orderedItems.reduce((total, item) => {
         return total + parsePrice(item.price) * (item.quantity || 1);
       }, 0);
-      const deliveryFee = subtotal > 5000 ? 0 : 200;
+      const deliveryFee = subtotal >= 700 ? 0 : 100;
       return {
         subtotal,
         deliveryFee,
@@ -101,7 +111,7 @@ const OrderConfirmationPage = () => {
     } else {
       // Fallback to cart total (for initial load)
       const subtotal = getCartTotal(); // This is now safe from CartContext
-      const deliveryFee = subtotal > 5000 ? 0 : 200;
+      const deliveryFee = subtotal >= 700 ? 0 : 100;
       return {
         subtotal,
         deliveryFee,
@@ -721,6 +731,41 @@ const OrderConfirmationPage = () => {
           size="large"
           sx={{ fontSize: "1rem", py: 2, px: 1 }}
         />
+      </Box>
+
+      {/* Action Buttons for Invoice */}
+      <Box
+        className="no-print"
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          gap: 2,
+          mb: 3,
+          px: 1, // small padding to prevent touching edges
+        }}
+      >
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={handleDownload}
+        >
+          Download Invoice
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<PrintIcon />}
+          onClick={handlePrint}
+        >
+          Print
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<ShareIcon />}
+          onClick={handleShare}
+        >
+          Share
+        </Button>
       </Box>
 
       {/* Invoice/Bill */}

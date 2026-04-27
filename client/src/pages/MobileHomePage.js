@@ -19,6 +19,14 @@ import {
   keyframes,
   Fade,
   Slide,
+  Fab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  List,
+  ListItemButton,
+  ListItemText,
+  ListItemIcon,
 } from "@mui/material";
 import {
   LocationOn,
@@ -35,6 +43,7 @@ import {
   AutoAwesome,
   Verified,
   FlashOn,
+  LocalShipping,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import MobileLayout from "../components/MobileLayout";
@@ -44,7 +53,7 @@ import { useMobile } from "../context/MobileContext";
 import { useNotifications } from "../context/NotificationProvider";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import { getProducts } from "../services/api";
+import { getProducts, getUserOrders } from "../services/api";
 
 // Banner Images
 import bannerSale from "../assets/banner_sale_field.png";
@@ -926,9 +935,106 @@ const MobileHomePage = () => {
         </Grid>
       </Box>
 
+      {/* Blinking Tracking FAB */}
+      <TrackingFAB />
+
       {/* Bottom Spacing for Navigation */}
       <Box sx={{ height: 80 }} />
     </MobileLayout>
+  );
+};
+
+// ═══════════════════════════════════════════════════════
+// BLINKING TRACKING FAB COMPONENT
+// ═══════════════════════════════════════════════════════
+const blinkPulse = keyframes`
+  0%, 100% { box-shadow: 0 4px 12px rgba(76,175,80,0.3); transform: scale(1); }
+  50% { box-shadow: 0 4px 24px rgba(76,175,80,0.6); transform: scale(1.08); }
+`;
+
+const TrackingFAB = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [activeOrders, setActiveOrders] = useState([]);
+  const [showOrderSelect, setShowOrderSelect] = useState(false);
+
+  useEffect(() => {
+    const fetchActive = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) return;
+        const res = await getUserOrders(token);
+        const orders = res.data || res.orders || [];
+        const active = orders.filter((o) =>
+          ["confirmed", "processing", "out_for_delivery", "pending_vendor_approval"].includes(o.orderStatus)
+        );
+        setActiveOrders(active);
+      } catch (e) { console.error("Active orders fetch error:", e); }
+    };
+    fetchActive();
+    const interval = setInterval(fetchActive, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  if (activeOrders.length === 0) return null;
+
+  const handleClick = () => {
+    if (activeOrders.length === 1) {
+      navigate(`/orders/${activeOrders[0]._id}`);
+    } else {
+      setShowOrderSelect(true);
+    }
+  };
+
+  return (
+    <>
+      <Fab
+        onClick={handleClick}
+        sx={{
+          position: "fixed",
+          bottom: 80,
+          right: 16,
+          bgcolor: "#4CAF50",
+          color: "white",
+          width: 56,
+          height: 56,
+          zIndex: 1200,
+          animation: `${blinkPulse} 2s ease-in-out infinite`,
+          "&:hover": { bgcolor: "#388E3C" },
+        }}
+      >
+        <LocalShipping sx={{ fontSize: 28 }} />
+      </Fab>
+
+      {/* Multi-order selector */}
+      <Dialog open={showOrderSelect} onClose={() => setShowOrderSelect(false)}
+        PaperProps={{ sx: { borderRadius: 3, width: "90%", maxWidth: 400 } }}>
+        <DialogTitle sx={{ fontWeight: "bold" }}>Track Active Orders ({activeOrders.length})</DialogTitle>
+        <DialogContent>
+          <List disablePadding>
+            {activeOrders.map((order) => (
+              <ListItemButton
+                key={order._id}
+                onClick={() => {
+                  setShowOrderSelect(false);
+                  navigate(`/orders/${order._id}`);
+                }}
+                sx={{ borderRadius: 2, mb: 1, border: "1px solid #eee" }}
+              >
+                <ListItemIcon>
+                  <LocalShipping color={order.orderStatus === "out_for_delivery" ? "success" : "primary"} />
+                </ListItemIcon>
+                <ListItemText
+                  primary={`#${order.trackingNumber || order._id.slice(-6)}`}
+                  secondary={`₹${order.totalAmount} • ${order.orderStatus.replace(/_/g, " ")}`}
+                  secondaryTypographyProps={{ sx: { textTransform: "capitalize" } }}
+                />
+              </ListItemButton>
+            ))}
+          </List>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

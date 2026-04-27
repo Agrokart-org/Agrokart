@@ -70,6 +70,15 @@ const createOrder = async (req, res, next) => {
     }
 
     // ──────────────────────────────────────────────────────────────────────
+    // PRODUCTION DELIVERY CHARGE LOGIC
+    // Orders < ₹700 → ₹100 delivery charge | Orders ≥ ₹700 → FREE
+    // ──────────────────────────────────────────────────────────────────────
+    const subtotalAmount = totalAmount;
+    const deliveryCharge = subtotalAmount < 700 ? 100 : 0;
+    totalAmount = subtotalAmount + deliveryCharge;
+    console.log(`💰 Subtotal: ₹${subtotalAmount} | Delivery Charge: ₹${deliveryCharge} | Total: ₹${totalAmount}`);
+
+    // ──────────────────────────────────────────────────────────────────────
     // INVENTORY-AWARE VENDOR ASSIGNMENT
     // Find the nearest vendor who has ALL ordered items in sufficient stock.
     // ──────────────────────────────────────────────────────────────────────
@@ -153,11 +162,11 @@ const createOrder = async (req, res, next) => {
       if (!assignedVendor) assignedVendor = vendors[0];
     }
 
-    // Assign the found vendor to all item objects and mark as confirmed
+    // Assign the found vendor to all item objects (but keep status as 'pending' until vendor accepts)
     if (assignedVendor) {
       refinedItems.forEach((i) => {
         i.vendor = assignedVendor._id;
-        i.status = "confirmed"; // Auto-confirmed since vendor was matched by stock
+        i.status = "pending"; // Will be confirmed when vendor accepts
       });
     }
 
@@ -167,28 +176,38 @@ const createOrder = async (req, res, next) => {
     const trackingNumber = `ORD${Date.now().toString().slice(-6)}`;
 
     // ──────────────────────────────────────────────────────────────────────
-    // AUTO-ASSIGN: If a vendor was found, set status directly to "confirmed"
-    // instead of "finding_vendor" — no manual vendor claim step needed.
+    // VENDOR APPROVAL FLOW: Set status to "pending_vendor_approval" so
+    // vendor can explicitly accept or reject the order.
     // ──────────────────────────────────────────────────────────────────────
-    const autoAssigned = !!assignedVendor;
-    const initialStatus = autoAssigned ? "confirmed" : "finding_vendor";
+    const initialStatus = assignedVendor ? "pending_vendor_approval" : "finding_vendor";
+
+    // Calculate vendor payout (90% of product subtotal)
+    const vendorPayoutAmount = Math.round(subtotalAmount * 0.90);
+    const vendorPayoutMethod = (paymentMethod === 'cod') ? 'cash_deposit' : 'instant';
 
     const newOrder = new Order({
       user: req.user.id,
       items: refinedItems,
+      subtotalAmount,
+      deliveryCharge,
       totalAmount,
       deliveryAddress,
       deliverySlot,
       paymentMethod: paymentMethod || "cod",
-      paymentStatus: "completed",
+      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'completed',
       orderStatus: initialStatus,
       pickupPin,
       deliveryPin,
       trackingNumber,
+      vendorPayout: {
+        amount: vendorPayoutAmount,
+        status: 'pending',
+        method: vendorPayoutMethod,
+      },
     });
 
     const savedOrder = await newOrder.save();
-    console.log(`✅ Order ${trackingNumber} created with status: ${initialStatus}`);
+    console.log(`✅ Order ${trackingNumber} created with status: ${initialStatus} | Vendor payout: ₹${vendorPayoutAmount} (${vendorPayoutMethod})`);
 
     // Populate user and product info for broadcasting
     const populatedOrder = await Order.findById(savedOrder._id)
@@ -230,9 +249,17 @@ const createOrder = async (req, res, next) => {
           }
         }
 
-        // ── Step 2: Notify Vendor ────────────────────────────────────────
-        console.log(`📦 Order auto-assigned to vendor ${assignedVendor._id} (${assignedVendor.vendorProfile?.businessName || assignedVendor.name})`);
+        // ── Step 2: Notify Vendor of PENDING order (vendor must accept/reject) ──
+        console.log(`📦 Order sent to vendor ${assignedVendor._id} (${assignedVendor.vendorProfile?.businessName || assignedVendor.name}) for approval`);
         
+        // Include payout info in the notification data
+        populatedOrderObj.vendorPayout = {
+          amount: vendorPayoutAmount,
+          method: vendorPayoutMethod,
+        };
+        populatedOrderObj.subtotalAmount = subtotalAmount;
+        populatedOrderObj.deliveryCharge = deliveryCharge;
+
         io.to(`vendor_${assignedVendor._id}`).emit("new_order_available", populatedOrderObj);
         if (assignedVendor.firebaseUid) {
           io.to(`vendor_${assignedVendor.firebaseUid}`).emit("new_order_available", populatedOrderObj);
@@ -243,90 +270,28 @@ const createOrder = async (req, res, next) => {
           recipient: assignedVendor._id,
           recipientType: "vendor",
           type: "new_order_available",
-          title: "New Order Auto-Assigned",
-          message: `Order ${trackingNumber} has been auto-assigned to you. Please prepare the items.`,
+          title: "New Order — Accept or Reject",
+          message: `Order ${trackingNumber} (₹${subtotalAmount}) is waiting for your approval. Your payout: ₹${vendorPayoutAmount}.`,
           data: { orderId: savedOrder._id, trackingNumber },
         });
 
-        // ── Step 3: Create DeliveryAssignment for delivery partner pool ──
-        const DeliveryAssignment = require("../models/DeliveryAssignment");
-        const vendorPickupPin = pickupPin;
+        // NOTE: DeliveryAssignment is NOT created here anymore.
+        // It will be created only when vendor accepts the order.
+        // See vendor.js routes -> POST /orders/:orderId/respond
 
-        // Calculate distance-based delivery fee (₹10/km, min ₹40)
-        let deliveryFee = 40;
-        if (
-          assignedVendor.address?.coordinates?.coordinates &&
-          deliveryAddress.coordinates?.coordinates
-        ) {
-          const [vlng, vlat] = assignedVendor.address.coordinates.coordinates;
-          const [clng, clat] = deliveryAddress.coordinates.coordinates;
-          const distMeters = getDistanceFromLatLonInM(vlat, vlng, clat, clng);
-          deliveryFee = Math.max(40, Math.round((distMeters / 1000) * 10));
-        }
-
-        const assignment = new DeliveryAssignment({
-          order: savedOrder._id,
-          vendor: assignedVendor._id,
-          customer: req.user.id,
-          status: "assigned", // Open pool — waiting for delivery partner
-          vendorPickupPin,
-          pickupLocation: {
-            address: assignedVendor.address,
-            coordinates: assignedVendor.address?.coordinates,
-            contactPerson: assignedVendor.vendorProfile?.businessName || assignedVendor.name,
-            contactPhone: assignedVendor.phone,
-          },
-          deliveryLocation: {
-            address: deliveryAddress,
-            coordinates: deliveryAddress.coordinates,
-            contactPerson: "Customer",
-            contactPhone: "N/A",
-          },
-          deliveryFee,
-          priority: "high",
-          tracking: {
-            currentLocation: {
-              type: "Point",
-              coordinates: assignedVendor.address?.coordinates?.coordinates || [0, 0],
-            },
-            lastUpdated: new Date(),
-          },
-        });
-
-        await assignment.save();
-        console.log(`🚴 DeliveryAssignment ${assignment._id} created (open pool). Vendor pickup PIN: ${vendorPickupPin}`);
-
-        // ── Step 4: Broadcast to ALL delivery partners ───────────────────
-        const deliveryNotification = {
-          orderId: savedOrder._id,
-          _id: assignment._id,
-          pickupLocation: assignedVendor.address,
-          dropLocation: deliveryAddress,
-          vendorShopName: assignedVendor.vendorProfile?.businessName || "Agro Shop",
-          vendorContact: assignedVendor.phone,
-          earnings: deliveryFee,
-          trackingNumber,
-          actionUrl: "/delivery/dashboard",
-          message: `New Delivery: Pickup from ${assignedVendor.vendorProfile?.businessName || "Agro Shop"}`,
-        };
-
-        // Emit to the all_delivery_partners broadcast room
-        io.to("all_delivery_partners").emit("new_assignment", deliveryNotification);
-        io.to("all_delivery_partners").emit("delivery_request", deliveryNotification);
-        console.log("📡 Broadcasted delivery_request to all_delivery_partners room");
-
-        // Also notify Customer via socket that order is confirmed
+        // Notify Customer that order is waiting for vendor approval
         io.to(`order_${savedOrder._id}`).emit("order_status_updated", {
-          status: "confirmed",
+          status: "pending_vendor_approval",
           orderId: savedOrder._id,
+          message: "Your order is being reviewed by the vendor.",
         });
       }
     }
 
     res.status(201).json({
       success: true,
-      message: autoAssigned
-        ? "Order placed and auto-assigned to nearest vendor!"
+      message: assignedVendor
+        ? "Order placed! Waiting for vendor approval."
         : "Order placed. Searching for a vendor...",
       order: populatedOrderObj,
       _id: savedOrder._id,

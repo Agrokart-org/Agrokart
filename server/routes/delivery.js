@@ -712,4 +712,240 @@ router.put("/availability", auth, async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════
+// BANK ACCOUNT LINKING
+// ══════════════════════════════════════════════════════════════════════════
+
+// Get bank account details
+router.get("/bank-account", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "delivery_partner") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    res.json({
+      bankDetails: user.deliveryProfile?.bankDetails || { isLinked: false },
+    });
+  } catch (error) {
+    console.error("Get bank account error:", error);
+    res.status(500).json({ message: "Server error", details: error.message });
+  }
+});
+
+// Link/update bank account
+router.put("/bank-account", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "delivery_partner") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { accountNumber, ifscCode, accountHolderName, bankName } = req.body;
+
+    if (!accountNumber || !ifscCode || !accountHolderName || !bankName) {
+      return res.status(400).json({ message: "All bank details are required" });
+    }
+
+    if (!user.deliveryProfile) user.deliveryProfile = {};
+
+    user.deliveryProfile.bankDetails = {
+      accountNumber,
+      ifscCode: ifscCode.toUpperCase(),
+      accountHolderName,
+      bankName,
+      isLinked: true,
+    };
+
+    await user.save();
+    console.log(`🏦 Bank account linked for delivery partner ${user._id}`);
+
+    res.json({
+      message: "Bank account linked successfully",
+      bankDetails: user.deliveryProfile.bankDetails,
+    });
+  } catch (error) {
+    console.error("Link bank account error:", error);
+    res.status(500).json({ message: "Server error", details: error.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// CASH COLLECTION MANAGEMENT (Uber-style ₹5000 limit)
+// ══════════════════════════════════════════════════════════════════════════
+
+// Get cash collection status
+router.get("/cash-collection", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "delivery_partner") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const cashData = user.deliveryProfile?.cashCollection || {
+      currentAmount: 0,
+      isAccountFrozen: false,
+    };
+
+    // Check if 24h deadline has passed since threshold was reached
+    if (cashData.thresholdReachedAt && !cashData.isAccountFrozen) {
+      const hoursSinceThreshold = (Date.now() - new Date(cashData.thresholdReachedAt).getTime()) / (1000 * 60 * 60);
+      if (hoursSinceThreshold >= 24) {
+        // Auto-freeze account
+        user.deliveryProfile.cashCollection.isAccountFrozen = true;
+        user.deliveryProfile.cashCollection.frozenAt = new Date();
+        user.deliveryProfile.cashCollection.frozenReason = "Cash collection limit exceeded for more than 24 hours";
+        user.deliveryProfile.isAvailable = false;
+        await user.save();
+        cashData.isAccountFrozen = true;
+        cashData.frozenAt = new Date();
+        cashData.frozenReason = "Cash collection limit exceeded for more than 24 hours";
+        console.log(`🔒 Account FROZEN for delivery partner ${user._id} — cash limit exceeded 24h`);
+      }
+    }
+
+    const CASH_LIMIT = 5000;
+    const hoursRemaining = cashData.thresholdReachedAt
+      ? Math.max(0, 24 - ((Date.now() - new Date(cashData.thresholdReachedAt).getTime()) / (1000 * 60 * 60)))
+      : null;
+
+    res.json({
+      currentAmount: cashData.currentAmount || 0,
+      limit: CASH_LIMIT,
+      isOverLimit: (cashData.currentAmount || 0) >= CASH_LIMIT,
+      isAccountFrozen: cashData.isAccountFrozen || false,
+      frozenReason: cashData.frozenReason || null,
+      thresholdReachedAt: cashData.thresholdReachedAt || null,
+      hoursRemaining: hoursRemaining ? parseFloat(hoursRemaining.toFixed(1)) : null,
+      lastDepositDate: cashData.lastDepositDate || null,
+      hasBankAccount: user.deliveryProfile?.bankDetails?.isLinked || false,
+    });
+  } catch (error) {
+    console.error("Get cash collection error:", error);
+    res.status(500).json({ message: "Server error", details: error.message });
+  }
+});
+
+// Record cash deposit (delivery partner deposits to bank)
+router.post("/cash-deposit", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "delivery_partner") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    if (!user.deliveryProfile?.bankDetails?.isLinked) {
+      return res.status(400).json({ message: "Please link a bank account first" });
+    }
+
+    const { amount } = req.body;
+    const currentAmount = user.deliveryProfile?.cashCollection?.currentAmount || 0;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid deposit amount" });
+    }
+
+    if (amount > currentAmount) {
+      return res.status(400).json({ message: `Cannot deposit more than current cash balance (₹${currentAmount})` });
+    }
+
+    // Reset cash collection
+    user.deliveryProfile.cashCollection.currentAmount = Math.max(0, currentAmount - amount);
+    user.deliveryProfile.cashCollection.lastDepositDate = new Date();
+
+    // If deposited enough to go below limit, reset threshold timer
+    if (user.deliveryProfile.cashCollection.currentAmount < 5000) {
+      user.deliveryProfile.cashCollection.thresholdReachedAt = null;
+    }
+
+    // Unfreeze account if it was frozen
+    if (user.deliveryProfile.cashCollection.isAccountFrozen) {
+      user.deliveryProfile.cashCollection.isAccountFrozen = false;
+      user.deliveryProfile.cashCollection.frozenAt = null;
+      user.deliveryProfile.cashCollection.frozenReason = null;
+      user.deliveryProfile.isAvailable = true;
+      console.log(`🔓 Account UNFROZEN for delivery partner ${user._id} after cash deposit`);
+    }
+
+    await user.save();
+    console.log(`💰 Cash deposit of ₹${amount} recorded for delivery partner ${user._id}. Remaining: ₹${user.deliveryProfile.cashCollection.currentAmount}`);
+
+    res.json({
+      message: `₹${amount} deposit recorded successfully`,
+      currentAmount: user.deliveryProfile.cashCollection.currentAmount,
+      isAccountFrozen: false,
+    });
+  } catch (error) {
+    console.error("Cash deposit error:", error);
+    res.status(500).json({ message: "Server error", details: error.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// DELIVERY HISTORY
+// ══════════════════════════════════════════════════════════════════════════
+
+router.get("/history", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "delivery_partner") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { page = 1, limit = 20, filter } = req.query;
+
+    let dateFilter = {};
+    const now = new Date();
+    if (filter === "today") {
+      dateFilter = { completedAt: { $gte: new Date(now.setHours(0, 0, 0, 0)) } };
+    } else if (filter === "week") {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      dateFilter = { completedAt: { $gte: weekAgo } };
+    } else if (filter === "month") {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      dateFilter = { completedAt: { $gte: monthAgo } };
+    }
+
+    const query = {
+      deliveryPartner: user._id,
+      status: { $in: ["delivered", "failed", "cancelled"] },
+      ...dateFilter,
+    };
+
+    const deliveries = await DeliveryAssignment.find(query)
+      .populate("order", "trackingNumber totalAmount subtotalAmount deliveryCharge paymentMethod createdAt")
+      .populate("customer", "name phone")
+      .populate("vendor", "name vendorProfile.businessName")
+      .sort({ completedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await DeliveryAssignment.countDocuments(query);
+
+    // Calculate summary stats
+    const allCompleted = await DeliveryAssignment.find({
+      deliveryPartner: user._id,
+      status: "delivered",
+      ...dateFilter,
+    });
+
+    const totalEarnings = allCompleted.reduce((sum, d) => sum + (d.deliveryFee || 0), 0);
+    const totalDistance = allCompleted.reduce((sum, d) => sum + (d.distance || 0), 0);
+
+    res.json({
+      deliveries,
+      summary: {
+        totalDeliveries: total,
+        completedDeliveries: allCompleted.length,
+        totalEarnings,
+        totalDistance: Math.round(totalDistance * 10) / 10,
+      },
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    console.error("Get delivery history error:", error);
+    res.status(500).json({ message: "Server error", details: error.message });
+  }
+});
+
 module.exports = router;

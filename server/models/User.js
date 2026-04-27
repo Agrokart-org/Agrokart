@@ -160,6 +160,23 @@ const userSchema = new mongoose.Schema(
         thisMonth: { type: Number, default: 0 },
         lastPayout: Date,
       },
+      bankDetails: {
+        accountNumber: String,
+        ifscCode: String,
+        accountHolderName: String,
+        bankName: String,
+        isLinked: { type: Boolean, default: false },
+      },
+      cashCollection: {
+        currentAmount: { type: Number, default: 0 },
+        lastDepositDate: Date,
+        thresholdReachedAt: Date,
+        isAccountFrozen: { type: Boolean, default: false },
+        frozenAt: Date,
+        frozenReason: String,
+      },
+      totalDeliveries: { type: Number, default: 0 },
+      successRate: { type: Number, default: 100 },
     },
     isVerified: {
       type: Boolean,

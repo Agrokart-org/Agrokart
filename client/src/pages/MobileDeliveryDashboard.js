@@ -74,6 +74,11 @@ import {
   updateDeliveryStatus,
   updateDeliveryAvailability,
   rejectAssignment,
+  getBankAccount,
+  linkBankAccount,
+  getCashCollection,
+  recordCashDeposit,
+  getDeliveryHistory,
 } from "../services/api";
 import LiveTrackingMap from "../components/map/LiveTrackingMap";
 import {
@@ -1235,43 +1240,145 @@ const MobileDeliveryDashboard = () => {
     </Box>
   );
 
+  // ─── History, Wallet & Profile State ───────────────────────────────
+  const [historyData, setHistoryData] = useState({ deliveries: [], summary: {} });
+  const [historyFilter, setHistoryFilter] = useState("all");
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [bankDetails, setBankDetails] = useState({ isLinked: false });
+  const [bankForm, setBankForm] = useState({ accountNumber: "", ifscCode: "", accountHolderName: "", bankName: "" });
+  const [showBankForm, setShowBankForm] = useState(false);
+  const [cashData, setCashData] = useState({ currentAmount: 0, limit: 5000, isAccountFrozen: false });
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+
+  const fetchHistory = async (filter = "all") => {
+    setHistoryLoading(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const data = await getDeliveryHistory({ filter: filter === "all" ? undefined : filter }, token);
+      setHistoryData(data);
+    } catch (e) { console.error("History fetch error:", e); }
+    finally { setHistoryLoading(false); }
+  };
+
+  const fetchWalletData = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const [bankRes, cashRes] = await Promise.all([
+        getBankAccount(token),
+        getCashCollection(token),
+      ]);
+      setBankDetails(bankRes.bankDetails || { isLinked: false });
+      setCashData(cashRes);
+    } catch (e) { console.error("Wallet fetch error:", e); }
+  };
+
+  const handleLinkBank = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await linkBankAccount(bankForm, token);
+      setBankDetails(res.bankDetails);
+      setShowBankForm(false);
+      alert("Bank account linked!");
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const handleDeposit = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      await recordCashDeposit(Number(depositAmount), token);
+      setDepositDialogOpen(false);
+      setDepositAmount("");
+      fetchWalletData();
+      alert("Deposit recorded!");
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  useEffect(() => {
+    if (value === 1) fetchHistory(historyFilter);
+    if (value === 2) fetchWalletData();
+  }, [value]);
+
   const renderHistory = () => (
     <Box sx={{ p: 2 }}>
       <AppBar position="static" elevation={0} color="transparent">
         <Toolbar>
-          <IconButton
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ color: textColor }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography
-            variant="h6"
-            fontWeight="bold"
-            sx={{ flexGrow: 1, color: textColor }}
-          >
-            History
-          </Typography>
+          <IconButton edge="start" onClick={handleDrawerToggle} sx={{ color: textColor }}><MenuIcon /></IconButton>
+          <Typography variant="h6" fontWeight="bold" sx={{ flexGrow: 1, color: textColor }}>Delivery History</Typography>
         </Toolbar>
       </AppBar>
-      <List>
-        <Card
-          sx={{
-            borderRadius: 3,
-            boxShadow: "none",
-            border: "1px solid #eee",
-            p: 4,
-            textAlign: "center",
-            bgcolor: cardBg,
-            color: textColor,
-          }}
-        >
-          <Typography color="text.secondary">
-            No delivery history yet
-          </Typography>
+
+      {/* Summary Cards */}
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        {[
+          { label: "Completed", value: historyData.summary?.completedDeliveries || 0, color: "#2E7D32", bg: "#E8F5E9" },
+          { label: "Earnings", value: `₹${historyData.summary?.totalEarnings || 0}`, color: "#1565C0", bg: "#E3F2FD" },
+          { label: "Distance", value: `${historyData.summary?.totalDistance || 0} km`, color: "#E65100", bg: "#FFF3E0" },
+        ].map((s, i) => (
+          <Grid item xs={4} key={i}>
+            <Card sx={{ borderRadius: 3, bgcolor: isDark ? "#1e1e1e" : s.bg, textAlign: "center", p: 1.5, boxShadow: "none" }}>
+              <Typography variant="h6" fontWeight="900" color={s.color}>{s.value}</Typography>
+              <Typography variant="caption" color="text.secondary">{s.label}</Typography>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Date Filter */}
+      <Stack direction="row" spacing={1} sx={{ mb: 2, overflowX: "auto", pb: 1 }}>
+        {["all", "today", "week", "month"].map((f) => (
+          <Chip
+            key={f}
+            label={f.charAt(0).toUpperCase() + f.slice(1)}
+            onClick={() => { setHistoryFilter(f); fetchHistory(f); }}
+            variant={historyFilter === f ? "filled" : "outlined"}
+            color={historyFilter === f ? "primary" : "default"}
+            sx={{ fontWeight: "bold" }}
+          />
+        ))}
+      </Stack>
+
+      {historyLoading ? <LinearProgress sx={{ mb: 2 }} /> : null}
+
+      {/* Delivery Cards */}
+      {historyData.deliveries?.length > 0 ? (
+        historyData.deliveries.map((d, i) => (
+          <Card key={i} sx={{ borderRadius: 3, mb: 1.5, bgcolor: cardBg, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                <Typography variant="subtitle2" fontWeight="bold" color={textColor}>
+                  #{d.order?.trackingNumber || "N/A"}
+                </Typography>
+                <Chip
+                  label={d.status}
+                  size="small"
+                  color={d.status === "delivered" ? "success" : d.status === "cancelled" ? "error" : "warning"}
+                  sx={{ fontWeight: "bold", textTransform: "capitalize" }}
+                />
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  {d.order?.createdAt ? new Date(d.order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "---"}
+                </Typography>
+                <Typography variant="subtitle2" fontWeight="bold" color="#2E7D32">
+                  +₹{d.deliveryFee || 0}
+                </Typography>
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                {d.vendor?.vendorProfile?.businessName || d.vendor?.name || "Vendor"} → Customer
+              </Typography>
+            </CardContent>
+          </Card>
+        ))
+      ) : !historyLoading ? (
+        <Card sx={{ borderRadius: 3, boxShadow: "none", border: "1px solid #eee", p: 4, textAlign: "center", bgcolor: cardBg }}>
+          <Typography color="text.secondary">No delivery history yet</Typography>
         </Card>
-      </List>
+      ) : null}
     </Box>
   );
 
@@ -1279,57 +1386,178 @@ const MobileDeliveryDashboard = () => {
     <Box sx={{ p: 2 }}>
       <AppBar position="static" elevation={0} color="transparent">
         <Toolbar>
-          <IconButton
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ color: textColor }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography
-            variant="h6"
-            fontWeight="bold"
-            sx={{ flexGrow: 1, color: textColor }}
-          >
-            Wallet
-          </Typography>
+          <IconButton edge="start" onClick={handleDrawerToggle} sx={{ color: textColor }}><MenuIcon /></IconButton>
+          <Typography variant="h6" fontWeight="bold" sx={{ flexGrow: 1, color: textColor }}>Wallet</Typography>
         </Toolbar>
       </AppBar>
-      <Card
-        sx={{
-          background: PURPLE_GRADIENT,
-          color: "white",
-          borderRadius: 4,
-          p: 3,
-          mb: 3,
-          boxShadow: isDark
-            ? "0 8px 24px rgba(106, 27, 154, 0.4)"
-            : "0 8px 24px rgba(33, 150, 243, 0.3)",
-        }}
-      >
-        <Typography variant="caption" sx={{ opacity: 0.8 }}>
-          TOTAL BALANCE
-        </Typography>
-        <Typography
-          variant="h3"
-          fontWeight="bold"
-          sx={{ my: 1, color: isDark ? AMBER_ACCENT : "white" }}
-        >
+
+      {/* Account Frozen Banner */}
+      {cashData.isAccountFrozen && (
+        <Card sx={{ bgcolor: "#FFEBEE", borderRadius: 3, p: 2, mb: 2, border: "2px solid #EF5350" }}>
+          <Typography variant="subtitle2" fontWeight="bold" color="error">⚠️ Account Frozen</Typography>
+          <Typography variant="body2" color="error.dark">
+            {cashData.frozenReason || "Cash collection limit exceeded. Please deposit immediately."}
+          </Typography>
+        </Card>
+      )}
+
+      {/* Total Balance Card */}
+      <Card sx={{
+        background: PURPLE_GRADIENT, color: "white", borderRadius: 4, p: 3, mb: 2,
+        boxShadow: isDark ? "0 8px 24px rgba(106,27,154,0.4)" : "0 8px 24px rgba(33,150,243,0.3)",
+      }}>
+        <Typography variant="caption" sx={{ opacity: 0.8 }}>TOTAL BALANCE</Typography>
+        <Typography variant="h3" fontWeight="bold" sx={{ my: 1, color: isDark ? AMBER_ACCENT : "white" }}>
           ₹{earnings.monthly}
         </Typography>
-        <Button
-          variant="contained"
-          sx={{
-            bgcolor: isDark ? "#424242" : "white",
-            color: isDark ? "white" : "#6A1B9A",
-            fontWeight: "bold",
-            mt: 2,
-            borderRadius: 2,
-          }}
-        >
-          Withdraw
-        </Button>
+        <Button variant="contained" sx={{
+          bgcolor: isDark ? "#424242" : "white", color: isDark ? "white" : "#6A1B9A",
+          fontWeight: "bold", mt: 1, borderRadius: 2,
+        }}>Withdraw</Button>
       </Card>
+
+      {/* Cash Collection Card (Uber-style ₹5000 limit) */}
+      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg, overflow: "hidden" }}>
+        <CardContent>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1" fontWeight="bold" color={textColor}>💵 Cash On Hand</Typography>
+            <Chip
+              label={cashData.isOverLimit ? "⚠️ Over Limit" : "Within Limit"}
+              size="small"
+              color={cashData.isOverLimit ? "error" : "success"}
+              sx={{ fontWeight: "bold" }}
+            />
+          </Stack>
+
+          <Typography variant="h4" fontWeight="900" color={cashData.isOverLimit ? "#D32F2F" : "#2E7D32"}>
+            ₹{cashData.currentAmount || 0}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Limit: ₹{cashData.limit || 5000}
+          </Typography>
+
+          {/* Progress Bar */}
+          <LinearProgress
+            variant="determinate"
+            value={Math.min(100, ((cashData.currentAmount || 0) / (cashData.limit || 5000)) * 100)}
+            sx={{
+              mt: 1.5, height: 10, borderRadius: 5,
+              bgcolor: isDark ? "#333" : "#eee",
+              "& .MuiLinearProgress-bar": {
+                borderRadius: 5,
+                bgcolor: (cashData.currentAmount || 0) >= 4000 ? "#D32F2F" : (cashData.currentAmount || 0) >= 3000 ? "#FF9800" : "#4CAF50",
+              },
+            }}
+          />
+
+          {/* Timer if over limit */}
+          {cashData.hoursRemaining !== null && cashData.hoursRemaining !== undefined && (
+            <Card sx={{ mt: 2, bgcolor: "#FFF3E0", borderRadius: 2, p: 1.5 }}>
+              <Typography variant="body2" fontWeight="bold" color="#E65100">
+                ⏱ {cashData.hoursRemaining}h remaining to deposit
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Account will freeze if not deposited within 24 hours
+              </Typography>
+            </Card>
+          )}
+
+          <Button
+            fullWidth variant="contained" color="warning"
+            disabled={!cashData.currentAmount || cashData.currentAmount === 0}
+            onClick={() => setDepositDialogOpen(true)}
+            sx={{ mt: 2, borderRadius: 2, fontWeight: "bold", textTransform: "none" }}
+          >
+            Deposit to Bank Account
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Bank Account Section */}
+      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
+        <CardContent>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1" fontWeight="bold" color={textColor}>🏦 Bank Account</Typography>
+            <Chip
+              label={bankDetails.isLinked ? "Linked ✓" : "Not Linked"}
+              size="small"
+              color={bankDetails.isLinked ? "success" : "default"}
+              sx={{ fontWeight: "bold" }}
+            />
+          </Stack>
+
+          {bankDetails.isLinked && !showBankForm ? (
+            <Box>
+              <Typography variant="body2" color="text.secondary">
+                {bankDetails.bankName} • ****{bankDetails.accountNumber?.slice(-4)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {bankDetails.accountHolderName} • IFSC: {bankDetails.ifscCode}
+              </Typography>
+              <Button size="small" onClick={() => setShowBankForm(true)} sx={{ mt: 1 }}>
+                Update
+              </Button>
+            </Box>
+          ) : (
+            <Box>
+              <TextField
+                fullWidth size="small" label="Account Number" value={bankForm.accountNumber}
+                onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
+                sx={{ mb: 1.5 }}
+              />
+              <TextField
+                fullWidth size="small" label="IFSC Code" value={bankForm.ifscCode}
+                onChange={(e) => setBankForm({ ...bankForm, ifscCode: e.target.value })}
+                sx={{ mb: 1.5 }}
+              />
+              <TextField
+                fullWidth size="small" label="Account Holder Name" value={bankForm.accountHolderName}
+                onChange={(e) => setBankForm({ ...bankForm, accountHolderName: e.target.value })}
+                sx={{ mb: 1.5 }}
+              />
+              <TextField
+                fullWidth size="small" label="Bank Name" value={bankForm.bankName}
+                onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
+                sx={{ mb: 1.5 }}
+              />
+              <Stack direction="row" spacing={1}>
+                {showBankForm && (
+                  <Button variant="outlined" onClick={() => setShowBankForm(false)}>Cancel</Button>
+                )}
+                <Button variant="contained" onClick={handleLinkBank} sx={{ fontWeight: "bold" }}>
+                  {bankDetails.isLinked ? "Update Account" : "Link Account"}
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Deposit Dialog */}
+      <Dialog open={depositDialogOpen} onClose={() => setDepositDialogOpen(false)}
+        PaperProps={{ sx: { borderRadius: 3, width: "90%", maxWidth: 400 } }}>
+        <DialogTitle sx={{ fontWeight: "bold" }}>Record Cash Deposit</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Enter the amount you deposited to your linked bank account
+          </Typography>
+          <TextField
+            fullWidth type="number" label="Deposit Amount (₹)"
+            value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
+            inputProps={{ max: cashData.currentAmount }}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+            Available balance: ₹{cashData.currentAmount || 0}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDepositDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="success" onClick={handleDeposit}
+            disabled={!depositAmount || Number(depositAmount) <= 0}>
+            Confirm Deposit
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 
@@ -1337,60 +1565,122 @@ const MobileDeliveryDashboard = () => {
     <Box sx={{ p: 2 }}>
       <AppBar position="static" elevation={0} color="transparent">
         <Toolbar>
-          <IconButton
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ color: textColor }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography
-            variant="h6"
-            fontWeight="bold"
-            sx={{ flexGrow: 1, color: textColor }}
-          >
-            Profile
-          </Typography>
+          <IconButton edge="start" onClick={handleDrawerToggle} sx={{ color: textColor }}><MenuIcon /></IconButton>
+          <Typography variant="h6" fontWeight="bold" sx={{ flexGrow: 1, color: textColor }}>Profile</Typography>
         </Toolbar>
       </AppBar>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          py: 4,
-        }}
-      >
+
+      {/* Profile Header Card */}
+      <Card sx={{
+        background: PURPLE_GRADIENT, borderRadius: 4, p: 3, mb: 2, color: "white", textAlign: "center",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+      }}>
         <Avatar
           src={user?.avatar}
           sx={{
-            width: 100,
-            height: 100,
-            mb: 2,
-            border: `4px solid ${AMBER_ACCENT}`,
+            width: 90, height: 90, margin: "0 auto", mb: 1.5,
+            border: `4px solid ${AMBER_ACCENT}`, boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
           }}
         />
-        <Typography variant="h5" fontWeight="bold" sx={{ color: textColor }}>
-          {user?.name}
-        </Typography>
-        <Chip
-          label={user?.role?.replace("_", " ").toUpperCase()}
-          sx={{
-            mt: 1,
-            bgcolor: isDark ? AMBER_ACCENT : "#6A1B9A",
-            color: isDark ? "black" : "white",
-          }}
-          size="small"
-        />
-      </Box>
-      <List sx={{ bgcolor: cardBg, borderRadius: 3 }}>
-        <ListItemButton onClick={logout}>
-          <ListItemIcon>
-            <ExitToApp color="error" />
-          </ListItemIcon>
-          <ListItemText primary="Logout" sx={{ color: "error.main" }} />
+        <Typography variant="h5" fontWeight="bold">{user?.name || "Delivery Partner"}</Typography>
+        <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>{user?.email}</Typography>
+        <Stack direction="row" spacing={1} justifyContent="center">
+          <Chip
+            label="DELIVERY PARTNER"
+            size="small"
+            sx={{ bgcolor: AMBER_ACCENT, color: "black", fontWeight: "bold" }}
+          />
+          <Chip
+            label={user?.deliveryProfile?.verificationStatus === "verified" ? "✓ Verified" : "⏳ Pending"}
+            size="small"
+            sx={{
+              bgcolor: user?.deliveryProfile?.verificationStatus === "verified" ? "#4CAF50" : "#FF9800",
+              color: "white", fontWeight: "bold",
+            }}
+          />
+        </Stack>
+      </Card>
+
+      {/* Performance Stats */}
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        {[
+          { label: "Deliveries", value: user?.deliveryProfile?.totalDeliveries || 0, color: "#1565C0", bg: "#E3F2FD" },
+          { label: "Rating", value: `${user?.deliveryProfile?.rating?.average?.toFixed(1) || "5.0"} ⭐`, color: "#E65100", bg: "#FFF3E0" },
+          { label: "Success", value: `${user?.deliveryProfile?.successRate || 100}%`, color: "#2E7D32", bg: "#E8F5E9" },
+          { label: "Earnings", value: `₹${earnings.total || 0}`, color: "#6A1B9A", bg: "#F3E5F5" },
+        ].map((s, i) => (
+          <Grid item xs={6} key={i}>
+            <Card sx={{ borderRadius: 3, bgcolor: isDark ? "#1e1e1e" : s.bg, textAlign: "center", p: 2, boxShadow: "none" }}>
+              <Typography variant="h6" fontWeight="900" color={s.color}>{s.value}</Typography>
+              <Typography variant="caption" color="text.secondary">{s.label}</Typography>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Personal Info */}
+      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
+        <CardContent>
+          <Typography variant="subtitle1" fontWeight="bold" color={textColor} sx={{ mb: 1.5 }}>Personal Information</Typography>
+          <List disablePadding>
+            {[
+              { icon: "👤", label: "Name", value: user?.name },
+              { icon: "📧", label: "Email", value: user?.email },
+              { icon: "📱", label: "Phone", value: user?.phone },
+            ].map((item, i) => (
+              <ListItem key={i} disablePadding sx={{ py: 0.5 }}>
+                <ListItemText
+                  primary={<Typography variant="caption" color="text.secondary">{item.icon} {item.label}</Typography>}
+                  secondary={<Typography variant="body2" fontWeight="bold" color={textColor}>{item.value || "Not set"}</Typography>}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
+
+      {/* Vehicle Details */}
+      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
+        <CardContent>
+          <Typography variant="subtitle1" fontWeight="bold" color={textColor} sx={{ mb: 1.5 }}>Vehicle Details</Typography>
+          <List disablePadding>
+            {[
+              { icon: "🏍️", label: "Vehicle", value: user?.deliveryProfile?.vehicleType?.toUpperCase() },
+              { icon: "🔢", label: "Number", value: user?.deliveryProfile?.vehicleNumber },
+              { icon: "📋", label: "License", value: user?.deliveryProfile?.licenseNumber },
+            ].map((item, i) => (
+              <ListItem key={i} disablePadding sx={{ py: 0.5 }}>
+                <ListItemText
+                  primary={<Typography variant="caption" color="text.secondary">{item.icon} {item.label}</Typography>}
+                  secondary={<Typography variant="body2" fontWeight="bold" color={textColor}>{item.value || "Not provided"}</Typography>}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
+
+      {/* Bank Account Status */}
+      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
+        <CardContent>
+          <ListItemButton onClick={() => setValue(2)} sx={{ borderRadius: 2, mx: -2 }}>
+            <ListItemIcon><Typography>🏦</Typography></ListItemIcon>
+            <ListItemText
+              primary="Bank Account"
+              secondary={bankDetails.isLinked ? `${bankDetails.bankName} • ****${bankDetails.accountNumber?.slice(-4)}` : "Not linked yet"}
+            />
+            <ChevronRight />
+          </ListItemButton>
+        </CardContent>
+      </Card>
+
+      {/* Logout */}
+      <Card sx={{ borderRadius: 3, bgcolor: cardBg }}>
+        <ListItemButton onClick={logout} sx={{ borderRadius: 3, py: 2 }}>
+          <ListItemIcon><ExitToApp color="error" /></ListItemIcon>
+          <ListItemText primary="Logout" sx={{ color: "error.main" }} primaryTypographyProps={{ fontWeight: "bold" }} />
         </ListItemButton>
-      </List>
+      </Card>
     </Box>
   );
 

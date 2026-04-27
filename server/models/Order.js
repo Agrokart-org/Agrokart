@@ -34,6 +34,14 @@ const orderSchema = new mongoose.Schema(
         },
       },
     ],
+    subtotalAmount: {
+      type: Number,
+      default: 0,
+    },
+    deliveryCharge: {
+      type: Number,
+      default: 0,
+    },
     totalAmount: {
       type: Number,
       required: true,
@@ -76,6 +84,7 @@ const orderSchema = new mongoose.Schema(
       enum: [
         "pending",
         "finding_vendor",
+        "pending_vendor_approval",
         "confirmed",
         "processing",
         "out_for_delivery",
@@ -103,6 +112,20 @@ const orderSchema = new mongoose.Schema(
       type: String,
       match: /^\d{4}$/,
     },
+    vendorPayout: {
+      amount: { type: Number, default: 0 },
+      status: {
+        type: String,
+        enum: ["pending", "processing", "completed"],
+        default: "pending",
+      },
+      processedAt: Date,
+      method: {
+        type: String,
+        enum: ["instant", "cash_deposit"],
+      },
+    },
+    rejectionReason: String,
   },
   {
     timestamps: true,
@@ -122,7 +145,7 @@ orderSchema.methods.calculateTotal = function () {
 
 // Method to check if order can be cancelled
 orderSchema.methods.canBeCancelled = function () {
-  return ["pending", "confirmed", "processing"].includes(this.orderStatus);
+  return ["pending", "finding_vendor", "pending_vendor_approval", "confirmed", "processing"].includes(this.orderStatus);
 };
 
 const Order = mongoose.model("Order", orderSchema);

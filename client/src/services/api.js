@@ -9,17 +9,7 @@ const isMobile = () => {
 // Get the appropriate API base URL
 // Get the appropriate API base URL
 const getApiBaseUrl = () => {
-  if (process.env.REACT_APP_API_URL) {
-    return `${process.env.REACT_APP_API_URL}/api`;
-  }
-  // Check if running in Capacitor (mobile app)
-  if (isMobile()) {
-    // For Android APK on real device, use your laptop's LAN IP
-    // Note: Updated to detected IP
-    return "http://10.22.227.226:5000/api";
-  }
-
-  // For web browser (local dev or network access)
+  // 1. If running on localhost web browser, always use local backend for testing
   if (
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
@@ -27,7 +17,19 @@ const getApiBaseUrl = () => {
     return "http://localhost:5000/api";
   }
 
-  // Dynamic fallback for network access (e.g. 192.168.x.x)
+  // 2. If running in Capacitor (mobile app on device), use the hardcoded LAN IP
+  if (isMobile()) {
+    // For Android APK on real device, use your laptop's LAN IP
+    // Note: Updated to detected IP
+    return "http://10.22.227.226:5000/api";
+  }
+
+  // 3. If in production (deployed web), use the Render API URL from .env
+  if (process.env.REACT_APP_API_URL) {
+    return `${process.env.REACT_APP_API_URL}/api`;
+  }
+
+  // 4. Dynamic fallback for local network access (e.g. 192.168.x.x)
   const url = `http://${window.location.hostname}:5000/api`;
   console.log("API URL selected:", url);
   return url;
@@ -1197,6 +1199,111 @@ export const updateDeliveryAvailability = async (data, token) => {
 };
 
 // Default export object with all API functions
+// ══════════════════════════════════════════════════════════════════════════
+// DELIVERY PARTNER — BANK ACCOUNT, CASH COLLECTION, HISTORY
+// ══════════════════════════════════════════════════════════════════════════
+
+export const getBankAccount = async (token) => {
+  const response = await safeFetch(`${API_BASE_URL}/delivery/bank-account`, {
+    headers: { "x-auth-token": token },
+  });
+  if (!response.ok) throw new Error("Failed to get bank account");
+  return response.json();
+};
+
+export const linkBankAccount = async (bankDetails, token) => {
+  const response = await safeFetch(`${API_BASE_URL}/delivery/bank-account`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-auth-token": token,
+    },
+    body: JSON.stringify(bankDetails),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    try {
+      const err = JSON.parse(text);
+      throw new Error(err.message || "Failed to link bank account");
+    } catch (e) {
+      // If it's not JSON, it's likely an HTML 404 from a backend that doesn't have this route yet
+      throw new Error(`Server returned an invalid response (${response.status}). Are you connected to the updated backend?`);
+    }
+  }
+  return response.json();
+};
+
+export const getVendorBankAccount = async (token) => {
+  const response = await safeFetch(`${API_BASE_URL}/vendor/bank-account`, {
+    headers: { "x-auth-token": token },
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.message || "Failed to fetch bank account details");
+  }
+  return response.json();
+};
+
+export const linkVendorBankAccount = async (bankDetails, token) => {
+  const response = await safeFetch(`${API_BASE_URL}/vendor/bank-account`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-auth-token": token,
+    },
+    body: JSON.stringify(bankDetails),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    try {
+      const err = JSON.parse(text);
+      throw new Error(err.message || "Failed to link bank account");
+    } catch (e) {
+      throw new Error(`Server returned an invalid response (${response.status}). Are you connected to the updated backend?`);
+    }
+  }
+  return response.json();
+};
+
+export const getCashCollection = async (token) => {
+  const response = await safeFetch(`${API_BASE_URL}/delivery/cash-collection`, {
+    headers: { "x-auth-token": token },
+  });
+  if (!response.ok) throw new Error("Failed to get cash collection");
+  return response.json();
+};
+
+export const recordCashDeposit = async (amount, token) => {
+  const response = await safeFetch(`${API_BASE_URL}/delivery/cash-deposit`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-auth-token": token,
+    },
+    body: JSON.stringify({ amount }),
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.message || "Failed to record deposit");
+  }
+  return response.json();
+};
+
+export const getDeliveryHistory = async (params, token) => {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append("page", params.page);
+  if (params?.limit) queryParams.append("limit", params.limit);
+  if (params?.filter) queryParams.append("filter", params.filter);
+  const queryString = queryParams.toString();
+  const url = `${API_BASE_URL}/delivery/history${queryString ? `?${queryString}` : ""}`;
+
+  const response = await safeFetch(url, {
+    headers: { "x-auth-token": token },
+  });
+  if (!response.ok) throw new Error("Failed to get delivery history");
+  return response.json();
+};
+
 const api = {
   // Auth
   login,
@@ -1241,6 +1348,13 @@ const api = {
   rejectAssignment,
   updateDeliveryStatus,
   updateDeliveryAvailability,
+
+  // Delivery — New
+  getBankAccount,
+  linkBankAccount,
+  getCashCollection,
+  recordCashDeposit,
+  getDeliveryHistory,
 };
 
 export default api;
