@@ -1,6 +1,21 @@
 const { db } = require("../config/firebase");
+const { getMarkup, getCustomerPrice } = require("../utils/pricing");
 
 const formatProduct = (doc) => ({ _id: doc.id, id: doc.id, ...doc.data() });
+
+/**
+ * Apply platform markup to a product for customer-facing display.
+ * Preserves the original vendor price as `basePrice`.
+ */
+const applyMarkup = (product) => {
+  const base = Number(product.price) || 0;
+  return {
+    ...product,
+    basePrice: base,
+    markup: getMarkup(base),
+    price: getCustomerPrice(base),
+  };
+};
 
 const getProducts = async (req, res, next) => {
   try {
@@ -44,7 +59,7 @@ const getProducts = async (req, res, next) => {
       success: true,
       message: "Products retrieved successfully",
       data: {
-        products: paginatedProducts,
+        products: paginatedProducts.map(applyMarkup),
         pagination: {
           currentPage: Number(page),
           totalPages: Math.ceil(total / limit),
@@ -81,14 +96,19 @@ const searchProducts = async (req, res, next) => {
       success: true,
       message: "Search completed",
       data: {
-        products: products.map((product) => ({
-          id: product._id,
-          name: product.name,
-          category: product.category,
-          price: product.price,
-          image: product.image,
-          description: product.description,
-        })),
+        products: products.map((product) => {
+          const marked = applyMarkup(product);
+          return {
+            id: product._id,
+            name: product.name,
+            category: product.category,
+            basePrice: marked.basePrice,
+            price: marked.price,
+            markup: marked.markup,
+            image: product.image,
+            description: product.description,
+          };
+        }),
         query: req.query.q,
         count: products.length,
       }
@@ -178,7 +198,7 @@ const getProductsByCategory = async (req, res, next) => {
       message: "Category products loaded",
       data: {
         category,
-        products: paginatedProducts,
+        products: paginatedProducts.map(applyMarkup),
         pagination: {
           currentPage: Number(page),
           totalPages: Math.ceil(total / limit),
@@ -203,7 +223,7 @@ const getFeaturedProducts = async (req, res, next) => {
       .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
       .slice(0, Number(limit));
       
-    res.json({ success: true, message: "Featured products loaded", data: products });
+    res.json({ success: true, message: "Featured products loaded", data: products.map(applyMarkup) });
   } catch (err) {
     next(err);
   }
@@ -215,7 +235,7 @@ const getProductById = async (req, res, next) => {
     if (!doc.exists) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
-    res.json({ success: true, message: "Product loaded", data: formatProduct(doc) });
+    res.json({ success: true, message: "Product loaded", data: applyMarkup(formatProduct(doc)) });
   } catch (err) {
     next(err);
   }

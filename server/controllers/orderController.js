@@ -5,6 +5,7 @@ const Product = require("../models/Product");
 const VendorInventory = require("../models/VendorInventory");
 const { getIo } = require("../services/socketService");
 const Notification = require("../models/Notification");
+const { getCustomerPrice, getDeliveryCharge, getPlatformCommission, getVendorPayout } = require("../utils/pricing");
 
 const getDistanceFromLatLonInM = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3;
@@ -56,11 +57,15 @@ const createOrder = async (req, res, next) => {
         }
       }
 
-      totalAmount += finalPrice * Number(item.quantity);
+      // Apply platform markup — customer pays base + markup
+      const customerPrice = getCustomerPrice(finalPrice);
+
+      totalAmount += customerPrice * Number(item.quantity);
       refinedItems.push({
         product: validProductObjId,
         quantity: Number(item.quantity),
-        price: finalPrice,
+        basePrice: finalPrice,
+        price: customerPrice,
         status: "pending",
       });
 
@@ -70,13 +75,16 @@ const createOrder = async (req, res, next) => {
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    // PRODUCTION DELIVERY CHARGE LOGIC
-    // Orders < ₹700 → ₹100 delivery charge | Orders ≥ ₹700 → FREE
+    // DELIVERY CHARGE LOGIC
+    // Orders with subtotal > ₹699 → FREE | Otherwise → ₹40
     // ──────────────────────────────────────────────────────────────────────
     const subtotalAmount = totalAmount;
-    const deliveryCharge = subtotalAmount < 700 ? 100 : 0;
+    const deliveryCharge = getDeliveryCharge(subtotalAmount);
     totalAmount = subtotalAmount + deliveryCharge;
-    console.log(`💰 Subtotal: ₹${subtotalAmount} | Delivery Charge: ₹${deliveryCharge} | Total: ₹${totalAmount}`);
+    
+    // Calculate platform commission (1% for online payments)
+    const platformFee = getPlatformCommission(subtotalAmount, paymentMethod || 'cod');
+    console.log(`💰 Subtotal: ₹${subtotalAmount} | Delivery: ₹${deliveryCharge} | Platform Fee: ₹${platformFee} | Total: ₹${totalAmount}`);
 
     // ──────────────────────────────────────────────────────────────────────
     // INVENTORY-AWARE VENDOR ASSIGNMENT
@@ -181,8 +189,8 @@ const createOrder = async (req, res, next) => {
     // ──────────────────────────────────────────────────────────────────────
     const initialStatus = assignedVendor ? "pending_vendor_approval" : "finding_vendor";
 
-    // Calculate vendor payout (90% of product subtotal)
-    const vendorPayoutAmount = Math.round(subtotalAmount * 0.90);
+    // Calculate vendor payout (99% of subtotal for online, full for COD minus 1%)
+    const vendorPayoutAmount = getVendorPayout(subtotalAmount, paymentMethod || 'cod');
     const vendorPayoutMethod = (paymentMethod === 'cod') ? 'cash_deposit' : 'instant';
 
     const newOrder = new Order({
@@ -191,6 +199,7 @@ const createOrder = async (req, res, next) => {
       subtotalAmount,
       deliveryCharge,
       totalAmount,
+      platformFee,
       deliveryAddress,
       deliverySlot,
       paymentMethod: paymentMethod || "cod",
