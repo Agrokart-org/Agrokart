@@ -182,42 +182,75 @@ const PaymentPage = () => {
             setIsProcessing(false);
           },
           confirm_close: true,
-          escape: true,
+          escape: false,
           animation: true,
           backdropclose: false,
-        },
-        // Allow Razorpay to handle payment methods natively
-        // UPI intents and bank redirects are handled by MainActivity.java WebViewClient
-        config: {
-          display: {
-            blocks: {
-              utib: { name: "Pay using UPI", instruments: [{ method: "upi" }] },
-              other: { name: "Other Methods", instruments: [{ method: "card" }, { method: "netbanking" }, { method: "wallet" }] },
-            },
-            sequence: ["block.utib", "block.other"],
-            preferences: {
-              show_default_blocks: true,
-            },
-          },
         },
       };
 
       try {
-        const paymentObject = new window.Razorpay(options);
+        if (window.RazorpayCheckout) {
+          // Native Cordova plugin is available
+          window.RazorpayCheckout.open(options, async function (successResponse) {
+            // Success handler for Native plugin
+            try {
+              const verification = await verifyPayment(
+                {
+                  razorpay_order_id: successResponse.razorpay_order_id,
+                  razorpay_payment_id: successResponse.razorpay_payment_id,
+                  razorpay_signature: successResponse.razorpay_signature,
+                },
+                token,
+              );
 
-        // Handle Razorpay modal close and failures
-        paymentObject.on("payment.failed", function (response) {
-          console.error("Razorpay Payment Failed:", response.error);
-          setSnackbar({
-            open: true,
-            message:
-              response.error.description || "Payment Failed. Please try again.",
-            severity: "error",
+              if (verification.status === "success") {
+                proceedToOrderCreation("online");
+              } else {
+                setSnackbar({
+                  open: true,
+                  message: "Payment verification failed",
+                  severity: "error",
+                });
+                setIsProcessing(false);
+              }
+            } catch (error) {
+              console.error("Verification Error:", error);
+              setSnackbar({
+                open: true,
+                message: "Payment verification failed",
+                severity: "error",
+              });
+              setIsProcessing(false);
+            }
+          }, function(errorResponse) {
+            // Error handler for Native plugin
+            console.error("Razorpay Native Payment Failed:", errorResponse);
+            setSnackbar({
+              open: true,
+              message:
+                (errorResponse && errorResponse.description) || "Payment Failed. Please try again.",
+              severity: "error",
+            });
+            setIsProcessing(false);
           });
-          setIsProcessing(false);
-        });
+        } else {
+          // Web SDK fallback
+          const paymentObject = new window.Razorpay(options);
 
-        paymentObject.open();
+          // Handle Razorpay modal close and failures
+          paymentObject.on("payment.failed", function (response) {
+            console.error("Razorpay Web Payment Failed:", response.error);
+            setSnackbar({
+              open: true,
+              message:
+                response.error.description || "Payment Failed. Please try again.",
+              severity: "error",
+            });
+            setIsProcessing(false);
+          });
+
+          paymentObject.open();
+        }
       } catch (razorpayError) {
         console.error("Razorpay Initialization Error:", razorpayError);
         setSnackbar({

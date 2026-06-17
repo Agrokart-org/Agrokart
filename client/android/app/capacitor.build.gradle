@@ -13,7 +13,7 @@ dependencies {
     implementation project(':capacitor-splash-screen')
     implementation project(':capacitor-toast')
     implementation project(':capgo-capacitor-social-login')
-
+    implementation "com.razorpay:checkout:1.6.19"
 }
 
 
