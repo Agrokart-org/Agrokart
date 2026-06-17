@@ -88,6 +88,7 @@ const AgrokartLogo = ({
             fontFamily: "Arial, sans-serif",
             color: color === "white" ? "#B39DDB" : "#6A1B9A", // Purple matching the image
             letterSpacing: "1px",
+            whiteSpace: "nowrap",
             textShadow:
               color === "white" ? "none" : "1px 1px 2px rgba(0,0,0,0.1)",
           }}
@@ -101,6 +102,7 @@ const AgrokartLogo = ({
             fontFamily: "Arial, sans-serif",
             color: color === "white" ? "#FFB74D" : "#FF5722", // Orange matching the image
             letterSpacing: "1px",
+            whiteSpace: "nowrap",
             textShadow:
               color === "white" ? "none" : "1px 1px 2px rgba(0,0,0,0.1)",
           }}
@@ -165,6 +167,7 @@ const AgrokartLogo = ({
             fontFamily: "Arial, sans-serif",
             color: color === "white" ? "#B39DDB" : "#6A1B9A", // Purple matching the image
             letterSpacing: "1px",
+            whiteSpace: "nowrap",
           }}
         >
           Agro
@@ -176,6 +179,7 @@ const AgrokartLogo = ({
             fontFamily: "Arial, sans-serif",
             color: color === "white" ? "#FFB74D" : "#FF5722", // Orange matching the image
             letterSpacing: "1px",
+            whiteSpace: "nowrap",
           }}
         >
           kart

@@ -500,7 +500,7 @@ const BookingCard = ({ booking }) => (
 // ──────────────────────────────────────────────────────────────────────────────
 const LabourManagement = () => {
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState(0); // 0=find 1=bookings 2=post 3=register
+  const [activeTab, setActiveTab] = useState("hub"); // "hub", 0=find, 1=bookings, 2=post, 3=register
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSkill, setFilterSkill] = useState("All");
   const [showFilter, setShowFilter] = useState(false);
@@ -637,12 +637,14 @@ const LabourManagement = () => {
     <Box
       sx={{
         minHeight: "100vh",
-        bgcolor: "#F1F5F1",
+        bgcolor: "#F8FAF8",
         display: "flex",
         flexDirection: "column",
-        maxWidth: 480,
+        width: "100%",
+        maxWidth: { xs: "100vw", sm: 480 },
         mx: "auto",
         position: "relative",
+        overflowX: "hidden",
       }}
     >
       {/* ── HEADER ── */}
@@ -664,17 +666,27 @@ const LabourManagement = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <Typography
-            variant="h5"
-            fontWeight={800}
-            color="white"
-            sx={{ letterSpacing: -0.5 }}
-          >
-            Labour Hub 👷
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
+            {activeTab !== "hub" && (
+              <IconButton 
+                onClick={() => setActiveTab("hub")} 
+                sx={{ color: "white", mr: 1, ml: -1 }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+            )}
+            <Typography
+              variant="h5"
+              fontWeight={800}
+              color="white"
+              sx={{ letterSpacing: -0.5 }}
+            >
+              Labour Hub 👷
+            </Typography>
+          </Box>
           <Typography
             variant="caption"
-            sx={{ color: "rgba(255,255,255,0.75)", display: "block", mb: 2 }}
+            sx={{ color: "rgba(255,255,255,0.75)", display: "block", mb: 2, ml: activeTab !== "hub" ? 5 : 0 }}
           >
             Find skilled farm workers near you
           </Typography>
@@ -763,8 +775,77 @@ const LabourManagement = () => {
       </Box>
 
       {/* ── CONTENT ── */}
-      <Box sx={{ flex: 1, p: 2, pb: 4, overflowY: "auto" }}>
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden", position: "relative" }}>
         <AnimatePresence mode="wait">
+          {/* ════════════ HUB VIEW ════════════ */}
+          {activeTab === "hub" && (
+            <motion.div
+              key="hub"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "24px", height: "100%", justifyContent: "center" }}
+            >
+              <Box sx={{ textAlign: "center", mb: 2 }}>
+                <Typography variant="h4" fontWeight="900" sx={{ mb: 1, color: "#1B5E20" }}>
+                  Welcome to Labour Hub
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Are you looking to hire farm workers or offer your services?
+                </Typography>
+              </Box>
+
+              <Button
+                variant="contained"
+                onClick={() => setActiveTab(0)}
+                sx={{
+                  background: "linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)",
+                  borderRadius: 4,
+                  py: 4,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1.5,
+                  boxShadow: "0 12px 24px rgba(46,125,50,0.25)",
+                  "&:hover": { transform: "translateY(-4px)", boxShadow: "0 16px 32px rgba(46,125,50,0.35)" },
+                  transition: "all 0.3s ease"
+                }}
+              >
+                <GroupsIcon sx={{ fontSize: 48, color: "white" }} />
+                <Typography variant="h5" fontWeight="800" color="white" textTransform="none">
+                  Hire Labour
+                </Typography>
+                <Typography variant="caption" color="rgba(255,255,255,0.8)" textTransform="none">
+                  Find and book skilled agricultural workers
+                </Typography>
+              </Button>
+
+              <Button
+                variant="contained"
+                onClick={() => setActiveTab(3)}
+                sx={{
+                  background: "linear-gradient(135deg, #1565C0 0%, #42A5F5 100%)",
+                  borderRadius: 4,
+                  py: 4,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1.5,
+                  boxShadow: "0 12px 24px rgba(21,101,192,0.25)",
+                  "&:hover": { transform: "translateY(-4px)", boxShadow: "0 16px 32px rgba(21,101,192,0.35)" },
+                  transition: "all 0.3s ease"
+                }}
+              >
+                <WorkerIcon sx={{ fontSize: 48, color: "white" }} />
+                <Typography variant="h5" fontWeight="800" color="white" textTransform="none">
+                  Become a Labour
+                </Typography>
+                <Typography variant="caption" color="rgba(255,255,255,0.8)" textTransform="none">
+                  Register your skills and get hired by farmers
+                </Typography>
+              </Button>
+            </motion.div>
+          )}
+
           {/* ════════════ TAB 0: FIND LABOUR ════════════ */}
           {activeTab === 0 && (
             <motion.div
@@ -773,6 +854,7 @@ const LabourManagement = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 12 }}
               transition={{ duration: 0.25 }}
+              style={{ padding: "16px" }}
             >
               {/* Search bar */}
               <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
@@ -905,6 +987,7 @@ const LabourManagement = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 12 }}
               transition={{ duration: 0.25 }}
+              style={{ padding: "16px" }}
             >
               {/* Summary pills */}
               <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
@@ -979,6 +1062,7 @@ const LabourManagement = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 12 }}
               transition={{ duration: 0.25 }}
+              style={{ padding: "16px" }}
             >
               <Box
                 sx={{
@@ -1158,6 +1242,7 @@ const LabourManagement = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 12 }}
               transition={{ duration: 0.25 }}
+              style={{ padding: "16px" }}
             >
               {/* Banner */}
               <Box

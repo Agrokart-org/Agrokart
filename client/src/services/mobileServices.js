@@ -53,6 +53,7 @@ export class MobileServices {
       const coordinates = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
         timeout: 10000,
+        maximumAge: 0,
       });
       return {
         latitude: coordinates.coords.latitude,
@@ -71,6 +72,7 @@ export class MobileServices {
         {
           enableHighAccuracy: true,
           timeout: 10000,
+          maximumAge: 0,
         },
         callback,
       );

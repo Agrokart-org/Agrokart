@@ -311,8 +311,37 @@ const DeliveryDetailsPage = () => {
       return { longitude: 78.9629, latitude: 20.5937 };
     };
 
-    // Try to get user's actual location via browser geolocation
-    const getLocation = () => {
+    // Try to get user's actual location — prefer Capacitor native GPS on mobile
+    const getLocation = async () => {
+      // Try Capacitor Geolocation first (native GPS — much more accurate)
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform()) {
+          const { Geolocation } = await import("@capacitor/geolocation");
+
+          // Request permission
+          const perm = await Geolocation.checkPermissions();
+          if (perm.location !== "granted") {
+            await Geolocation.requestPermissions();
+          }
+
+          const position = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          });
+
+          console.log("📍 Got native GPS location:", position.coords);
+          return {
+            longitude: position.coords.longitude,
+            latitude: position.coords.latitude,
+          };
+        }
+      } catch (e) {
+        console.warn("Capacitor geolocation failed, trying browser:", e);
+      }
+
+      // Fallback: browser navigator.geolocation
       return new Promise((resolve) => {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
@@ -329,7 +358,7 @@ const DeliveryDetailsPage = () => {
               );
               resolve(getCityCoordinates());
             },
-            { timeout: 5000, enableHighAccuracy: false },
+            { timeout: 5000, enableHighAccuracy: true },
           );
         } else {
           console.log("Geolocation not available, using city coordinates");

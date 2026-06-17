@@ -1337,8 +1337,8 @@ const VendorDashboard = () => {
                       }}
                     />
                   </Box>
-                  <TableContainer>
-                    <Table>
+                  <TableContainer sx={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
+                    <Table sx={{ minWidth: 600 }}>
                       <TableHead>
                         <TableRow>
                           <TableCell sx={{ fontWeight: 700 }}>
@@ -1449,8 +1449,8 @@ const VendorDashboard = () => {
 
                 {/* Active Orders Table */}
                 {orderTab === 0 && (
-                  <TableContainer>
-                    <Table>
+                  <TableContainer sx={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
+                    <Table sx={{ minWidth: 600 }}>
                       <TableHead>
                         <TableRow>
                           <TableCell>Order ID</TableCell>
@@ -1520,8 +1520,8 @@ const VendorDashboard = () => {
 
                 {/* New Requests Table */}
                 {orderTab === 1 && (
-                  <TableContainer>
-                    <Table>
+                  <TableContainer sx={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
+                    <Table sx={{ minWidth: 600 }}>
                       <TableHead>
                         <TableRow>
                           <TableCell>Order ID</TableCell>
@@ -1599,8 +1599,8 @@ const VendorDashboard = () => {
 
                 {/* History (Past Orders) Table */}
                 {orderTab === 2 && (
-                  <TableContainer>
-                    <Table>
+                  <TableContainer sx={{ overflowX: 'auto', width: '100%', WebkitOverflowScrolling: 'touch' }}>
+                    <Table sx={{ minWidth: 600 }}>
                       <TableHead>
                         <TableRow>
                           <TableCell>Order ID</TableCell>

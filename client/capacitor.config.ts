@@ -5,15 +5,12 @@ const config: CapacitorConfig = {
   appName: 'Agrokart',
   webDir: 'build',
   server: {
-    androidScheme: 'http',
+    androidScheme: 'https',
+    hostname: 'fertilizer-89e57.firebaseapp.com', // Matches Firebase Auth Domain
     cleartext: true,
     allowNavigation: [
-      '10.22.227.226:5000',
-      '*.razorpay.com',
-      'checkout.razorpay.com',
-      'api.razorpay.com',
-      'api.openweathermap.org',
-      'api.data.gov.in'
+      '10.81.145.226:5000',
+      '*'
     ]
   },
   plugins: {

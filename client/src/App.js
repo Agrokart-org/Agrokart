@@ -101,9 +101,10 @@ const AppContent = () => {
           return;
         }
 
-        // 2. Root/Exit Check — if on a root screen or history is exhausted, show exit toast
+        // 2. Root/Exit Check — if on a root screen, show exit toast
         const exitRoutes = [
           "/",
+          "/home",
           "/login",
           "/customer/dashboard",
           "/vendor/dashboard",
@@ -111,9 +112,8 @@ const AppContent = () => {
           "/role-selection",
         ];
         const isRootScreen = exitRoutes.includes(path);
-        const isHistoryExhausted = window.history.length <= 2;
 
-        if (isRootScreen || isHistoryExhausted) {
+        if (isRootScreen) {
           if (lastBackTime > 0 && now - lastBackTime < DOUBLE_PRESS_DELAY) {
             console.log("[Back] Double press — exiting app");
             CapacitorApp.exitApp();

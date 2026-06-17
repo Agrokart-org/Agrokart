@@ -299,8 +299,15 @@ router.get("/dashboard", auth, async (req, res) => {
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
 
-    // Get earnings summary
+    // Get earnings summary for today
     const earningsSummary = await Earnings.getEarningsSummary(
+      deliveryPartner._id,
+      "delivery_partner",
+      { year: currentYear, month: currentMonth, day: now.getDate() },
+    );
+
+    // Get earnings summary for the month
+    const monthlyEarningsSummary = await Earnings.getEarningsSummary(
       deliveryPartner._id,
       "delivery_partner",
       { year: currentYear, month: currentMonth },
@@ -357,7 +364,7 @@ router.get("/dashboard", auth, async (req, res) => {
         todayDeliveries,
         totalEarnings: earningsSummary.totalNet,
         pendingEarnings: earningsSummary.pendingAmount,
-        deliveriesThisMonth: earningsSummary.transactionCount,
+        deliveriesThisMonth: monthlyEarningsSummary.transactionCount,
         availableAssignments: availableAssignments.length,
       },
       earningsSummary,

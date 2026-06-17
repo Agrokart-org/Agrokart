@@ -3,7 +3,8 @@
  * Real-time GPS tracking service for delivery partners.
  *
  * Features:
- *  - navigator.geolocation.watchPosition() for live GPS
+ *  - Capacitor Geolocation.watchPosition() for native GPS (high accuracy)
+ *  - Falls back to navigator.geolocation.watchPosition() on web
  *  - Throttled socket emission (every LOCATION_UPDATE_INTERVAL ms)
  *  - Smooth coordinate interpolation via requestAnimationFrame
  *  - Bearing/heading calculation for bike icon rotation
@@ -12,6 +13,7 @@
  */
 
 import { LOCATION_UPDATE_INTERVAL, AVG_SPEED_KMH } from "../config/demoConfig";
+import { Capacitor } from "@capacitor/core";
 
 // ─── State ───────────────────────────────────────────────────────────────────
 let watchId = null;
@@ -19,6 +21,7 @@ let lastEmitTime = 0;
 let currentSocket = null;
 let currentAssignmentId = null;
 let currentOrderId = null;
+let isCapacitorWatch = false; // Track which API we used to start
 
 // ─── GPS Tracking ────────────────────────────────────────────────────────────
 
@@ -31,7 +34,7 @@ let currentOrderId = null;
  * @param {string} orderId - Order._id (used for room broadcasting)
  * @param {function} onLocationUpdate - Optional callback with { lat, lng, heading, speed }
  */
-export function startLocationTracking(
+export async function startLocationTracking(
   socket,
   assignmentId,
   orderId,
@@ -41,11 +44,6 @@ export function startLocationTracking(
     console.warn(
       "⚠️ Tracking already active. Call stopLocationTracking() first.",
     );
-    return;
-  }
-
-  if (!navigator.geolocation) {
-    console.error("❌ Geolocation not supported by this browser.");
     return;
   }
 
@@ -65,68 +63,129 @@ export function startLocationTracking(
   let prevLat = null;
   let prevLng = null;
 
+  const handlePosition = (lat, lng, speed, gpsHeading) => {
+    const now = Date.now();
+
+    // Calculate heading from previous position if GPS doesn't provide it
+    let heading = gpsHeading || 0;
+    if (
+      prevLat !== null &&
+      prevLng !== null &&
+      (!gpsHeading || gpsHeading < 0)
+    ) {
+      heading = calculateBearing(prevLat, prevLng, lat, lng);
+    }
+
+    // Throttle socket emissions
+    if (now - lastEmitTime >= LOCATION_UPDATE_INTERVAL && socket) {
+      lastEmitTime = now;
+
+      socket.emit("delivery_location_update", {
+        assignmentId,
+        orderId,
+        lat,
+        lng,
+        heading,
+        speed: speed || 0,
+        timestamp: now,
+      });
+    }
+
+    // Always call the local callback (for delivery partner's own UI)
+    if (onLocationUpdate) {
+      onLocationUpdate({ lat, lng, heading, speed: speed || 0 });
+    }
+
+    prevLat = lat;
+    prevLng = lng;
+  };
+
+  // Try Capacitor Geolocation first (native GPS — much more accurate)
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const { Geolocation } = await import("@capacitor/geolocation");
+
+      // Request permission first
+      const permResult = await Geolocation.checkPermissions();
+      if (permResult.location !== "granted") {
+        await Geolocation.requestPermissions();
+      }
+
+      watchId = await Geolocation.watchPosition(
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        },
+        (position, err) => {
+          if (err) {
+            console.error("❌ Capacitor Geolocation error:", err);
+            return;
+          }
+          if (position) {
+            handlePosition(
+              position.coords.latitude,
+              position.coords.longitude,
+              position.coords.speed,
+              position.coords.heading,
+            );
+          }
+        },
+      );
+      isCapacitorWatch = true;
+      console.log("📍 Using Capacitor native GPS for tracking");
+      return;
+    } catch (e) {
+      console.warn("⚠️ Capacitor Geolocation failed, falling back to navigator:", e);
+    }
+  }
+
+  // Fallback: browser navigator.geolocation
+  if (!navigator.geolocation) {
+    console.error("❌ Geolocation not supported by this browser.");
+    return;
+  }
+
   watchId = navigator.geolocation.watchPosition(
     (position) => {
-      const {
-        latitude: lat,
-        longitude: lng,
-        speed,
-        heading: gpsHeading,
-      } = position.coords;
-      const now = Date.now();
-
-      // Calculate heading from previous position if GPS doesn't provide it
-      let heading = gpsHeading || 0;
-      if (
-        prevLat !== null &&
-        prevLng !== null &&
-        (!gpsHeading || gpsHeading < 0)
-      ) {
-        heading = calculateBearing(prevLat, prevLng, lat, lng);
-      }
-
-      // Throttle socket emissions
-      if (now - lastEmitTime >= LOCATION_UPDATE_INTERVAL && socket) {
-        lastEmitTime = now;
-
-        socket.emit("delivery_location_update", {
-          assignmentId,
-          orderId,
-          lat,
-          lng,
-          heading,
-          speed: speed || 0,
-          timestamp: now,
-        });
-      }
-
-      // Always call the local callback (for delivery partner's own UI)
-      if (onLocationUpdate) {
-        onLocationUpdate({ lat, lng, heading, speed: speed || 0 });
-      }
-
-      prevLat = lat;
-      prevLng = lng;
+      handlePosition(
+        position.coords.latitude,
+        position.coords.longitude,
+        position.coords.speed,
+        position.coords.heading,
+      );
     },
     (error) => {
       console.error("❌ Geolocation error:", error.message);
     },
     {
       enableHighAccuracy: true,
-      maximumAge: 2000,
+      maximumAge: 0,
       timeout: 10000,
     },
   );
+  isCapacitorWatch = false;
+  console.log("📍 Using browser navigator.geolocation for tracking");
 }
 
 /**
  * Stop GPS tracking and clean up.
  * Call this when delivery is marked as "Delivered" or cancelled.
  */
-export function stopLocationTracking() {
+export async function stopLocationTracking() {
   if (watchId !== null) {
-    navigator.geolocation.clearWatch(watchId);
+    if (isCapacitorWatch) {
+      try {
+        const { Geolocation } = await import("@capacitor/geolocation");
+        await Geolocation.clearWatch({ id: watchId });
+      } catch (e) {
+        console.warn("⚠️ Failed to clear Capacitor watch:", e);
+      }
+    } else {
+      navigator.geolocation.clearWatch(watchId);
+    }
     watchId = null;
+    isCapacitorWatch = false;
     console.log("📍 GPS tracking stopped.");
   }
 

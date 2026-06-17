@@ -233,7 +233,13 @@ const MobileVendorDashboard = () => {
     try {
       const token = localStorage.getItem("authToken");
       const orderId = orderAlert._id || orderAlert.orderId;
-      await respondToVendorOrder(orderId, { action: "accept" }, token);
+      
+      if (orderAlert.status === "finding_vendor" || orderAlert.orderStatus === "finding_vendor") {
+        await claimVendorOrder(orderId, token);
+      } else {
+        await respondToVendorOrder(orderId, { action: "accept" }, token);
+      }
+      
       setNotification({
         open: true,
         message: "Order Accepted! Delivery partner will be assigned.",
@@ -1531,11 +1537,16 @@ const MobileVendorDashboard = () => {
                   </Box>
                 )}
 
-                {/* Daily allocation controls */}
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <Typography variant="body2" fontWeight={600} color="text.secondary">
-                    Today's Allocation:
-                  </Typography>
+                {/* Daily allocation & Total Stock controls */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                  <Box>
+                    <Typography variant="body2" fontWeight={700} color="text.primary">
+                      Total Stock: <Typography component="span" sx={{ color: "primary.main", fontWeight: 900 }}>{currentStock}</Typography>
+                    </Typography>
+                    <Typography variant="caption" fontWeight={600} color="text.secondary">
+                      Today's Allocation:
+                    </Typography>
+                  </Box>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <IconButton
                       size="small"
@@ -1556,11 +1567,6 @@ const MobileVendorDashboard = () => {
                     </IconButton>
                   </Box>
                 </Box>
-
-                {/* Total stock reference */}
-                <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: "block" }}>
-                  Total inventory stock: {currentStock} units
-                </Typography>
               </CardContent>
             </Card>
           );
@@ -2469,7 +2475,14 @@ const MobileVendorDashboard = () => {
       </Dialog>
 
       <Paper
-        sx={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100 }}
+        sx={{ 
+          position: "fixed", 
+          bottom: 0, 
+          left: 0, 
+          right: 0, 
+          zIndex: 100,
+          pb: "env(safe-area-inset-bottom)", // Adjust for Vivo V20 gesture bar
+        }}
         elevation={10}
       >
         <BottomNavigation

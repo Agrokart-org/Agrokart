@@ -566,7 +566,12 @@ router.get("/orders", auth, async (req, res) => {
 
     const { page = 1, limit = 20, status } = req.query;
 
-    let query = { "items.vendor": vendor._id };
+    let query = {
+      $or: [
+        { "items.vendor": vendor._id },
+        { orderStatus: "finding_vendor" }
+      ]
+    };
 
     if (status) {
       query.orderStatus = status;
@@ -741,8 +746,10 @@ router.post("/orders/:orderId/respond", auth, async (req, res) => {
         const [vlng, vlat] = vendor.address.coordinates.coordinates;
         const [clng, clat] = order.deliveryAddress.coordinates.coordinates;
         const distKm = getDistanceFromLatLonInKm(vlat, vlng, clat, clng);
-        deliveryFee = Math.max(50, Math.round(distKm * 25)); // ₹25/km, min ₹50
-        console.log(`📏 Delivery distance: ${distKm.toFixed(2)} km → Partner earnings: ₹${deliveryFee}`);
+        // Cap the distance to prevent astronomical fees if coordinates are [0,0]
+        const validDistKm = distKm > 100 ? 5 : distKm; // fallback to 5km if distance is invalid/huge
+        deliveryFee = Math.min(Math.max(50, Math.round(validDistKm * 25)), 500); // ₹25/km, min ₹50, max ₹500
+        console.log(`📏 Delivery distance: ${distKm.toFixed(2)} km (used ${validDistKm.toFixed(2)} km) → Partner earnings: ₹${deliveryFee}`);
       }
 
       const assignment = new DeliveryAssignment({
@@ -942,7 +949,7 @@ router.post("/orders/:orderId/claim", auth, async (req, res) => {
         contactPerson: "Customer",
         contactPhone: "N/A",
       },
-      deliveryFee: Math.floor(order.totalAmount * 0.1), // 10% delivery fee logic
+      deliveryFee: Math.min(Math.max(50, Math.floor(order.totalAmount * 0.1)), 500), // 10% delivery fee logic, min ₹50, max ₹500
       priority: "high",
       tracking: {
         currentLocation: {

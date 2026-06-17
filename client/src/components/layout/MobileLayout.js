@@ -112,7 +112,6 @@ const MobileLayout = ({ children }) => {
           "linear-gradient(135deg, #F0FDF4 0%, #E6F3FF 50%, #F3E8FF 100%)", // Very light green to purple gradient
       }}
     >
-      {/* Modern Top App Bar - Flipkart Style */}
       <AppBar
         position="fixed"
         sx={{
@@ -120,6 +119,7 @@ const MobileLayout = ({ children }) => {
           boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
           zIndex: theme.zIndex.drawer + 1,
           borderRadius: 0, // No rounded corners
+          pt: "env(safe-area-inset-top)", // Adjust for Vivo V20 notch
         }}
       >
         {/* Main Navigation Bar */}
@@ -330,8 +330,8 @@ const MobileLayout = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          pt: searchOpen ? "112px" : "56px", // Adjust for expanded search bar
-          pb: "56px", // Height of BottomNavigation
+          pt: searchOpen ? "calc(112px + env(safe-area-inset-top))" : "calc(56px + env(safe-area-inset-top))", // Adjust for expanded search bar and notch
+          pb: "calc(56px + env(safe-area-inset-bottom))", // Height of BottomNavigation + gesture bar
           minHeight: "100vh",
           background: "transparent", // Use parent background
           transition: "padding-top 0.3s ease",
@@ -350,6 +350,7 @@ const MobileLayout = ({ children }) => {
           zIndex: theme.zIndex.drawer + 1,
           borderTop: "1px solid #e0e0e0",
           borderRadius: 0, // Remove rounded corners
+          pb: "env(safe-area-inset-bottom)", // Adjust for gesture bar on tall screens
         }}
         elevation={3}
       >

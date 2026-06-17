@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.krishidoot.app"
+    namespace "com.agrokart.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.krishidoot.app"
+        applicationId "com.agrokart.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -21,6 +21,13 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+}
+
+// Force androidx.browser down to 1.8.0 to prevent it from asking for compileSdk 36 (Android 15)
+configurations.all {
+    resolutionStrategy {
+        force 'androidx.browser:browser:1.8.0'
     }
 }
 

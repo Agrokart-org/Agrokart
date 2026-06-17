@@ -326,7 +326,7 @@ const HomePage = () => {
                   sx={{
                     fontWeight: 900,
                     color: "#fff",
-                    fontSize: { xs: "2.6rem", sm: "3.5rem", md: "4.8rem" },
+                    fontSize: { xs: "2.0rem", sm: "3.5rem", md: "4.8rem" },
                     lineHeight: 1.08,
                     letterSpacing: "-0.03em",
                     mb: 2,

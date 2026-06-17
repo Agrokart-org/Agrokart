@@ -4,10 +4,12 @@
   "private": true,
   "dependencies": {
     "@capacitor/android": "^7.4.2",
+    "@capacitor/app": "^7.0.0",
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
     "@capacitor/splash-screen": "^7.0.3",
     "@capacitor/toast": "^8.0.0",
+    "@capgo/capacitor-social-login": "^8.3.22",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.15.10",

@@ -103,7 +103,8 @@ const CustomerLayout = ({ children }) => {
           color: "white",
           zIndex: (theme) => theme.zIndex.drawer + 1,
           borderBottom: "none",
-          height: 70, // Reduced height to 70px
+          paddingTop: "env(safe-area-inset-top)",
+          minHeight: 70,
           justifyContent: "center",
           "& .MuiToolbar-root": {
             minHeight: 70,

@@ -117,6 +117,10 @@ const DeliveryLogin = () => {
       let firebaseIdToken = null;
 
       try {
+        // Set role before firebase auth so onAuthStateChanged gets it right!
+        localStorage.setItem("userRole", "delivery_partner");
+        setRole("delivery_partner");
+
         const userCredential = await signInWithEmailAndPassword(
           auth,
           formData.email,
@@ -160,6 +164,13 @@ const DeliveryLogin = () => {
           "🚨 Backend delivery partner authentication failed:",
           backendError.message,
         );
+        // Clean up firebase auth if backend fails to prevent partial login state
+        if (auth.currentUser) {
+          await auth.signOut();
+        }
+        localStorage.removeItem("userRole");
+        setRole(null);
+        
         throw new Error(
           backendError.message ||
             "Delivery partner login failed. Please check your credentials and ensure this account is registered as a delivery partner.",

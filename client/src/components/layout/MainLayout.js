@@ -113,7 +113,7 @@ const MainLayout = ({ children }) => {
       <AppBar
         position="sticky"
         elevation={1}
-        sx={{ zIndex: 1200, bgcolor: "white", color: "text.primary" }}
+        sx={{ zIndex: 1200, bgcolor: "white", color: "text.primary", paddingTop: "env(safe-area-inset-top)" }}
       >
         <Toolbar
           sx={{

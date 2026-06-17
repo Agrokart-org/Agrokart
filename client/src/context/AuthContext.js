@@ -14,6 +14,9 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  signInWithCredential,
+  getRedirectResult,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   PhoneAuthProvider,
@@ -22,6 +25,7 @@ import {
   EmailAuthProvider,
 } from "firebase/auth";
 import { auth } from "../config/firebase";
+import { Capacitor } from "@capacitor/core";
 import AgrokartLoader from "../components/AgrokartLoader";
 
 const AuthContext = createContext(null);
@@ -40,6 +44,18 @@ export const AuthProvider = ({ children }) => {
     if (savedRole) {
       setUserRole(savedRole);
     }
+
+    // Handle redirect result for Mobile Google Login
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result && result.user) {
+          console.log("🔥 Redirect login successful:", result.user.email);
+          // onAuthStateChanged will handle the rest
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Redirect login error:", error);
+      });
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       console.log(
@@ -69,7 +85,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const apiUrl = process.env.REACT_APP_API_URL
             ? `${process.env.REACT_APP_API_URL}/api`
-            : "http://localhost:5000/api";
+            : `http://${window.location.hostname}:5000/api`;
           const response = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -193,19 +209,44 @@ export const AuthProvider = ({ children }) => {
     [userRole],
   );
 
-  // Google Login
+  // Google Login — uses native Google Sign-In via capgo plugin
   const googleLogin = useCallback(async () => {
     setLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      if (userRole) {
-        localStorage.setItem("userRole", userRole);
+      // ─── USE @capgo/capacitor-social-login FOR ALL PLATFORMS ───
+      // This guarantees the native Google account picker opens on mobile (NOT a WebView),
+      // completely bypassing Google's "Use secure browsers" policy block (Error 403).
+      const { SocialLogin } = await import("@capgo/capacitor-social-login");
+
+      // Initialize the plugin
+      await SocialLogin.initialize({
+        google: {
+          webClientId: "425831974831-2vvplda38aoa1n8vvb2uhbt052udhebl.apps.googleusercontent.com", 
+        },
+      });
+
+      const result = await SocialLogin.login({
+        provider: "google",
+      });
+
+      console.log("📱 Google Sign-In result:", result);
+
+      if (result?.result?.idToken) {
+        // Use the Google ID token to authenticate with Firebase
+        const credential = GoogleAuthProvider.credential(result.result.idToken);
+        const firebaseResult = await signInWithCredential(auth, credential);
+        console.log("✅ Firebase auth with Google token:", firebaseResult.user.email);
+
+        if (userRole) {
+          localStorage.setItem("userRole", userRole);
+        }
+        return { success: true, user: firebaseResult.user };
+      } else {
+        throw new Error("No ID token received from Google Sign-In");
       }
-      return { success: true, user };
     } catch (error) {
       console.error("❌ Google login error:", error);
+      alert(`Google Login Error: ${error.message || JSON.stringify(error)}`);
       throw error;
     } finally {
       setLoading(false);

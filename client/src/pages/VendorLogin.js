@@ -117,6 +117,10 @@ const VendorLogin = () => {
       let firebaseIdToken = null;
 
       try {
+        // Set role before firebase auth so onAuthStateChanged gets it right!
+        localStorage.setItem("userRole", "vendor");
+        setRole("vendor");
+
         const userCredential = await signInWithEmailAndPassword(
           auth,
           formData.email,
@@ -157,6 +161,13 @@ const VendorLogin = () => {
           "🚨 Backend vendor authentication failed:",
           backendError.message,
         );
+        // Clean up firebase auth if backend fails to prevent partial login state
+        if (auth.currentUser) {
+          await auth.signOut();
+        }
+        localStorage.removeItem("userRole");
+        setRole(null);
+        
         throw new Error(
           backendError.message ||
             "Vendor login failed. Please check your credentials and ensure this account is registered as a vendor.",

@@ -149,6 +149,7 @@ earningsSchema.statics.getEarningsSummary = async function (
 
   if (period.year) matchQuery["period.year"] = period.year;
   if (period.month) matchQuery["period.month"] = period.month;
+  if (period.day) matchQuery["period.day"] = period.day;
 
   const summary = await this.aggregate([
     { $match: matchQuery },

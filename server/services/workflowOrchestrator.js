@@ -347,12 +347,16 @@ class WorkflowOrchestrator {
   }
 
   // Calculate delivery fee
-  calculateDeliveryFee(order) {
-    const baseRate = 50; // Base delivery fee
-    const distanceRate = 10; // Per km rate
-    const distance = 5; // Default distance for demo
-
-    return baseRate + distance * distanceRate;
+  calculateDeliveryFee(order, vendorId) {
+    const pricing = require("../utils/pricing");
+    // Without full coords available here, we'll return a reasonable default or calculate based on order amount for now,
+    // but the actual assignment calculation should use pricing.js with coords when available.
+    // We will use 10% of order total, capped at 500, min 50 as production standard.
+    let baseFee = 50;
+    if (order && order.totalAmount) {
+       baseFee = Math.floor(order.totalAmount * 0.1);
+    }
+    return Math.min(Math.max(50, baseFee), 500);
   }
 
   // Calculate estimated delivery time

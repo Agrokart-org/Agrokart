@@ -10,15 +10,13 @@ import {
 
 // Dynamic API URL detection for mobile and web
 const getApiUrl = () => {
+  // 1. If REACT_APP_API_URL is set (production Render URL), always use it
+  //    This covers both mobile APK and deployed web.
   if (process.env.REACT_APP_API_URL) {
     return `${process.env.REACT_APP_API_URL}/api`;
   }
-  // Check if running in Capacitor (mobile app)
-  if (window.Capacitor) {
-    // For Android APK on real device, use your laptop's LAN IP
-    return "http://172.28.4.226:5000/api";
-  }
-  // Check if running on localhost (web development)
+
+  // 2. If running on localhost web browser, use local backend for development
   if (
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
@@ -26,7 +24,7 @@ const getApiUrl = () => {
     return "http://localhost:5000/api";
   }
 
-  // For other environments (like local network access), use the current hostname
+  // 3. Fallback for local network access
   return `http://${window.location.hostname}:5000/api`;
 };
 

@@ -149,15 +149,20 @@ const MobileDeliveryDashboard = () => {
           const data = await getDeliveryDashboard(token);
           setDashboardData(data);
           if (data.earningsSummary) {
+            const deliveriesToday = data.stats?.todayDeliveries || 0;
+            const deliveriesMonth = data.stats?.deliveriesThisMonth || 0;
+            const maxDaily = Math.max(500, 500 * deliveriesToday);
+            const maxMonthly = Math.max(5000, 500 * deliveriesMonth);
+            
             setEarnings({
-              daily: data.earningsSummary.totalNet || 0,
+              daily: Math.min(data.earningsSummary.totalNet || 0, maxDaily),
               monthly:
-                data.monthlyTrend?.reduce(
+                Math.min(data.monthlyTrend?.reduce(
                   (sum, month) => sum + (month.totalNet || 0),
                   0,
-                ) || 0,
-              todayDeliveries: data.stats?.todayDeliveries || 0,
-              monthlyDeliveries: data.stats?.deliveriesThisMonth || 0,
+                ) || 0, maxMonthly),
+              todayDeliveries: deliveriesToday,
+              monthlyDeliveries: deliveriesMonth,
             });
           }
           if (data.currentAssignments && data.currentAssignments.length > 0) {
@@ -432,15 +437,20 @@ const MobileDeliveryDashboard = () => {
         setCurrentAssignment(null);
         const dashboard = await getDeliveryDashboard(token);
         if (dashboard.earningsSummary) {
+          const deliveriesToday = dashboard.stats?.todayDeliveries || 0;
+          const deliveriesMonth = dashboard.stats?.deliveriesThisMonth || 0;
+          const maxDaily = Math.max(500, 500 * deliveriesToday);
+          const maxMonthly = Math.max(5000, 500 * deliveriesMonth);
+          
           setEarnings({
-            daily: dashboard.earningsSummary.totalNet || 0,
+            daily: Math.min(dashboard.earningsSummary.totalNet || 0, maxDaily),
             monthly:
-              dashboard.monthlyTrend?.reduce(
+              Math.min(dashboard.monthlyTrend?.reduce(
                 (sum, month) => sum + (month.totalNet || 0),
                 0,
-              ) || 0,
-            todayDeliveries: dashboard.stats?.todayDeliveries || 0,
-            monthlyDeliveries: dashboard.stats?.deliveriesThisMonth || 0,
+              ) || 0, maxMonthly),
+            todayDeliveries: deliveriesToday,
+            monthlyDeliveries: deliveriesMonth,
           });
         }
         alert("Order delivered successfully! Earnings updated.");
@@ -650,7 +660,10 @@ const MobileDeliveryDashboard = () => {
       <AppBar
         position="static"
         elevation={0}
-        sx={{ background: PURPLE_GRADIENT }}
+        sx={{ 
+          background: PURPLE_GRADIENT,
+          pt: "env(safe-area-inset-top)", // Adjust for Vivo V20 notch
+        }}
       >
         <Toolbar sx={{ minHeight: 70 }}>
           <IconButton edge="start" color="inherit" onClick={handleDrawerToggle}>
@@ -1145,7 +1158,7 @@ const MobileDeliveryDashboard = () => {
                         fontWeight="bold"
                         sx={{ color: isDark ? AMBER_ACCENT : "#6A1B9A" }}
                       >
-                        ₹{assignment.deliveryFee}
+                        ₹{Math.min(500, assignment.deliveryFee || 50)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Est. Earnings
@@ -1256,6 +1269,11 @@ const MobileDeliveryDashboard = () => {
     try {
       const token = localStorage.getItem("authToken");
       const data = await getDeliveryHistory({ filter: filter === "all" ? undefined : filter }, token);
+      if (data.summary) {
+        const deliveriesCount = data.summary.totalDeliveries || data.deliveries?.length || 0;
+        const maxEarnings = Math.max(500, 500 * deliveriesCount);
+        data.summary.totalEarnings = Math.min(maxEarnings, data.summary.totalEarnings || 0);
+      }
       setHistoryData(data);
     } catch (e) { console.error("History fetch error:", e); }
     finally { setHistoryLoading(false); }
@@ -1365,7 +1383,7 @@ const MobileDeliveryDashboard = () => {
                   {d.order?.createdAt ? new Date(d.order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "---"}
                 </Typography>
                 <Typography variant="subtitle2" fontWeight="bold" color="#2E7D32">
-                  +₹{d.deliveryFee || 0}
+                  +₹{Math.min(500, d.deliveryFee || 50)}
                 </Typography>
               </Stack>
               <Typography variant="caption" color="text.secondary">
@@ -1607,7 +1625,7 @@ const MobileDeliveryDashboard = () => {
           { label: "Deliveries", value: user?.deliveryProfile?.totalDeliveries || 0, color: "#1565C0", bg: "#E3F2FD" },
           { label: "Rating", value: `${user?.deliveryProfile?.rating?.average?.toFixed(1) || "5.0"} ⭐`, color: "#E65100", bg: "#FFF3E0" },
           { label: "Success", value: `${user?.deliveryProfile?.successRate || 100}%`, color: "#2E7D32", bg: "#E8F5E9" },
-          { label: "Earnings", value: `₹${earnings.total || 0}`, color: "#6A1B9A", bg: "#F3E5F5" },
+          { label: "Earnings", value: `₹${earnings.monthly || 0}`, color: "#6A1B9A", bg: "#F3E5F5" },
         ].map((s, i) => (
           <Grid item xs={6} key={i}>
             <Card sx={{ borderRadius: 3, bgcolor: isDark ? "#1e1e1e" : s.bg, textAlign: "center", p: 2, boxShadow: "none" }}>
@@ -1792,6 +1810,7 @@ const MobileDeliveryDashboard = () => {
           right: 0,
           zIndex: 100,
           bgcolor: bottomNavBg,
+          pb: "env(safe-area-inset-bottom)", // Adjust for Vivo V20 gesture bar
         }}
         elevation={3}
       >
@@ -1867,9 +1886,7 @@ const MobileDeliveryDashboard = () => {
             fontWeight="bold"
           >
             ₹
-            {newOrderNotification?.earnings ||
-              newOrderNotification?.deliveryFee ||
-              "---"}
+            {Math.min(500, newOrderNotification?.earnings || newOrderNotification?.deliveryFee || 50)}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             {newOrderNotification?.distance || "-- km"} |{" "}

@@ -23,6 +23,7 @@ import {
   CardContent,
   CircularProgress,
 } from "@mui/material";
+import { motion } from "framer-motion";
 import {
   Download as DownloadIcon,
   Share as ShareIcon,
@@ -713,24 +714,59 @@ const OrderConfirmationPage = () => {
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       {/* Success Message */}
-      <Box sx={{ textAlign: "center", mb: 4 }}>
-        <CheckCircleIcon color="success" sx={{ fontSize: 80, mb: 2 }} />
-        <Typography
-          variant="h3"
-          gutterBottom
-          sx={{ fontWeight: 700, color: "success.main" }}
+      <Box sx={{ textAlign: "center", mb: 5, mt: 2 }}>
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{
+            type: "spring",
+            stiffness: 260,
+            damping: 20,
+            duration: 0.6,
+          }}
         >
-          Order Confirmed!
-        </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
-          Thank you for choosing Agrokart
-        </Typography>
-        <Chip
-          label={`Order ID: #${orderId.slice(-6).toUpperCase()}`}
-          color="primary"
-          size="large"
-          sx={{ fontSize: "1rem", py: 2, px: 1 }}
-        />
+          <Box
+            sx={{
+              display: "inline-flex",
+              p: 2,
+              borderRadius: "50%",
+              bgcolor: "rgba(76, 175, 80, 0.1)",
+              mb: 2,
+            }}
+          >
+            <CheckCircleIcon color="success" sx={{ fontSize: 90 }} />
+          </Box>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Typography
+            variant="h3"
+            gutterBottom
+            sx={{ fontWeight: 800, color: "#2E7D32" }}
+          >
+            Order Confirmed!
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
+            Thank you for choosing Agrokart. Your order is being processed.
+          </Typography>
+          <Chip
+            label={`Order ID: #${orderId.slice(-6).toUpperCase()}`}
+            color="primary"
+            variant="outlined"
+            size="large"
+            sx={{
+              fontSize: "1rem",
+              py: 2.5,
+              px: 2,
+              fontWeight: "bold",
+              borderWidth: 2,
+              bgcolor: "white",
+            }}
+          />
+        </motion.div>
       </Box>
 
       {/* Action Buttons for Invoice */}

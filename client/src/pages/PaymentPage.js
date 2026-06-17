@@ -127,12 +127,11 @@ const PaymentPage = () => {
 
       // 2. Initialize Razorpay Options
       const options = {
-        key: razorpayKey, // Use the validated key
+        key: razorpayKey,
         amount: order.amount,
         currency: order.currency,
         name: "Agrokart",
         description: "Fertilizer Purchase",
-        image: "/logo192.png", // Ensure this exists or use a URL
         order_id: order.id,
         handler: async function (response) {
           // 3. Verify Payment
@@ -171,12 +170,34 @@ const PaymentPage = () => {
           email: user?.email || "",
           contact: user?.phone || "",
         },
+        notes: {
+          app: "Agrokart Mobile",
+          user_id: user?.id || "",
+        },
         theme: {
-          color: theme.palette.primary.main,
+          color: "#16A34A",
         },
         modal: {
           ondismiss: function () {
             setIsProcessing(false);
+          },
+          confirm_close: true,
+          escape: true,
+          animation: true,
+          backdropclose: false,
+        },
+        // Allow Razorpay to handle payment methods natively
+        // UPI intents and bank redirects are handled by MainActivity.java WebViewClient
+        config: {
+          display: {
+            blocks: {
+              utib: { name: "Pay using UPI", instruments: [{ method: "upi" }] },
+              other: { name: "Other Methods", instruments: [{ method: "card" }, { method: "netbanking" }, { method: "wallet" }] },
+            },
+            sequence: ["block.utib", "block.other"],
+            preferences: {
+              show_default_blocks: true,
+            },
           },
         },
       };
@@ -591,51 +612,71 @@ const PaymentPage = () => {
                 </RadioGroup>
               </FormControl>
 
-              <Box sx={{ mt: 4 }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  startIcon={
-                    isProcessing ? (
-                      <CircularProgress size={20} color="inherit" />
-                    ) : (
-                      <PaymentIcon />
-                    )
-                  }
-                  onClick={handlePayment}
-                  disabled={isProcessing}
-                  sx={{
-                    py: 1.8,
-                    fontSize: "1.2rem",
-                    fontWeight: "bold",
-                    bgcolor: "#2E7D32",
-                    boxShadow: "0 4px 12px rgba(46, 125, 50, 0.4)",
-                    "&:hover": {
-                      bgcolor: "#1B5E20",
-                      boxShadow: "0 6px 16px rgba(46, 125, 50, 0.6)",
-                      transform: "translateY(-1px)",
-                    },
-                  }}
-                >
-                  {isProcessing ? "Processing Payment..." : `Pay ₹${total}`}
-                </Button>
-                <Typography
-                  variant="caption"
-                  display="block"
-                  textAlign="center"
-                  sx={{ mt: 2, color: "text.secondary" }}
-                >
-                  <SecurityIcon
-                    sx={{ fontSize: 14, verticalAlign: "middle", mr: 0.5 }}
-                  />
-                  Secure SSL Payment. Your data is protected.
-                </Typography>
-              </Box>
+              {/* The "Pay" button has been moved to a sticky bottom bar */}
+            </Paper>
+
+            {/* Sticky Bottom Bar for Action */}
+            <Paper
+              sx={{
+                position: { xs: "fixed", md: "static" },
+                bottom: { xs: 0, md: "auto" },
+                left: 0,
+                right: 0,
+                p: 2,
+                pb: { xs: 3, md: 2 },
+                mt: { md: 4 },
+                borderTopLeftRadius: { xs: 24, md: 3 },
+                borderTopRightRadius: { xs: 24, md: 3 },
+                borderRadius: { md: 3 },
+                boxShadow: { xs: "0 -8px 32px rgba(0,0,0,0.08)", md: "none" },
+                bgcolor: "white",
+                zIndex: 100,
+              }}
+            >
+              <Button
+                fullWidth
+                variant="contained"
+                size="large"
+                startIcon={
+                  isProcessing ? (
+                    <CircularProgress size={20} color="inherit" />
+                  ) : (
+                    <PaymentIcon />
+                  )
+                }
+                onClick={handlePayment}
+                disabled={isProcessing}
+                sx={{
+                  py: 1.8,
+                  borderRadius: 3,
+                  fontSize: "1.2rem",
+                  fontWeight: "bold",
+                  bgcolor: "#2E7D32",
+                  boxShadow: "0 4px 12px rgba(46, 125, 50, 0.4)",
+                  "&:hover": {
+                    bgcolor: "#1B5E20",
+                    boxShadow: "0 6px 16px rgba(46, 125, 50, 0.6)",
+                    transform: "translateY(-1px)",
+                  },
+                }}
+              >
+                {isProcessing ? "Processing..." : `Pay ₹${total}`}
+              </Button>
+              <Typography
+                variant="caption"
+                display="block"
+                textAlign="center"
+                sx={{ mt: 1.5, color: "text.secondary" }}
+              >
+                <SecurityIcon
+                  sx={{ fontSize: 14, verticalAlign: "middle", mr: 0.5 }}
+                />
+                Secure SSL Payment. Your data is protected.
+              </Typography>
             </Paper>
 
             {/* Features Section */}
-            <Grid container spacing={2} sx={{ mt: 4 }}>
+            <Grid container spacing={2} sx={{ mt: { xs: 4, md: 8 } }}>
               {features.map((feature, index) => (
                 <Grid item xs={12} md={4} key={index}>
                   <Paper

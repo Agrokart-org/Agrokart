@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name">Agrokart</string>
     <string name="title_activity_main">Agrokart</string>
-    <string name="package_name">com.agrocart.app</string>
-    <string name="custom_url_scheme">com.agrocart.app</string>
+    <string name="package_name">com.agrokart.app</string>
+    <string name="custom_url_scheme">com.agrokart.app</string>
+    <!-- Replace this with your actual Web Client ID from Google Cloud Console -->
+    <string name="server_client_id">425831974831-2vvplda38aoa1n8vvb2uhbt052udhebl.apps.googleusercontent.com</string>
 </resources>

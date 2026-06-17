@@ -7,29 +7,23 @@ const isMobile = () => {
 };
 
 // Get the appropriate API base URL
-// Get the appropriate API base URL
 const getApiBaseUrl = () => {
-  // 1. If running on localhost web browser, always use local backend for testing
-  if (
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
-  ) {
-    return "http://localhost:5000/api";
-  }
-
-  // 2. If running in Capacitor (mobile app on device), use the hardcoded LAN IP
-  if (isMobile()) {
-    // For Android APK on real device, use your laptop's LAN IP
-    // Note: Updated to detected IP
-    return "http://10.22.227.226:5000/api";
-  }
-
-  // 3. If in production (deployed web), use the Render API URL from .env
+  // 1. If REACT_APP_API_URL is set (production Render URL), always use it
+  //    This covers both mobile APK and deployed web — they both need the remote backend.
   if (process.env.REACT_APP_API_URL) {
     return `${process.env.REACT_APP_API_URL}/api`;
   }
 
-  // 4. Dynamic fallback for local network access (e.g. 192.168.x.x)
+  // 2. If running on localhost web browser, use local backend for development
+  if (
+    !isMobile() &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1")
+  ) {
+    return "http://localhost:5000/api";
+  }
+
+  // 3. Dynamic fallback for local network access (e.g. 192.168.x.x)
   const url = `http://${window.location.hostname}:5000/api`;
   console.log("API URL selected:", url);
   return url;

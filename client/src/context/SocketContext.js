@@ -16,7 +16,8 @@ export const SocketProvider = ({ children }) => {
     const isMobile = window.Capacitor && window.Capacitor.isNativePlatform();
     const SOCKET_URL =
       process.env.REACT_APP_API_URL ||
-      (isMobile ? "http://172.28.4.226:5000" : "http://localhost:5000");
+      (isMobile ? process.env.REACT_APP_API_URL : null) ||
+      "http://localhost:5000";
     const newSocket = io(SOCKET_URL, {
       transports: ["websocket"], // Force websocket
       reconnectionAttempts: 5,

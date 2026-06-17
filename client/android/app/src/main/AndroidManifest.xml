@@ -11,7 +11,7 @@
         android:theme="@style/AppTheme">
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
-            android:name="com.agrocart.app.MainActivity"
+            android:name="com.agrokart.app.MainActivity"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
@@ -40,6 +40,7 @@
     <!-- GPS / Location -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- Camera (Dr.Agro crop scan) -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -49,4 +50,12 @@
 
     <!-- Vibration -->
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Allow querying for UPI/payment apps -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="upi" />
+        </intent>
+    </queries>
 </manifest>

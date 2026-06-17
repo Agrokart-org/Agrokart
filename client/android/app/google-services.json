@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "425831974831",
+    "project_id": "fertilizer-89e57",
+    "storage_bucket": "fertilizer-89e57.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:425831974831:android:e63fe3f158590abe02115a",
+        "android_client_info": {
+          "package_name": "com.agrokart.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "425831974831-2vvplda38aoa1n8vvb2uhbt052udhebl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjlA_Y8-inzfuiFp7d3i01bUbdlOi6Kiw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "425831974831-2vvplda38aoa1n8vvb2uhbt052udhebl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

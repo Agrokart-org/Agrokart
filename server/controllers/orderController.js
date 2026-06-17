@@ -149,7 +149,7 @@ const createOrder = async (req, res, next) => {
     // Fallback: If no qualified vendor found by inventory+distance, try any vendor
     // (this keeps backward compat for mock/test scenarios where VendorInventory is empty)
     if (!assignedVendor && vendors.length > 0) {
-      console.log("⚠️ No vendor matched inventory filter — falling back to nearest vendor regardless of stock");
+      console.log("⚠️ No vendor matched inventory filter — checking location");
       if (
         deliveryAddress.coordinates &&
         deliveryAddress.coordinates.coordinates
@@ -167,7 +167,7 @@ const createOrder = async (req, res, next) => {
           }
         }
       }
-      if (!assignedVendor) assignedVendor = vendors[0];
+      // REMOVED fallback to vendors[0] to allow broadcast ("finding_vendor")
     }
 
     // Assign the found vendor to all item objects (but keep status as 'pending' until vendor accepts)
@@ -293,6 +293,27 @@ const createOrder = async (req, res, next) => {
           status: "pending_vendor_approval",
           orderId: savedOrder._id,
           message: "Your order is being reviewed by the vendor.",
+        });
+      }
+    } else {
+      const io = getIo();
+      if (io) {
+        // Include payout info in the notification data
+        populatedOrderObj.vendorPayout = {
+          amount: vendorPayoutAmount,
+          method: vendorPayoutMethod,
+        };
+        populatedOrderObj.subtotalAmount = subtotalAmount;
+        populatedOrderObj.deliveryCharge = deliveryCharge;
+
+        console.log(`📦 Order broadcast to all vendors for claiming`);
+        io.to("all_vendors").emit("new_order_available", populatedOrderObj);
+
+        // Notify Customer that order is waiting for a vendor
+        io.to(`order_${savedOrder._id}`).emit("order_status_updated", {
+          status: "finding_vendor",
+          orderId: savedOrder._id,
+          message: "Your order is being broadcasted to nearby vendors.",
         });
       }
     }
