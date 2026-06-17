@@ -191,8 +191,8 @@ const PaymentPage = () => {
       try {
         if (window.RazorpayCheckout) {
           // Native Cordova plugin is available
-          window.RazorpayCheckout.open(options, async function (successResponse) {
-            // Success handler for Native plugin
+          // Set up event listeners for Native plugin to receive the FULL response object
+          window.RazorpayCheckout.on('payment.success', async function (successResponse) {
             try {
               const verification = await verifyPayment(
                 {
@@ -222,8 +222,9 @@ const PaymentPage = () => {
               });
               setIsProcessing(false);
             }
-          }, function(errorResponse) {
-            // Error handler for Native plugin
+          });
+
+          window.RazorpayCheckout.on('payment.cancel', function(errorResponse) {
             console.error("Razorpay Native Payment Failed:", errorResponse);
             setSnackbar({
               open: true,
@@ -233,6 +234,9 @@ const PaymentPage = () => {
             });
             setIsProcessing(false);
           });
+
+          // Open checkout (do not pass callbacks here or it overrides the full response)
+          window.RazorpayCheckout.open(options);
         } else {
           // Web SDK fallback
           const paymentObject = new window.Razorpay(options);
