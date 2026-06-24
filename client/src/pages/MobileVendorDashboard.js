@@ -346,6 +346,50 @@ const MobileVendorDashboard = () => {
   const [notifAnchorEl, setNotifAnchorEl] = useState(null);
   const [notificationsList, setNotificationsList] = useState([]); // Real notifications
 
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+
+  const handleUpdateLocation = () => {
+    if (navigator.geolocation) {
+      setUpdatingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const token = localStorage.getItem("authToken");
+            const API_BASE = process.env.REACT_APP_API_URL || "https://agrokart-api.onrender.com/api";
+            const res = await fetch(`${API_BASE}/user/profile`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                "x-auth-token": token,
+              },
+              body: JSON.stringify({
+                address: {
+                  coordinates: [position.coords.longitude, position.coords.latitude]
+                }
+              })
+            });
+            if (res.ok) {
+              setNotification({ open: true, message: "Location updated successfully!", severity: "success" });
+            } else {
+              setNotification({ open: true, message: "Failed to update location on server.", severity: "error" });
+            }
+          } catch (e) {
+            setNotification({ open: true, message: "Network error updating location.", severity: "error" });
+          } finally {
+            setUpdatingLocation(false);
+          }
+        },
+        (error) => {
+          console.error("GPS Error", error);
+          setNotification({ open: true, message: "GPS access denied or unavailable.", severity: "error" });
+          setUpdatingLocation(false);
+        }
+      );
+    } else {
+      setNotification({ open: true, message: "Geolocation not supported by browser.", severity: "error" });
+    }
+  };
+
   // Setup Polling as fallback
   const initialFetchDone = React.useRef(false);
   useEffect(() => {
@@ -2053,6 +2097,13 @@ const MobileVendorDashboard = () => {
             <LocalShipping color="primary" />
           </ListItemIcon>
           <ListItemText primary="Delivery Zones" primaryTypographyProps={{ fontWeight: "bold" }} />
+          <ArrowForward fontSize="small" color="disabled" />
+        </ListItemButton>
+        <ListItemButton divider sx={{ py: 2 }} onClick={handleUpdateLocation} disabled={updatingLocation}>
+          <ListItemIcon>
+            <DashboardIcon color="primary" />
+          </ListItemIcon>
+          <ListItemText primary={updatingLocation ? "Detecting..." : "Update Live GPS Location"} secondary="Sync exact coordinates" primaryTypographyProps={{ fontWeight: "bold" }} />
           <ArrowForward fontSize="small" color="disabled" />
         </ListItemButton>
         <ListItemButton onClick={logout} sx={{ py: 2, color: "error.main", bgcolor: "#FFEBEE" }}>

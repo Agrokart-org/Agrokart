@@ -14,6 +14,9 @@ import {
   useTheme,
   alpha,
   IconButton,
+  ListItemButton,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import {
   Person as PersonIcon,
@@ -43,6 +46,51 @@ const MobileProfilePage = () => {
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const [updatingLocation, setUpdatingLocation] = React.useState(false);
+  const [notification, setNotification] = React.useState({ open: false, message: "", severity: "info" });
+
+  const handleUpdateLocation = () => {
+    if (navigator.geolocation) {
+      setUpdatingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const token = localStorage.getItem("authToken");
+            const API_BASE = process.env.REACT_APP_API_URL || "https://agrokart-api.onrender.com/api";
+            const res = await fetch(`${API_BASE}/user/profile`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                "x-auth-token": token,
+              },
+              body: JSON.stringify({
+                address: {
+                  coordinates: [position.coords.longitude, position.coords.latitude]
+                }
+              })
+            });
+            if (res.ok) {
+              setNotification({ open: true, message: "Location updated successfully!", severity: "success" });
+            } else {
+              setNotification({ open: true, message: "Failed to update location on server.", severity: "error" });
+            }
+          } catch (e) {
+            setNotification({ open: true, message: "Network error updating location.", severity: "error" });
+          } finally {
+            setUpdatingLocation(false);
+          }
+        },
+        (error) => {
+          console.error("GPS Error", error);
+          setNotification({ open: true, message: "GPS access denied or unavailable.", severity: "error" });
+          setUpdatingLocation(false);
+        }
+      );
+    } else {
+      setNotification({ open: true, message: "Geolocation not supported by browser.", severity: "error" });
+    }
   };
 
   const containerVariants = {
@@ -276,9 +324,31 @@ const MobileProfilePage = () => {
                   </React.Fragment>
                 ))}
               </List>
-            </Card>
+            </MotionCard>
           </Box>
         ))}
+
+        <MotionCard
+          variants={itemVariants}
+          sx={{
+            mb: 3,
+            borderRadius: 3,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+          }}
+        >
+          <List disablePadding>
+            <ListItemButton onClick={handleUpdateLocation} disabled={updatingLocation}>
+              <ListItemIcon>
+                <AddressIcon color="primary" />
+              </ListItemIcon>
+              <ListItemText
+                primary={updatingLocation ? "Detecting..." : "Update Live GPS Location"}
+                secondary="Sync your exact location to the server"
+                primaryTypographyProps={{ fontWeight: 600, color: "primary.main" }}
+              />
+            </ListItemButton>
+          </List>
+        </MotionCard>
 
         {/* Logout Button */}
         <motion.div whileTap={{ scale: 0.95 }}>
@@ -307,6 +377,12 @@ const MobileProfilePage = () => {
             Log Out
           </Button>
         </motion.div>
+
+        <Snackbar open={notification.open} autoHideDuration={6000} onClose={() => setNotification({ ...notification, open: false })}>
+          <Alert onClose={() => setNotification({ ...notification, open: false })} severity={notification.severity} sx={{ width: '100%' }}>
+            {notification.message}
+          </Alert>
+        </Snackbar>
 
         <Typography
           variant="caption"

@@ -1264,6 +1264,51 @@ const MobileDeliveryDashboard = () => {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
 
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+  const [notification, setNotification] = useState({ open: false, message: "", severity: "info" });
+
+  const handleUpdateLocation = () => {
+    if (navigator.geolocation) {
+      setUpdatingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const token = localStorage.getItem("authToken");
+            const API_BASE = process.env.REACT_APP_API_URL || "https://agrokart-api.onrender.com/api";
+            const res = await fetch(`${API_BASE}/user/profile`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                "x-auth-token": token,
+              },
+              body: JSON.stringify({
+                address: {
+                  coordinates: [position.coords.longitude, position.coords.latitude]
+                }
+              })
+            });
+            if (res.ok) {
+              setNotification({ open: true, message: "Location updated successfully!", severity: "success" });
+            } else {
+              setNotification({ open: true, message: "Failed to update location on server.", severity: "error" });
+            }
+          } catch (e) {
+            setNotification({ open: true, message: "Network error updating location.", severity: "error" });
+          } finally {
+            setUpdatingLocation(false);
+          }
+        },
+        (error) => {
+          console.error("GPS Error", error);
+          setNotification({ open: true, message: "GPS access denied or unavailable.", severity: "error" });
+          setUpdatingLocation(false);
+        }
+      );
+    } else {
+      setNotification({ open: true, message: "Geolocation not supported by browser.", severity: "error" });
+    }
+  };
+
   const fetchHistory = async (filter = "all") => {
     setHistoryLoading(true);
     try {
@@ -1692,6 +1737,20 @@ const MobileDeliveryDashboard = () => {
         </CardContent>
       </Card>
 
+      {/* Update Location */}
+      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
+        <CardContent>
+          <ListItemButton onClick={handleUpdateLocation} disabled={updatingLocation} sx={{ borderRadius: 2, mx: -2 }}>
+            <ListItemIcon><Typography>📍</Typography></ListItemIcon>
+            <ListItemText
+              primary={updatingLocation ? "Detecting..." : "Update Live GPS Location"}
+              secondary="Sync exact coordinates to server"
+            />
+            <ChevronRight />
+          </ListItemButton>
+        </CardContent>
+      </Card>
+
       {/* Logout */}
       <Card sx={{ borderRadius: 3, bgcolor: cardBg }}>
         <ListItemButton onClick={logout} sx={{ borderRadius: 3, py: 2 }}>
@@ -1800,6 +1859,21 @@ const MobileDeliveryDashboard = () => {
         {value === 3 && renderProfile()}
         {value === 4 && renderSettings()}
       </Box>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={() => setNotification({ ...notification, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          severity={notification.severity}
+          sx={{ width: "100%", borderRadius: 2, boxShadow: 3 }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
 
       {/* Bottom Navigation */}
       <Paper
