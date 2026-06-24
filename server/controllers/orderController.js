@@ -273,7 +273,7 @@ const createOrder = async (req, res, next) => {
         if (assignedVendor.firebaseUid) {
           io.to(`vendor_${assignedVendor.firebaseUid}`).emit("new_order_available", populatedOrderObj);
         }
-        io.to("all_vendors").emit("new_order_available", populatedOrderObj);
+        // Removed io.to("all_vendors").emit("new_order_available", populatedOrderObj); so other vendors don't falsely receive this assigned order.
 
         await Notification.createNotification({
           recipient: assignedVendor._id,
