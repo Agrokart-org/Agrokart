@@ -5,23 +5,16 @@ const admin = require("firebase-admin");
 const fs = require("fs");
 const path = require("path");
 
+const User = require("../models/User");
+
 const findUserByEmail = async (email) => {
-  const snapshot = await db
-    .collection("users")
-    .where("email", "==", email)
-    .limit(1)
-    .get();
-  if (snapshot.empty) return null;
-  const doc = snapshot.docs[0];
-  return { _id: doc.id, id: doc.id, ...doc.data() };
+  return await User.findOne({ email });
 };
 
 const saveUser = async (userData) => {
-  const docRef = await db.collection("users").add({
-    ...userData,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-  return { _id: docRef.id, id: docRef.id, ...userData };
+  const user = new User(userData);
+  await user.save();
+  return user;
 };
 
 const logError = (error) => {
