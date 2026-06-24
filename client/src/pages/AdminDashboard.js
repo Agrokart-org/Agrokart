@@ -72,6 +72,7 @@ import {
   LocalShipping as LocalShippingIcon,
   Person as PersonIcon,
   Store as StoreIcon,
+  Visibility as ViewIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -451,6 +452,8 @@ const AdminDashboard = () => {
   });
   const [userFilter, setUserFilter] = useState("all");
   const [userSearch, setUserSearch] = useState("");
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [selectedUserProfile, setSelectedUserProfile] = useState(null);
   const [orders, setOrders] = useState([]);
   const [ordersPagination, setOrdersPagination] = useState({
     page: 1,
@@ -1428,6 +1431,18 @@ const AdminDashboard = () => {
                                 spacing={0.5}
                                 justifyContent="flex-end"
                               >
+                                <Tooltip title="View Profile">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                      setSelectedUserProfile(user);
+                                      setProfileDialogOpen(true);
+                                    }}
+                                    sx={{ color: "#00ffff" }}
+                                  >
+                                    <ViewIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
                                 {user.isVerified ? (
                                   <Tooltip title="Block user">
                                     <IconButton
@@ -2426,6 +2441,155 @@ const AdminDashboard = () => {
           {notification.message}
         </Alert>
       </Snackbar>
+
+      {/* User Profile Dialog */}
+      <Dialog
+        open={profileDialogOpen}
+        onClose={() => setProfileDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: "#0a0a0a",
+            border: "1px solid #00ff00",
+            color: "#fff",
+            fontFamily: "monospace",
+          },
+        }}
+      >
+        {selectedUserProfile && (
+          <>
+            <DialogTitle sx={{ borderBottom: "1px solid #333", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography variant="h6" sx={{ color: "#00ff00", fontFamily: "monospace", fontWeight: "bold" }}>
+                &gt; USER_PROFILE: {selectedUserProfile.name}
+              </Typography>
+              <IconButton onClick={() => setProfileDialogOpen(false)} sx={{ color: "#00ff00" }}>
+                <CancelIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ mt: 2 }}>
+              <Grid container spacing={3}>
+                {/* Basic Info */}
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ bgcolor: "#111", border: "1px solid #333" }}>
+                    <CardContent>
+                      <Typography sx={{ color: "#00ff00", mb: 2, fontWeight: "bold" }}>-- BASIC INFO --</Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}><strong>ID:</strong> {selectedUserProfile._id}</Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}><strong>Email:</strong> {selectedUserProfile.email}</Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}><strong>Phone:</strong> {selectedUserProfile.phone || "N/A"}</Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>Role:</strong> <Chip size="small" label={selectedUserProfile.role.toUpperCase()} sx={{ color: "#00ff00", borderColor: "#00ff00" }} variant="outlined" />
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>Status:</strong> {selectedUserProfile.isVerified ? <span style={{color:"#00ff00"}}>VERIFIED</span> : <span style={{color:"#ff9900"}}>UNVERIFIED</span>}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1 }}><strong>Joined:</strong> {new Date(selectedUserProfile.createdAt).toLocaleString()}</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Address Info */}
+                <Grid item xs={12} md={6}>
+                  <Card sx={{ bgcolor: "#111", border: "1px solid #333", height: "100%" }}>
+                    <CardContent>
+                      <Typography sx={{ color: "#00ff00", mb: 2, fontWeight: "bold" }}>-- ADDRESS --</Typography>
+                      {selectedUserProfile.address ? (
+                        <>
+                          <Typography variant="body2" sx={{ mb: 1 }}><strong>Street:</strong> {selectedUserProfile.address.street || "N/A"}</Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}><strong>City:</strong> {selectedUserProfile.address.city || "N/A"}</Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}><strong>State:</strong> {selectedUserProfile.address.state || "N/A"}</Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}><strong>Pincode:</strong> {selectedUserProfile.address.pincode || "N/A"}</Typography>
+                        </>
+                      ) : (
+                        <Typography variant="body2" color="textSecondary">No address on file</Typography>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Role Specific Info */}
+                {selectedUserProfile.role === "customer" && selectedUserProfile.landDetails && (
+                  <Grid item xs={12}>
+                    <Card sx={{ bgcolor: "#111", border: "1px solid #333" }}>
+                      <CardContent>
+                        <Typography sx={{ color: "#00ff00", mb: 2, fontWeight: "bold" }}>-- LAND DETAILS --</Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}><strong>Total Area:</strong> {selectedUserProfile.landDetails.totalArea} acres</Typography>
+                        {selectedUserProfile.landDetails.crops && selectedUserProfile.landDetails.crops.length > 0 && (
+                          <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2"><strong>Crops:</strong></Typography>
+                            <ul>
+                              {selectedUserProfile.landDetails.crops.map((crop, idx) => (
+                                <li key={idx} style={{ fontSize: "0.875rem" }}>{crop.name} ({crop.area} acres)</li>
+                              ))}
+                            </ul>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {selectedUserProfile.role === "vendor" && selectedUserProfile.vendorProfile && (
+                  <Grid item xs={12}>
+                    <Card sx={{ bgcolor: "#111", border: "1px solid #333" }}>
+                      <CardContent>
+                        <Typography sx={{ color: "#00ff00", mb: 2, fontWeight: "bold" }}>-- VENDOR PROFILE --</Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Business Name:</strong> {selectedUserProfile.vendorProfile.businessName || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Business Type:</strong> {selectedUserProfile.vendorProfile.businessType || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>GST Number:</strong> {selectedUserProfile.vendorProfile.gstNumber || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Commission Rate:</strong> {selectedUserProfile.vendorProfile.commissionRate}%</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Profile Status:</strong> {selectedUserProfile.vendorProfile.verificationStatus?.toUpperCase()}</Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Bank Acc:</strong> {selectedUserProfile.vendorProfile.bankDetails?.accountNumber || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>IFSC:</strong> {selectedUserProfile.vendorProfile.bankDetails?.ifscCode || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Bank Name:</strong> {selectedUserProfile.vendorProfile.bankDetails?.bankName || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Ratings:</strong> {selectedUserProfile.vendorProfile.rating?.average} ({selectedUserProfile.vendorProfile.rating?.count} reviews)</Typography>
+                          </Grid>
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {selectedUserProfile.role === "delivery_partner" && selectedUserProfile.deliveryProfile && (
+                  <Grid item xs={12}>
+                    <Card sx={{ bgcolor: "#111", border: "1px solid #333" }}>
+                      <CardContent>
+                        <Typography sx={{ color: "#00ff00", mb: 2, fontWeight: "bold" }}>-- DELIVERY PROFILE --</Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Vehicle Type:</strong> {selectedUserProfile.deliveryProfile.vehicleType || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Vehicle Number:</strong> {selectedUserProfile.deliveryProfile.vehicleNumber || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>License:</strong> {selectedUserProfile.deliveryProfile.licenseNumber || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Aadhar:</strong> {selectedUserProfile.deliveryProfile.aadharNumber || "N/A"}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Service Radius:</strong> {selectedUserProfile.deliveryProfile.serviceRadius} km</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Profile Status:</strong> {selectedUserProfile.deliveryProfile.verificationStatus?.toUpperCase()}</Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Total Deliveries:</strong> {selectedUserProfile.deliveryProfile.totalDeliveries || 0}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Success Rate:</strong> {selectedUserProfile.deliveryProfile.successRate || 100}%</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Total Earnings:</strong> ₹{selectedUserProfile.deliveryProfile.earnings?.total || 0}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Cash Collection:</strong> ₹{selectedUserProfile.deliveryProfile.cashCollection?.currentAmount || 0}</Typography>
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Ratings:</strong> {selectedUserProfile.deliveryProfile.rating?.average} ({selectedUserProfile.deliveryProfile.rating?.count} reviews)</Typography>
+                          </Grid>
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+              </Grid>
+            </DialogContent>
+            <DialogActions sx={{ borderTop: "1px solid #333", p: 2 }}>
+              <Button onClick={() => setProfileDialogOpen(false)} sx={{ color: "#00ff00" }}>
+                CLOSE
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </ThemeProvider>
   );
 };
