@@ -83,6 +83,8 @@ import {
   respondToVendorOrder,
   getVendorBankAccount,
   linkVendorBankAccount,
+  safeFetch,
+  API_BASE_URL,
 } from "../services/api";
 import { getProductImage } from "../data/productImages";
 
@@ -355,8 +357,7 @@ const MobileVendorDashboard = () => {
         async (position) => {
           try {
             const token = localStorage.getItem("authToken");
-            const API_BASE = process.env.REACT_APP_API_URL || "https://agrokart-api.onrender.com/api";
-            const res = await fetch(`${API_BASE}/user/profile`, {
+            const res = await safeFetch(`${API_BASE_URL}/user/profile`, {
               method: "PUT",
               headers: {
                 "Content-Type": "application/json",

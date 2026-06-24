@@ -33,6 +33,8 @@ import {
   Toolbar,
   TextField,
   DialogTitle,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import {
   Dashboard as DashboardIcon,
@@ -79,6 +81,8 @@ import {
   getCashCollection,
   recordCashDeposit,
   getDeliveryHistory,
+  safeFetch,
+  API_BASE_URL,
 } from "../services/api";
 import LiveTrackingMap from "../components/map/LiveTrackingMap";
 import {
@@ -1274,8 +1278,7 @@ const MobileDeliveryDashboard = () => {
         async (position) => {
           try {
             const token = localStorage.getItem("authToken");
-            const API_BASE = process.env.REACT_APP_API_URL || "https://agrokart-api.onrender.com/api";
-            const res = await fetch(`${API_BASE}/user/profile`, {
+            const res = await safeFetch(`${API_BASE_URL}/user/profile`, {
               method: "PUT",
               headers: {
                 "Content-Type": "application/json",

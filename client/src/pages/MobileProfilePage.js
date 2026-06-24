@@ -34,6 +34,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
+import { safeFetch, API_BASE_URL } from "../services/api";
 
 const MotionCard = motion(Card);
 const MotionListItem = motion(ListItem);
@@ -58,8 +59,7 @@ const MobileProfilePage = () => {
         async (position) => {
           try {
             const token = localStorage.getItem("authToken");
-            const API_BASE = process.env.REACT_APP_API_URL || "https://agrokart-api.onrender.com/api";
-            const res = await fetch(`${API_BASE}/user/profile`, {
+            const res = await safeFetch(`${API_BASE_URL}/user/profile`, {
               method: "PUT",
               headers: {
                 "Content-Type": "application/json",
@@ -324,7 +324,7 @@ const MobileProfilePage = () => {
                   </React.Fragment>
                 ))}
               </List>
-            </MotionCard>
+            </Card>
           </Box>
         ))}
 
