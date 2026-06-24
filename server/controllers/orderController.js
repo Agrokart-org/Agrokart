@@ -170,15 +170,6 @@ const createOrder = async (req, res, next) => {
       // REMOVED fallback to vendors[0] to allow broadcast ("finding_vendor")
     }
 
-    // --- HACK FOR DEMO / TESTING ---
-    // Force assign to Jack if requested by user for testing notifications
-    const jackVendor = vendors.find(v => v.email === "jack@gmail.com");
-    if (jackVendor) {
-      assignedVendor = jackVendor;
-      console.log("🛠️ DEMO MODE: Forced assignment to Jack");
-    }
-    // ---------------------------------
-
     // Assign the found vendor to all item objects (but keep status as 'pending' until vendor accepts)
     if (assignedVendor) {
       refinedItems.forEach((i) => {
