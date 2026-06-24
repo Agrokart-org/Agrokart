@@ -138,7 +138,7 @@ const createOrder = async (req, res, next) => {
         if (v.address && v.address.coordinates && v.address.coordinates.coordinates) {
           const [vlng, vlat] = v.address.coordinates.coordinates;
           const ds = getDistanceFromLatLonInM(lat, lng, vlat, vlng);
-          if (ds < nearestDist) {
+          if (ds <= 10000 && ds < nearestDist) {
             nearestDist = ds;
             assignedVendor = v;
           }
@@ -160,7 +160,7 @@ const createOrder = async (req, res, next) => {
           if (v.address && v.address.coordinates && v.address.coordinates.coordinates) {
             const [vlng, vlat] = v.address.coordinates.coordinates;
             const ds = getDistanceFromLatLonInM(lat, lng, vlat, vlng);
-            if (ds < nearestDist) {
+            if (ds <= 10000 && ds < nearestDist) {
               nearestDist = ds;
               assignedVendor = v;
             }
@@ -168,6 +168,13 @@ const createOrder = async (req, res, next) => {
         }
       }
       // REMOVED fallback to vendors[0] to allow broadcast ("finding_vendor")
+    }
+
+    if (!assignedVendor) {
+      return res.status(400).json({
+        success: false,
+        message: "Order cannot be placed: No vendors available within a 10km radius of your delivery location."
+      });
     }
 
     // Assign the found vendor to all item objects (but keep status as 'pending' until vendor accepts)

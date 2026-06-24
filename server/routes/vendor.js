@@ -784,7 +784,7 @@ router.post("/orders/:orderId/respond", auth, async (req, res) => {
       await assignment.save();
       console.log(`🚴 DeliveryAssignment ${assignment._id} created. Partner earnings: ₹${deliveryFee}. Pickup PIN: ${vendorPickupPin}`);
 
-      // ── 6. Broadcast to ALL delivery partners ──────────────────────
+      // ── 6. Broadcast to delivery partners within 10km ──────────────────────
       if (io) {
         const deliveryNotification = {
           orderId: order._id,
@@ -799,9 +799,32 @@ router.post("/orders/:orderId/respond", auth, async (req, res) => {
           message: `New Delivery: Pickup from ${vendor.vendorProfile?.businessName || "Agro Shop"}`,
         };
 
-        io.to("all_delivery_partners").emit("new_assignment", deliveryNotification);
-        io.to("all_delivery_partners").emit("delivery_request", deliveryNotification);
-        console.log("📡 Broadcasted delivery_request to all_delivery_partners room");
+        let qualifiedPartnerCount = 0;
+        
+        if (vendor.address?.coordinates?.coordinates) {
+          const [vlng, vlat] = vendor.address.coordinates.coordinates;
+          const deliveryPartners = await User.find({ role: "delivery_partner" });
+          
+          for (const dp of deliveryPartners) {
+            if (dp.address?.coordinates?.coordinates) {
+              const [dpLng, dpLat] = dp.address.coordinates.coordinates;
+              const distKm = getDistanceFromLatLonInKm(vlat, vlng, dpLat, dpLng);
+              
+              if (distKm <= 10) {
+                io.to(`delivery_partner_${dp._id}`).emit("new_assignment", deliveryNotification);
+                io.to(`delivery_partner_${dp._id}`).emit("delivery_request", deliveryNotification);
+                
+                if (dp.firebaseUid) {
+                  io.to(`delivery_partner_${dp.firebaseUid}`).emit("new_assignment", deliveryNotification);
+                  io.to(`delivery_partner_${dp.firebaseUid}`).emit("delivery_request", deliveryNotification);
+                }
+                qualifiedPartnerCount++;
+              }
+            }
+          }
+        }
+
+        console.log(`📡 Broadcasted delivery_request to ${qualifiedPartnerCount} delivery partners within 10km`);
       }
 
     } else if (action === "reject") {
