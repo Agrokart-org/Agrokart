@@ -1278,7 +1278,7 @@ const MobileDeliveryDashboard = () => {
         async (position) => {
           try {
             const token = localStorage.getItem("authToken");
-            const res = await safeFetch(`${API_BASE_URL}/user/profile`, {
+            const res = await safeFetch(`${API_BASE_URL}/users/profile`, {
               method: "PUT",
               headers: {
                 "Content-Type": "application/json",
