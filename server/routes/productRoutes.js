@@ -15,10 +15,16 @@ const {
   deleteProduct
 } = require('../controllers/productController');
 
+const fs = require('fs');
+
 // ── Multer: upload product images to uploads/products/ ────────────────────────
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads/products'));
+    const uploadPath = path.join(__dirname, '../../uploads/products');
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);

@@ -235,7 +235,7 @@ router.post("/login", async (req, res) => {
         phone: user.phone,
         address: user.address,
       },
-      token: "customer-jwt-token", // In a real app, generate a proper JWT
+      token: `${user.role}-jwt-token`, // Returns correct role placeholder token for dev mode
     });
   } catch (error) {
     console.error("Outer Login error:", error);

@@ -303,7 +303,12 @@ const DeliveryDetailsPage = () => {
 
     // Function to get coordinates from city lookup as fallback
     const getCityCoordinates = () => {
-      const coords = cityCoordinates[formData.city];
+      const cityInput = (formData.city || "").trim().toLowerCase();
+      const cityKey = Object.keys(cityCoordinates).find(
+        (key) => key.toLowerCase() === cityInput
+      );
+      const coords = cityKey ? cityCoordinates[cityKey] : null;
+      
       if (coords) {
         return { longitude: coords[0], latitude: coords[1] };
       }

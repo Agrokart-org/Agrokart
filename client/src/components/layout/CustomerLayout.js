@@ -37,6 +37,7 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
+import { useNotifications } from "../../context/NotificationProvider";
 import CustomerSidebar from "./CustomerSidebar";
 import LogoImage from "../../assets/logo_green_no_bg.png";
 
@@ -50,6 +51,7 @@ const CustomerLayout = ({ children }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { cart } = useCart();
   const { user } = useAuth();
+  const { getUnreadCount } = useNotifications();
   const { t, i18n } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -346,7 +348,7 @@ const CustomerLayout = ({ children }) => {
                 }}
                 onClick={() => navigate("/notifications")}
               >
-                <Badge badgeContent={3} color="warning">
+                <Badge badgeContent={getUnreadCount()} color="warning">
                   <NotificationsIcon />
                 </Badge>
               </IconButton>

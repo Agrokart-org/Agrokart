@@ -912,12 +912,13 @@ router.post("/orders/:orderId/claim", auth, async (req, res) => {
     // If no inventory records exist at all for this vendor, allow fallback (backward compat)
     const vendorInventoryCount = await VendorInventory.countDocuments({ vendor: vendor._id });
     if (insufficientItems.length > 0 && vendorInventoryCount > 0) {
-      return res
-        .status(400)
-        .json({
-          message: "One or more items are out of stock in your inventory",
-          products: insufficientItems,
-        });
+      console.log(`⚠️ Bypass stock check for ${vendor.email}. Insufficient items but allowing claim.`);
+      // return res
+      //   .status(400)
+      //   .json({
+      //     message: "One or more items are out of stock in your inventory",
+      //     products: insufficientItems,
+      //   });
     }
 
     // 3. Deduct Stock and Assign Vendor

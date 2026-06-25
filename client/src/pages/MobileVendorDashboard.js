@@ -146,6 +146,14 @@ const MobileVendorDashboard = () => {
   const [myOrders, setMyOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
+  // ── Inventory State (declared early for stats) ──
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [loadingInventory, setLoadingInventory] = useState(false);
+
+  // ── Daily Stock State (declared early) ──
+  const [dailyStockEdits, setDailyStockEdits] = useState({}); // { inventoryId: qty }
+  const [savingStock, setSavingStock] = useState(false);
+
   // Fetch Orders
   const fetchMyOrders = async (silent = false) => {
     try {
@@ -297,14 +305,14 @@ const MobileVendorDashboard = () => {
     },
     {
       label: "Orders",
-      value: "12",
+      value: myOrders.length.toString(),
       icon: OrdersIcon,
       color: "#1565C0",
       bg: "#E3F2FD",
     },
     {
       label: "Products",
-      value: "24",
+      value: inventoryItems.length.toString(),
       icon: ProductsIcon,
       color: "#E65100",
       bg: "#FFF3E0",
@@ -396,6 +404,7 @@ const MobileVendorDashboard = () => {
   useEffect(() => {
     // Initial fetch
     fetchMyOrders().finally(() => { initialFetchDone.current = true; });
+    fetchInventory();
 
     // Setup 30-second polling for robustness (reduced from 10s to avoid flooding)
     const pollInterval = setInterval(() => {
@@ -851,12 +860,11 @@ const MobileVendorDashboard = () => {
   );
 
   // ── Inventory State ──
-  const [inventoryItems, setInventoryItems] = useState([]);
-  const [loadingInventory, setLoadingInventory] = useState(false);
-
+  // Moved to top of component to fix ReferenceError
+  
   // ── Daily Stock State ──
-  const [dailyStockEdits, setDailyStockEdits] = useState({}); // { inventoryId: qty }
-  const [savingStock, setSavingStock] = useState(false);
+  // Moved to top of component
+
   const [todayDelivered, setTodayDelivered] = useState({}); // { productName: qty }
 
   const fetchInventory = async () => {
@@ -1393,7 +1401,7 @@ const MobileVendorDashboard = () => {
                           mb: 0.2,
                         }}
                       >
-                        ₹{item.sellingPrice || item.product?.price}
+                        ₹{Number(item.sellingPrice || item.product?.price || 0).toFixed(2)}
                         <Typography
                           component="span"
                           variant="caption"

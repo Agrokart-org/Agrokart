@@ -52,6 +52,7 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/dr-agro", drAgroRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/mandi", mandiRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

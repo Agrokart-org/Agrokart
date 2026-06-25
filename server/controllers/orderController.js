@@ -90,7 +90,7 @@ const createOrder = async (req, res, next) => {
     // INVENTORY-AWARE VENDOR ASSIGNMENT
     // Find the nearest vendor who has ALL ordered items in sufficient stock.
     // ──────────────────────────────────────────────────────────────────────
-    let assignedVendor = null;
+    let targetVendors = [];
     let vendors = await User.find({ role: "vendor" });
 
     // Step 1: If we have valid product IDs, filter vendors by stock availability
@@ -118,14 +118,14 @@ const createOrder = async (req, res, next) => {
       }
     }
 
-    // Step 2: Pick nearest qualified vendor
+    // Step 2: Collect all qualified vendors within 10km
     if (
       deliveryAddress.coordinates &&
       deliveryAddress.coordinates.coordinates &&
       vendors.length > 0
     ) {
       const [lng, lat] = deliveryAddress.coordinates.coordinates;
-      let nearestDist = Infinity;
+      console.log(`📍 Order placed with delivery coordinates: [lng: ${lng}, lat: ${lat}]`);
 
       for (let v of vendors) {
         // If we have inventory data, skip vendors who don't have stock
@@ -138,52 +138,45 @@ const createOrder = async (req, res, next) => {
         if (v.address && v.address.coordinates && v.address.coordinates.coordinates) {
           const [vlng, vlat] = v.address.coordinates.coordinates;
           const ds = getDistanceFromLatLonInM(lat, lng, vlat, vlng);
-          if (ds <= 10000 && ds < nearestDist) {
-            nearestDist = ds;
-            assignedVendor = v;
+          console.log(`📏 Distance to vendor ${v.email} at [${vlng}, ${vlat}] is ${ds} meters`);
+          if (ds <= 10000) {
+            targetVendors.push(v);
           }
         }
       }
     }
 
-    // Fallback: If no qualified vendor found by inventory+distance, try any vendor
+    // Fallback: If no qualified vendor found by inventory+distance, collect ANY vendor within 10km
     // (this keeps backward compat for mock/test scenarios where VendorInventory is empty)
-    if (!assignedVendor && vendors.length > 0) {
-      console.log("⚠️ No vendor matched inventory filter — checking location");
+    if (targetVendors.length === 0 && vendors.length > 0) {
+      console.log("⚠️ No vendor matched inventory filter — checking location only");
       if (
         deliveryAddress.coordinates &&
         deliveryAddress.coordinates.coordinates
       ) {
         const [lng, lat] = deliveryAddress.coordinates.coordinates;
-        let nearestDist = Infinity;
         for (let v of vendors) {
           if (v.address && v.address.coordinates && v.address.coordinates.coordinates) {
             const [vlng, vlat] = v.address.coordinates.coordinates;
             const ds = getDistanceFromLatLonInM(lat, lng, vlat, vlng);
-            if (ds <= 10000 && ds < nearestDist) {
-              nearestDist = ds;
-              assignedVendor = v;
+            console.log(`📏 [Fallback] Distance to vendor ${v.email} at [${vlng}, ${vlat}] is ${ds} meters`);
+            if (ds <= 10000) {
+              targetVendors.push(v);
             }
           }
         }
       }
-      // REMOVED fallback to vendors[0] to allow broadcast ("finding_vendor")
     }
 
-    if (!assignedVendor) {
+    if (targetVendors.length === 0) {
       return res.status(400).json({
         success: false,
         message: "Order cannot be placed: No vendors available within a 10km radius of your delivery location."
       });
     }
 
-    // Assign the found vendor to all item objects (but keep status as 'pending' until vendor accepts)
-    if (assignedVendor) {
-      refinedItems.forEach((i) => {
-        i.vendor = assignedVendor._id;
-        i.status = "pending"; // Will be confirmed when vendor accepts
-      });
-    }
+    // Since this is broadcast-and-claim, we do NOT assign a vendor immediately.
+    // Order items remain 'pending' and without a vendor ID.
 
     // Generate Verification PINs and Order Data
     const deliveryPin = String(Math.floor(1000 + Math.random() * 9000));
@@ -191,10 +184,10 @@ const createOrder = async (req, res, next) => {
     const trackingNumber = `ORD${Date.now().toString().slice(-6)}`;
 
     // ──────────────────────────────────────────────────────────────────────
-    // VENDOR APPROVAL FLOW: Set status to "pending_vendor_approval" so
-    // vendor can explicitly accept or reject the order.
+    // VENDOR APPROVAL FLOW: Broadcast to all nearby vendors.
+    // First one to accept will claim the order.
     // ──────────────────────────────────────────────────────────────────────
-    const initialStatus = assignedVendor ? "pending_vendor_approval" : "finding_vendor";
+    const initialStatus = "finding_vendor";
 
     // Calculate vendor payout (99% of subtotal for online, full for COD minus 1%)
     const vendorPayoutAmount = getVendorPayout(subtotalAmount, paymentMethod || 'cod');
@@ -223,7 +216,7 @@ const createOrder = async (req, res, next) => {
     });
 
     const savedOrder = await newOrder.save();
-    console.log(`✅ Order ${trackingNumber} created with status: ${initialStatus} | Vendor payout: ₹${vendorPayoutAmount} (${vendorPayoutMethod})`);
+    console.log(`✅ Order ${trackingNumber} created with status: ${initialStatus} | Vendors targeted: ${targetVendors.length}`);
 
     // Populate user and product info for broadcasting
     const populatedOrder = await Order.findById(savedOrder._id)
@@ -245,91 +238,48 @@ const createOrder = async (req, res, next) => {
       return item;
     });
 
-    if (assignedVendor) {
-      const io = getIo();
-      if (io) {
-        // ── Step 1: Reserve stock in VendorInventory ─────────────────────
-        for (const { productId, quantity } of validProductIds) {
-          try {
-            const invItem = await VendorInventory.findOne({
-              vendor: assignedVendor._id,
-              product: productId,
-            });
-            if (invItem) {
-              invItem.reservedStock += quantity;
-              await invItem.save();
-              console.log(`📦 Auto-reserved ${quantity} units of product ${productId} for vendor ${assignedVendor._id}`);
-            }
-          } catch (stockErr) {
-            console.error("Stock reservation error (non-critical):", stockErr.message);
-          }
+    const io = getIo();
+    if (io) {
+      populatedOrderObj.vendorPayout = {
+        amount: vendorPayoutAmount,
+        method: vendorPayoutMethod,
+      };
+      populatedOrderObj.subtotalAmount = subtotalAmount;
+      populatedOrderObj.deliveryCharge = deliveryCharge;
+
+      console.log(`📦 Order broadcast to ${targetVendors.length} nearby vendors for claiming`);
+      
+      // Emit to each qualified vendor's specific room
+      targetVendors.forEach(vendor => {
+        io.to(`vendor_${vendor._id}`).emit("new_order_available", populatedOrderObj);
+        if (vendor.firebaseUid) {
+          io.to(`vendor_${vendor.firebaseUid}`).emit("new_order_available", populatedOrderObj);
         }
+      });
 
-        // ── Step 2: Notify Vendor of PENDING order (vendor must accept/reject) ──
-        console.log(`📦 Order sent to vendor ${assignedVendor._id} (${assignedVendor.vendorProfile?.businessName || assignedVendor.name}) for approval`);
-        
-        // Include payout info in the notification data
-        populatedOrderObj.vendorPayout = {
-          amount: vendorPayoutAmount,
-          method: vendorPayoutMethod,
-        };
-        populatedOrderObj.subtotalAmount = subtotalAmount;
-        populatedOrderObj.deliveryCharge = deliveryCharge;
-
-        io.to(`vendor_${assignedVendor._id}`).emit("new_order_available", populatedOrderObj);
-        if (assignedVendor.firebaseUid) {
-          io.to(`vendor_${assignedVendor.firebaseUid}`).emit("new_order_available", populatedOrderObj);
-        }
-        // Removed io.to("all_vendors").emit("new_order_available", populatedOrderObj); so other vendors don't falsely receive this assigned order.
-
+      // Notify Customer that order is waiting for a vendor
+      io.to(`order_${savedOrder._id}`).emit("order_status_updated", {
+        status: "finding_vendor",
+        orderId: savedOrder._id,
+        message: "Your order is being broadcasted to nearby vendors.",
+      });
+      
+      // Save notification to DB for each target vendor
+      for (let vendor of targetVendors) {
         await Notification.createNotification({
-          recipient: assignedVendor._id,
+          recipient: vendor._id,
           recipientType: "vendor",
           type: "new_order_available",
-          title: "New Order — Accept or Reject",
-          message: `Order ${trackingNumber} (₹${subtotalAmount}) is waiting for your approval. Your payout: ₹${vendorPayoutAmount}.`,
+          title: "New Order — Accept to Claim",
+          message: `Order ${trackingNumber} (₹${subtotalAmount}) is available. First to accept claims it!`,
           data: { orderId: savedOrder._id, trackingNumber },
-        });
-
-        // NOTE: DeliveryAssignment is NOT created here anymore.
-        // It will be created only when vendor accepts the order.
-        // See vendor.js routes -> POST /orders/:orderId/respond
-
-        // Notify Customer that order is waiting for vendor approval
-        io.to(`order_${savedOrder._id}`).emit("order_status_updated", {
-          status: "pending_vendor_approval",
-          orderId: savedOrder._id,
-          message: "Your order is being reviewed by the vendor.",
-        });
-      }
-    } else {
-      const io = getIo();
-      if (io) {
-        // Include payout info in the notification data
-        populatedOrderObj.vendorPayout = {
-          amount: vendorPayoutAmount,
-          method: vendorPayoutMethod,
-        };
-        populatedOrderObj.subtotalAmount = subtotalAmount;
-        populatedOrderObj.deliveryCharge = deliveryCharge;
-
-        console.log(`📦 Order broadcast to all vendors for claiming`);
-        io.to("all_vendors").emit("new_order_available", populatedOrderObj);
-
-        // Notify Customer that order is waiting for a vendor
-        io.to(`order_${savedOrder._id}`).emit("order_status_updated", {
-          status: "finding_vendor",
-          orderId: savedOrder._id,
-          message: "Your order is being broadcasted to nearby vendors.",
         });
       }
     }
 
     res.status(201).json({
       success: true,
-      message: assignedVendor
-        ? "Order placed! Waiting for vendor approval."
-        : "Order placed. Searching for a vendor...",
+      message: "Order placed. Searching for a vendor...",
       order: populatedOrderObj,
       _id: savedOrder._id,
       trackingNumber: savedOrder.trackingNumber

@@ -57,11 +57,45 @@ export const NotificationProvider = ({ children }) => {
     // Initialize notification system
     initializeNotifications();
 
+    // Fetch server notifications
+    fetchServerNotifications();
+
     // Listen for push notifications if native
     if (isNative) {
       setupPushNotificationListeners();
     }
   }, [isNative]);
+
+  const fetchServerNotifications = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+      
+      const API_BASE = process.env.REACT_APP_API_URL || "";
+      const res = await fetch(`${API_BASE}/api/notifications`, {
+        headers: { "x-auth-token": token },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Transform backend notification format to local format
+        const mapped = data.map(n => ({
+          id: n._id,
+          title: n.title,
+          body: n.message,
+          type: n.type === 'order_placed' || n.type === 'order_confirmed' ? 'order' : 
+                n.type.includes('delivery') ? 'delivery' : 
+                n.type.includes('promotion') ? 'promotion' : 'info',
+          action: n.data?.actionUrl ? { type: 'navigate', path: n.data.actionUrl } : null,
+          timestamp: n.createdAt,
+          read: n.isRead,
+          dbRecord: true
+        }));
+        setNotifications(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications", err);
+    }
+  };
 
   const initializeNotifications = async () => {
     try {
@@ -202,26 +236,75 @@ export const NotificationProvider = ({ children }) => {
     });
   };
 
-  const markAsRead = (notificationId) => {
+  const markAsRead = async (notificationId) => {
     setNotifications((prev) =>
       prev.map((notif) =>
         notif.id === notificationId ? { ...notif, read: true } : notif,
       ),
     );
+    
+    try {
+      const token = localStorage.getItem("authToken");
+      if (token && typeof notificationId === "string") {
+        const API_BASE = process.env.REACT_APP_API_URL || "";
+        await fetch(`${API_BASE}/api/notifications/${notificationId}/read`, {
+          method: "PUT",
+          headers: { "x-auth-token": token },
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })));
+    try {
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        const API_BASE = process.env.REACT_APP_API_URL || "";
+        await fetch(`${API_BASE}/api/notifications/read-all`, {
+          method: "PUT",
+          headers: { "x-auth-token": token },
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const clearNotification = (notificationId) => {
+  const clearNotification = async (notificationId) => {
     setNotifications((prev) =>
       prev.filter((notif) => notif.id !== notificationId),
     );
+    try {
+      const token = localStorage.getItem("authToken");
+      if (token && typeof notificationId === "string") {
+        const API_BASE = process.env.REACT_APP_API_URL || "";
+        await fetch(`${API_BASE}/api/notifications/${notificationId}`, {
+          method: "DELETE",
+          headers: { "x-auth-token": token },
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async () => {
     setNotifications([]);
+    try {
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        const API_BASE = process.env.REACT_APP_API_URL || "";
+        await fetch(`${API_BASE}/api/notifications`, {
+          method: "DELETE",
+          headers: { "x-auth-token": token },
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const getUnreadCount = () => {

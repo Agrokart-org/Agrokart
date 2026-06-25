@@ -87,7 +87,7 @@ const MobileHomePage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { user, logout } = useAuth();
   const { addToCart, cart, cartCount } = useCart();
-  const { showNotification } = useNotifications();
+  const { showNotification, getUnreadCount } = useNotifications();
   const { vibrate, getCurrentLocation, showToast, isNative } = useMobile();
 
   const [location, setLocation] = useState("");
@@ -311,6 +311,7 @@ const MobileHomePage = () => {
       user={user}
       onLogout={logout}
       cartCount={cartCount}
+      notificationCount={getUnreadCount()}
       showNavigation={true}
     >
       {/* Futuristic Header Section */}
