@@ -8,10 +8,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm install --legacy-peer-deps && CI=false npm run build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        working-directory: ./client
+        run: npm install --legacy-peer-deps
+      - name: Build
         working-directory: ./client
         env:
+          CI: 'false'
           REACT_APP_API_URL: https://agrokart-api.onrender.com
+        run: npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
