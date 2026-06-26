@@ -227,6 +227,9 @@ export const AuthProvider = ({ children }) => {
 
       const result = await SocialLogin.login({
         provider: "google",
+        options: {
+          scopes: ["email", "profile"],
+        },
       });
 
       console.log("📱 Google Sign-In result:", result);
