@@ -1902,28 +1902,40 @@ const MobileVendorDashboard = () => {
                     </Box>
 
                     <Box sx={{ display: "flex", gap: 1, mt: 1, mb: 1 }}>
-                      {!["picked_up", "out_for_delivery", "delivered", "cancelled", "rejected"].includes(
-                        order.orderStatus,
-                      ) && (
-                        order.deliveryPartner ? (
-                          <Button
-                            fullWidth
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenVerifyDialog(order)}
-                            sx={{ borderRadius: 2, py: 1 }}
-                          >
-                            Verify Pickup
-                          </Button>
-                        ) : (
-                          <Button
-                            fullWidth
-                            variant="contained"
-                            disabled
-                            sx={{ borderRadius: 2, py: 1, bgcolor: "grey.300", color: "grey.600" }}
-                          >
-                            Awaiting Delivery Partner
-                          </Button>
+                      {order.orderStatus === "finding_vendor" ? (
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          color="warning"
+                          onClick={() => setOrderAlert(order)}
+                          sx={{ borderRadius: 2, py: 1, fontWeight: "bold" }}
+                        >
+                          Respond to Order
+                        </Button>
+                      ) : (
+                        !["picked_up", "out_for_delivery", "delivered", "cancelled", "rejected"].includes(
+                          order.orderStatus,
+                        ) && (
+                          order.deliveryPartner ? (
+                            <Button
+                              fullWidth
+                              variant="contained"
+                              color="primary"
+                              onClick={() => handleOpenVerifyDialog(order)}
+                              sx={{ borderRadius: 2, py: 1 }}
+                            >
+                              Verify Pickup
+                            </Button>
+                          ) : (
+                            <Button
+                              fullWidth
+                              variant="contained"
+                              disabled
+                              sx={{ borderRadius: 2, py: 1, bgcolor: "grey.300", color: "grey.600" }}
+                            >
+                              Awaiting Delivery Partner
+                            </Button>
+                          )
                         )
                       )}
                     </Box>
