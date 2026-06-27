@@ -2493,12 +2493,21 @@ const AdminDashboard = () => {
                   <Card sx={{ bgcolor: "#111", border: "1px solid #333", height: "100%" }}>
                     <CardContent>
                       <Typography sx={{ color: "#00ff00", mb: 2, fontWeight: "bold" }}>-- ADDRESS --</Typography>
-                      {selectedUserProfile.address ? (
+                      {selectedUserProfile.address || selectedUserProfile.location?.address ? (
                         <>
-                          <Typography variant="body2" sx={{ mb: 1 }}><strong>Street:</strong> {selectedUserProfile.address.street || "N/A"}</Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}><strong>City:</strong> {selectedUserProfile.address.city || "N/A"}</Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}><strong>State:</strong> {selectedUserProfile.address.state || "N/A"}</Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}><strong>Pincode:</strong> {selectedUserProfile.address.pincode || "N/A"}</Typography>
+                          {typeof selectedUserProfile.address === 'string' ? (
+                            <Typography variant="body2" sx={{ mb: 1 }}><strong>Address:</strong> {selectedUserProfile.address}</Typography>
+                          ) : selectedUserProfile.address && typeof selectedUserProfile.address === 'object' ? (
+                            <>
+                              <Typography variant="body2" sx={{ mb: 1 }}><strong>Street:</strong> {selectedUserProfile.address.street || "N/A"}</Typography>
+                              <Typography variant="body2" sx={{ mb: 1 }}><strong>City:</strong> {selectedUserProfile.address.city || "N/A"}</Typography>
+                              <Typography variant="body2" sx={{ mb: 1 }}><strong>State:</strong> {selectedUserProfile.address.state || "N/A"}</Typography>
+                              <Typography variant="body2" sx={{ mb: 1 }}><strong>Pincode:</strong> {selectedUserProfile.address.pincode || "N/A"}</Typography>
+                            </>
+                          ) : null}
+                          {selectedUserProfile.location?.address && (
+                            <Typography variant="body2" sx={{ mb: 1, mt: 1 }}><strong>Map Address:</strong> {selectedUserProfile.location.address}</Typography>
+                          )}
                         </>
                       ) : (
                         <Typography variant="body2" color="textSecondary">No address on file</Typography>
