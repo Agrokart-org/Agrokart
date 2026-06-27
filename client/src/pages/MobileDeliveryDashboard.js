@@ -1270,6 +1270,58 @@ const MobileDeliveryDashboard = () => {
 
   const [updatingLocation, setUpdatingLocation] = useState(false);
   const [notification, setNotification] = useState({ open: false, message: "", severity: "info" });
+  
+  // Address Update State
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const [addressForm, setAddressForm] = useState({
+    street: user?.address?.street || "",
+    city: user?.address?.city || "",
+    state: user?.address?.state || "",
+    pincode: user?.address?.pincode || "",
+    lat: user?.location?.coordinates?.[1] || "",
+    lon: user?.location?.coordinates?.[0] || ""
+  });
+  const [addressUpdating, setAddressUpdating] = useState(false);
+
+  const handleUpdateManualAddress = async () => {
+    setAddressUpdating(true);
+    try {
+      const coords = (addressForm.lon && addressForm.lat) 
+        ? [parseFloat(addressForm.lon), parseFloat(addressForm.lat)] 
+        : null;
+        
+      const payload = {
+        address: {
+          street: addressForm.street,
+          city: addressForm.city,
+          state: addressForm.state,
+          pincode: addressForm.pincode,
+          ...(coords && { coordinates: coords })
+        }
+      };
+
+      const res = await safeFetch(`${API_BASE_URL}/users/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token,
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setNotification({ open: true, message: "Address updated successfully!", severity: "success" });
+        setAddressDialogOpen(false);
+      } else {
+        setNotification({ open: true, message: "Failed to update address", severity: "error" });
+      }
+    } catch (err) {
+      console.error(err);
+      setNotification({ open: true, message: "Error updating address", severity: "error" });
+    } finally {
+      setAddressUpdating(false);
+    }
+  };
 
   const handleUpdateLocation = () => {
     if (navigator.geolocation) {
@@ -1751,6 +1803,17 @@ const MobileDeliveryDashboard = () => {
             />
             <ChevronRight />
           </ListItemButton>
+          <Divider />
+          <ListItemButton onClick={() => setAddressDialogOpen(true)} disabled={updatingLocation}>
+            <ListItemIcon sx={{ color: textColor }}>
+              <LocationOn />
+            </ListItemIcon>
+            <ListItemText
+              primary="Update Address Manually"
+              secondary="Type in your exact address and coordinates"
+            />
+            <ChevronRight />
+          </ListItemButton>
         </CardContent>
       </Card>
 
@@ -2185,6 +2248,81 @@ const MobileDeliveryDashboard = () => {
             }}
           >
             Confirm Pickup
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Address Update Dialog */}
+      <Dialog
+        open={addressDialogOpen}
+        onClose={() => setAddressDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: "bold", color: textColor }}>Update Address & Location</DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+            <TextField
+              label="Street Address"
+              fullWidth
+              size="small"
+              value={addressForm.street}
+              onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })}
+            />
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <TextField
+                label="City"
+                fullWidth
+                size="small"
+                value={addressForm.city}
+                onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+              />
+              <TextField
+                label="State"
+                fullWidth
+                size="small"
+                value={addressForm.state}
+                onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+              />
+            </Box>
+            <TextField
+              label="Pincode"
+              fullWidth
+              size="small"
+              value={addressForm.pincode}
+              onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
+            />
+            <Divider sx={{ my: 1 }}>GPS Coordinates (Optional)</Divider>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <TextField
+                label="Latitude"
+                fullWidth
+                size="small"
+                placeholder="e.g. 19.128684"
+                value={addressForm.lat}
+                onChange={(e) => setAddressForm({ ...addressForm, lat: e.target.value })}
+              />
+              <TextField
+                label="Longitude"
+                fullWidth
+                size="small"
+                placeholder="e.g. 74.189692"
+                value={addressForm.lon}
+                onChange={(e) => setAddressForm({ ...addressForm, lon: e.target.value })}
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setAddressDialogOpen(false)} color="inherit">Cancel</Button>
+          <Button 
+            onClick={handleUpdateManualAddress} 
+            variant="contained" 
+            disabled={addressUpdating}
+            sx={{ borderRadius: 2, background: PURPLE_GRADIENT, color: "white" }}
+          >
+            {addressUpdating ? "Saving..." : "Save Address"}
           </Button>
         </DialogActions>
       </Dialog>

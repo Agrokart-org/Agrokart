@@ -37,6 +37,13 @@ const updateProfile = async (req, res, next) => {
       user.address = { ...(user.address || {}), ...req.body.address };
       if (req.body.address.coordinates) {
         user.address.coordinates = { type: "Point", coordinates: req.body.address.coordinates };
+        
+        // Also update the top-level location field used for geospatial queries
+        user.location = {
+          type: "Point",
+          coordinates: req.body.address.coordinates,
+          address: `${req.body.address.street || ''}, ${req.body.address.city || ''}, ${req.body.address.state || ''} ${req.body.address.pincode || ''}`.replace(/^, |^ , | , $/g, '').trim()
+        };
       }
     }
 
