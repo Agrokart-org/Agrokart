@@ -691,88 +691,10 @@ const LabourManagement = () => {
             Find skilled farm workers near you
           </Typography>
 
-          {/* Stats strip */}
-          <Box sx={{ display: "flex", gap: 2 }}>
-            {[
-              {
-                val: `${labourList.filter((w) => w.availability === "Available").length}`,
-                label: "Available",
-              },
-              { val: `${labourList.length}+`, label: "Workers" },
-              { val: "4.7★", label: "Avg Rating" },
-            ].map((s, i) => (
-              <Box
-                key={i}
-                sx={{
-                  flex: 1,
-                  bgcolor: "rgba(255,255,255,0.15)",
-                  borderRadius: 2,
-                  py: 0.8,
-                  px: 1,
-                  backdropFilter: "blur(6px)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  textAlign: "center",
-                }}
-              >
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={800}
-                  color="white"
-                  lineHeight={1}
-                >
-                  {s.val}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ color: "rgba(255,255,255,0.8)", fontSize: "0.62rem" }}
-                >
-                  {s.label}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
         </motion.div>
       </Box>
 
-      {/* ── TAB NAV ── */}
-      <Box
-        sx={{
-          display: "flex",
-          bgcolor: "white",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-          position: "sticky",
-          top: 152,
-          zIndex: 9,
-        }}
-      >
-        {tabs.map((t, i) => (
-          <Box
-            key={i}
-            onClick={() => setActiveTab(i)}
-            sx={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              py: 1.2,
-              cursor: "pointer",
-              borderBottom:
-                activeTab === i ? "3px solid #2E7D32" : "3px solid transparent",
-              color: activeTab === i ? "#2E7D32" : "#9CA3AF",
-              transition: "all 0.2s",
-            }}
-          >
-            {t.icon}
-            <Typography
-              variant="caption"
-              fontWeight={activeTab === i ? 700 : 500}
-              sx={{ fontSize: "0.65rem", mt: 0.2 }}
-            >
-              {t.label}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
+
 
       {/* ── CONTENT ── */}
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden", position: "relative" }}>

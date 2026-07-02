@@ -95,17 +95,17 @@ const MyOrdersPage = () => {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4, minHeight: "80vh" }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
+    <Container maxWidth="md" sx={{ py: 4, minHeight: "80vh", bgcolor: "#F9FAFB" }}>
+      <Box sx={{ mb: 4, display: "flex", alignItems: "baseline", gap: 2 }}>
+        <Typography variant="h4" fontWeight="900" sx={{ letterSpacing: "-1px" }}>
           My Orders
         </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          Track and manage your recent purchases
+        <Typography variant="subtitle1" fontWeight="600" color="text.secondary">
+          Track & Manage
         </Typography>
       </Box>
 
-      {/* Filter Tabs (Pill Style) */}
+      {/* Modern Pill Tabs */}
       <Tabs
         value={filterStatus}
         onChange={(e, val) => setFilterStatus(val)}
@@ -113,27 +113,32 @@ const MyOrdersPage = () => {
         scrollButtons="auto"
         sx={{
           mb: 4,
-          minHeight: 40,
-          "& .MuiTabs-indicator": { display: "none" }, // Hide default indicator
+          minHeight: 44,
+          "& .MuiTabs-indicator": { display: "none" },
           "& .MuiTab-root": {
             py: 1,
-            px: 2,
-            minHeight: 40,
-            fontSize: "0.9rem",
-            textTransform: "capitalize",
-            fontWeight: "bold",
-            borderRadius: 8,
+            px: 2.5,
+            minHeight: 44,
+            fontSize: "0.875rem",
+            textTransform: "none",
+            fontWeight: "700",
+            borderRadius: "12px",
             mr: 1.5,
-            transition: "all 0.2s",
-            border: "1px solid transparent",
+            transition: "all 0.3s ease",
+            border: "1px solid rgba(0,0,0,0.04)",
+            bgcolor: "white",
+            color: "text.secondary",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
             "&.Mui-selected": {
-              bgcolor: "primary.main",
+              bgcolor: "black",
               color: "white",
-              boxShadow: "0 4px 12px rgba(46, 125, 50, 0.2)",
+              borderColor: "black",
+              boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
+              transform: "translateY(-2px)",
             },
             "&:hover:not(.Mui-selected)": {
-              bgcolor: "rgba(0,0,0,0.04)",
-              borderColor: "rgba(0,0,0,0.1)",
+              bgcolor: "rgba(0,0,0,0.02)",
+              transform: "translateY(-1px)",
             },
           },
         }}

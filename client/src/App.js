@@ -28,7 +28,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 
 // Main App Content Component (must be inside AuthProvider)
 const AppContent = () => {
-  const { showRoleSelection, isAuthenticated } = useAuth();
+  const { showRoleSelection, isAuthenticated, userRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -176,8 +176,8 @@ const AppContent = () => {
       <ErrorBoundary>
         <AppRoutes />
       </ErrorBoundary>
-      {/* AI Chatbot - Available on all pages */}
-      <AIChatbot />
+      {/* AI Chatbot - Available on all pages except vendor and delivery apps */}
+      {!location.pathname.startsWith('/vendor') && !location.pathname.startsWith('/delivery') && <AIChatbot />}
     </>
   );
 };

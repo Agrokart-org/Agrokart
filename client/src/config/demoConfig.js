@@ -6,7 +6,7 @@
  * DEMO_MODE = false → Normal multi-device tracking
  */
 
-export const DEMO_MODE = true;
+export const DEMO_MODE = false;
 
 // How often to send location updates (ms)
 export const LOCATION_UPDATE_INTERVAL = 3000;

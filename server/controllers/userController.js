@@ -34,7 +34,7 @@ const updateProfile = async (req, res, next) => {
     if (email) user.email = email;
 
     if (req.body.address) {
-      user.address = { ...(user.address || {}), ...req.body.address };
+      user.address = { ...(user.address && typeof user.address.toObject === 'function' ? user.address.toObject() : user.address || {}), ...req.body.address };
       if (req.body.address.coordinates) {
         user.address.coordinates = { type: "Point", coordinates: req.body.address.coordinates };
         
@@ -44,6 +44,16 @@ const updateProfile = async (req, res, next) => {
           coordinates: req.body.address.coordinates,
           address: `${req.body.address.street || ''}, ${req.body.address.city || ''}, ${req.body.address.state || ''} ${req.body.address.pincode || ''}`.replace(/^, |^ , | , $/g, '').trim()
         };
+      }
+    }
+
+    if (req.body.vendorProfile) {
+      if (!user.vendorProfile) user.vendorProfile = {};
+      if (req.body.vendorProfile.settings) {
+        user.vendorProfile.settings = { ...(user.vendorProfile.settings && typeof user.vendorProfile.settings.toObject === 'function' ? user.vendorProfile.settings.toObject() : user.vendorProfile.settings || {}), ...req.body.vendorProfile.settings };
+      }
+      if (req.body.vendorProfile.notifications) {
+        user.vendorProfile.notifications = { ...(user.vendorProfile.notifications && typeof user.vendorProfile.notifications.toObject === 'function' ? user.vendorProfile.notifications.toObject() : user.vendorProfile.notifications || {}), ...req.body.vendorProfile.notifications };
       }
     }
 

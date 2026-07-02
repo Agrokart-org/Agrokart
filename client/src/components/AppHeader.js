@@ -131,56 +131,60 @@ const AppHeader = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                mx: 2,
+                mx: { xs: 1, md: 3 },
               }}
             >
               <Box
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  background: "white",
-                  borderRadius: 2,
-                  width: { xs: "100%", sm: 480, md: 600 },
-                  boxShadow: 1,
-                  px: 1,
+                  background: alpha("#FFFFFF", 0.15),
+                  borderRadius: 8,
+                  width: { xs: "100%", sm: 480, md: 540 },
+                  px: 2,
+                  py: 0.5,
+                  backdropFilter: "blur(12px)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  transition: "all 0.2s ease",
+                  "&:focus-within": {
+                    background: alpha("#FFFFFF", 0.25),
+                    boxShadow: "0 0 0 4px rgba(255, 255, 255, 0.2)",
+                  }
                 }}
               >
-                <Select
-                  defaultValue="all"
-                  size="small"
-                  sx={{
-                    minWidth: 90,
-                    fontWeight: 600,
-                    color: "#2874f0",
-                    background: "#f1f3f6",
-                    borderRadius: 1,
-                    mr: 1,
-                    "& .MuiSelect-icon": { color: "#2874f0" },
-                  }}
-                  disableUnderline
-                >
-                  <MenuItem value="all">All</MenuItem>
-                  <MenuItem value="fertilizers">Fertilizers</MenuItem>
-                  <MenuItem value="seeds">Seeds</MenuItem>
-                  <MenuItem value="tools">Tools</MenuItem>
-                  <MenuItem value="offers">Offers</MenuItem>
-                </Select>
+                <SearchIcon sx={{ color: "rgba(255,255,255,0.8)", mr: 1.5, fontSize: 22 }} />
                 <InputBase
-                  placeholder="Search for products, brands and more"
+                  placeholder="Search products, brands and more..."
                   sx={{
                     flex: 1,
-                    px: 1,
-                    fontSize: "1rem",
-                    color: "#222",
+                    fontSize: "0.95rem",
+                    color: "white",
                     fontWeight: 500,
+                    "& .MuiInputBase-input::placeholder": {
+                      color: "rgba(255,255,255,0.7)",
+                      opacity: 1,
+                    },
                   }}
                   inputProps={{ "aria-label": "search" }}
                 />
-                <IconButton sx={{ color: "#2874f0", ml: 1 }}>
-                  <SearchIcon />
-                </IconButton>
-                <IconButton sx={{ color: "#2874f0", ml: 1 }}>
-                  <MicIcon />
+                
+                {/* ⌘K Shortcut Hint */}
+                <Box
+                  sx={{
+                    display: { xs: "none", md: "flex" },
+                    alignItems: "center",
+                    gap: 0.5,
+                    opacity: 0.7,
+                    ml: 1,
+                  }}
+                >
+                  <Box sx={{ border: "1px solid rgba(255,255,255,0.3)", borderRadius: 1.5, px: 0.8, py: 0.3, fontSize: "0.7rem", fontWeight: 700, color: "white", bgcolor: "rgba(255,255,255,0.1)" }}>⌘</Box>
+                  <Box sx={{ border: "1px solid rgba(255,255,255,0.3)", borderRadius: 1.5, px: 0.8, py: 0.3, fontSize: "0.7rem", fontWeight: 700, color: "white", bgcolor: "rgba(255,255,255,0.1)" }}>K</Box>
+                </Box>
+                
+                <Divider orientation="vertical" variant="middle" flexItem sx={{ mx: 1.5, bgcolor: "rgba(255,255,255,0.3)" }} />
+                <IconButton size="small" sx={{ color: "white", opacity: 0.8, "&:hover": { opacity: 1, bgcolor: "rgba(255,255,255,0.1)" } }}>
+                  <MicIcon sx={{ fontSize: 20 }} />
                 </IconButton>
               </Box>
             </Box>

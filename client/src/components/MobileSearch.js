@@ -179,8 +179,25 @@ const MobileSearch = ({
             </InputAdornment>
           ),
           sx: {
-            borderRadius: 3,
-            bgcolor: "background.paper",
+            borderRadius: 8,
+            bgcolor: "rgba(255, 255, 255, 0.95)",
+            backdropFilter: "blur(12px)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
+            border: "1px solid rgba(255,255,255,0.4)",
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            "& .MuiOutlinedInput-notchedOutline": {
+              border: "none",
+            },
+            "&:hover": {
+              bgcolor: "#ffffff",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.12)",
+              transform: "translateY(-1px)",
+            },
+            "&.Mui-focused": {
+              bgcolor: "#ffffff",
+              boxShadow: "0 0 0 4px rgba(40, 116, 240, 0.15), 0 8px 32px rgba(0,0,0,0.1)",
+              transform: "translateY(-2px)",
+            }
           },
         }}
       />

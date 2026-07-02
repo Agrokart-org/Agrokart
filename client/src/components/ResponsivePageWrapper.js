@@ -5,7 +5,6 @@ import { isMobileDevice } from "../utils/deviceDetection";
 import MobileHomePage from "../pages/MobileHomePage";
 import MobileCartPage from "../pages/MobileCartPage";
 import MobileOrdersPage from "../pages/MobileOrdersPage";
-import MobileProfilePage from "../pages/MobileProfilePage";
 import MobileProductsPage from "../pages/MobileProductsPage";
 import MobileLaborPage from "../pages/MobileLaborPage";
 
@@ -47,9 +46,9 @@ const ResponsivePageWrapper = ({ pageType, ...props }) => {
     case "cart":
       return <MobileCartPage {...props} />;
     case "orders":
-      return <MobileOrdersPage {...props} />;
+      return <MyOrdersPage {...props} />;
     case "profile":
-      return <MobileProfilePage {...props} />;
+      return <ProfilePage {...props} />;
     case "products":
       return <MobileProductsPage {...props} />;
     case "labor":

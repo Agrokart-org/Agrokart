@@ -38,6 +38,7 @@ import {
   Divider,
   CircularProgress,
   LinearProgress,
+  Switch,
   Tooltip,
 } from "@mui/material";
 import {
@@ -70,6 +71,9 @@ import {
   AddPhotoAlternate,
   Remove,
   AddCircleOutline,
+  Schedule,
+  Info,
+  AccountBalance,
 } from "@mui/icons-material";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
@@ -84,6 +88,7 @@ import {
   respondToVendorOrder,
   getVendorBankAccount,
   linkVendorBankAccount,
+  getVendorDashboard,
   safeFetch,
   API_BASE_URL,
 } from "../services/api";
@@ -106,6 +111,29 @@ const MobileVendorDashboard = () => {
   console.log("--- END DEBUG ---");
   const [value, setValue] = useState(0);
 
+  // Real Dashboard Data State
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoadingDashboard(true);
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+      const response = await safeFetch(`${API_BASE_URL}/vendor/dashboard`, {
+        headers: { "x-auth-token": token },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDashboardData(data);
+      }
+    } catch (e) {
+      console.error("Dashboard fetch error:", e);
+    } finally {
+      setLoadingDashboard(false);
+    }
+  };
+
   // Wallet State
   const [bankDetails, setBankDetails] = useState(null);
   const [showBankForm, setShowBankForm] = useState(false);
@@ -124,6 +152,21 @@ const MobileVendorDashboard = () => {
   });
   const [addressUpdating, setAddressUpdating] = useState(false);
 
+  // Settings & Notifications State
+  const [businessSettingsOpen, setBusinessSettingsOpen] = useState(false);
+  const [notificationsSettingsOpen, setNotificationsSettingsOpen] = useState(false);
+  
+  const [vendorSettings, setVendorSettings] = useState({
+    acceptingOrders: user?.vendorProfile?.settings?.acceptingOrders ?? true,
+    autoAcceptOrders: user?.vendorProfile?.settings?.autoAcceptOrders ?? false,
+    cashOnDelivery: user?.vendorProfile?.settings?.cashOnDelivery ?? true,
+  });
+  const [vendorNotifications, setVendorNotifications] = useState({
+    push: user?.vendorProfile?.notifications?.push ?? true,
+    sms: user?.vendorProfile?.notifications?.sms ?? false,
+    lowStock: user?.vendorProfile?.notifications?.lowStock ?? true,
+  });
+  const [settingsSaving, setSettingsSaving] = useState(false);
   const fetchWalletData = async () => {
     try {
       const token = localStorage.getItem("authToken");
@@ -339,30 +382,6 @@ const MobileVendorDashboard = () => {
     },
   ];
 
-  const recentOrders = [
-    {
-      id: "#101",
-      customer: "Ram Kumar",
-      amount: "₹450",
-      status: "Pending",
-      color: "warning",
-    },
-    {
-      id: "#102",
-      customer: "Priya S",
-      amount: "₹1200",
-      status: "Delivered",
-      color: "success",
-    },
-    {
-      id: "#103",
-      customer: "Rahul D",
-      amount: "₹375",
-      status: "Processing",
-      color: "info",
-    },
-  ];
-
   // Mobile UI State
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -375,9 +394,17 @@ const MobileVendorDashboard = () => {
     setAddressUpdating(true);
     try {
       const token = localStorage.getItem("authToken");
-      const coords = (addressForm.lon && addressForm.lat) 
-        ? [parseFloat(addressForm.lon), parseFloat(addressForm.lat)] 
-        : null;
+      let coords = null;
+      if (
+        addressForm.lon !== "" && addressForm.lat !== "" &&
+        addressForm.lon != null && addressForm.lat != null
+      ) {
+        const parsedLon = parseFloat(addressForm.lon);
+        const parsedLat = parseFloat(addressForm.lat);
+        if (!isNaN(parsedLon) && !isNaN(parsedLat)) {
+          coords = [parsedLon, parsedLat];
+        }
+      }
         
       const payload = {
         address: {
@@ -402,13 +429,60 @@ const MobileVendorDashboard = () => {
         setNotification({ open: true, message: "Address updated successfully!", severity: "success" });
         setAddressDialogOpen(false);
       } else {
-        setNotification({ open: true, message: "Failed to update address", severity: "error" });
+        const errorData = await res.json().catch(() => ({}));
+        setNotification({ open: true, message: errorData.message || "Failed to update address", severity: "error" });
       }
     } catch (err) {
       console.error(err);
       setNotification({ open: true, message: "Error updating address", severity: "error" });
     } finally {
       setAddressUpdating(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSettingsSaving(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await safeFetch(`${API_BASE_URL}/users/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-auth-token": token },
+        body: JSON.stringify({ vendorProfile: { settings: vendorSettings } })
+      });
+      if (res.ok) {
+        setNotification({ open: true, message: "Settings saved!", severity: "success" });
+        setBusinessSettingsOpen(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setNotification({ open: true, message: err.message || "Failed to save settings", severity: "error" });
+      }
+    } catch (err) {
+      setNotification({ open: true, message: "Network error saving settings", severity: "error" });
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    setSettingsSaving(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const res = await safeFetch(`${API_BASE_URL}/users/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-auth-token": token },
+        body: JSON.stringify({ vendorProfile: { notifications: vendorNotifications } })
+      });
+      if (res.ok) {
+        setNotification({ open: true, message: "Preferences saved!", severity: "success" });
+        setNotificationsSettingsOpen(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setNotification({ open: true, message: err.message || "Failed to save preferences", severity: "error" });
+      }
+    } catch (err) {
+      setNotification({ open: true, message: "Network error saving preferences", severity: "error" });
+    } finally {
+      setSettingsSaving(false);
     }
   };
 
@@ -459,10 +533,12 @@ const MobileVendorDashboard = () => {
     // Initial fetch
     fetchMyOrders().finally(() => { initialFetchDone.current = true; });
     fetchInventory();
+    fetchDashboardData();
 
     // Setup 30-second polling for robustness (reduced from 10s to avoid flooding)
     const pollInterval = setInterval(() => {
         fetchMyOrders(true); // silent=true for poll fetches
+        fetchDashboardData();
     }, 30000);
 
     return () => clearInterval(pollInterval);
@@ -631,287 +707,596 @@ const MobileVendorDashboard = () => {
 
   
   const renderWallet = () => (
-    <Box sx={{ p: 2, pb: 10 }}>
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <AccountBalanceWallet color="primary" /> My Wallet
-      </Typography>
+    <Box sx={{ pb: 12, bgcolor: "#F3F4F6", minHeight: "100vh" }}>
+      {/* Minimalist Professional Header */}
+      <Box sx={{ 
+        px: 3, 
+        pt: 4, 
+        pb: 8, 
+        bgcolor: "#111827", 
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
+        position: "relative"
+      }}>
+        <Box sx={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <Box>
+            <Typography variant="overline" sx={{ color: "#9CA3AF", fontWeight: 600, letterSpacing: 1.5, display: "block", mb: 0.5 }}>
+              AVAILABLE BALANCE
+            </Typography>
+            <Typography variant="h3" sx={{ color: "#F9FAFB", fontWeight: 700, display: "flex", alignItems: "center" }}>
+              <span style={{ fontSize: "1.75rem", marginRight: "4px", color: "#10B981", fontWeight: 500 }}>₹</span>
+              {walletStats.earnings.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Typography>
+          </Box>
+          <Box sx={{ p: 1, bgcolor: "rgba(255,255,255,0.05)", borderRadius: 2, border: "1px solid rgba(255,255,255,0.1)" }}>
+            <AccountBalanceWallet sx={{ color: "#10B981", fontSize: 24 }} />
+          </Box>
+        </Box>
+      </Box>
 
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={6}>
-          <Card elevation={0} sx={{ bgcolor: "success.light", color: "success.dark", borderRadius: 3 }}>
-            <CardContent sx={{ p: 2, pb: "16px !important" }}>
-              <Typography variant="caption" fontWeight="bold">TOTAL EARNINGS</Typography>
-              <Typography variant="h6" fontWeight="bold">₹{walletStats.earnings.toFixed(2)}</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6}>
-          <Card elevation={0} sx={{ bgcolor: "warning.light", color: "warning.dark", borderRadius: 3 }}>
-            <CardContent sx={{ p: 2, pb: "16px !important" }}>
-              <Typography variant="caption" fontWeight="bold">PENDING PAYOUTS</Typography>
-              <Typography variant="h6" fontWeight="bold">₹{walletStats.pending.toFixed(2)}</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      <Card elevation={2} sx={{ borderRadius: 3 }}>
-        <CardContent>
-          <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-            Bank Account Details
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Link your bank account to receive automated payouts for your completed orders.
-          </Typography>
-
-          {bankDetails ? (
-            <Box sx={{ p: 2, bgcolor: "#f5f5f5", borderRadius: 2 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-                <Typography variant="body2" fontWeight="bold">{bankDetails.bankName}</Typography>
-                <Chip label="Linked" size="small" color="success" icon={<CheckCircle />} />
-              </Stack>
-              <Typography variant="body2" color="text.secondary">
-                A/C: ••••{bankDetails.accountNumber.slice(-4)}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                IFSC: {bankDetails.ifscCode}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Holder: {bankDetails.accountHolderName}
+      {/* Floating Stats Card - Sharper Edges */}
+      <MotionBox 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        sx={{ px: 2, mt: -4, position: "relative", zIndex: 2 }}
+      >
+        <Card sx={{ 
+          borderRadius: 2, 
+          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+          border: "1px solid #E5E7EB",
+          bgcolor: "#ffffff"
+        }}>
+          <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
+            <Box sx={{ display: "flex", p: 2.5, alignItems: "center", justifyContent: "space-between" }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Box sx={{ width: 40, height: 40, borderRadius: 1.5, bgcolor: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Schedule sx={{ color: "#D97706", fontSize: 20 }} />
+                </Box>
+                <Box>
+                  <Typography variant="caption" sx={{ color: "#6B7280", fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                    Pending Settlement
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: "#111827", mt: -0.5 }}>
+                    ₹{walletStats.pending.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+            <Divider />
+            <Box sx={{ bgcolor: "#F9FAFB", px: 2.5, py: 1.5 }}>
+              <Typography variant="caption" sx={{ color: "#4B5563", display: "flex", alignItems: "center", gap: 0.5 }}>
+                <Info sx={{ fontSize: 16 }} /> Will be transferred in the next settlement cycle.
               </Typography>
             </Box>
+          </CardContent>
+        </Card>
+      </MotionBox>
+
+      {/* Bank Details Section */}
+      <Box sx={{ px: 2, mt: 4 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#374151", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Withdrawal Method
+        </Typography>
+
+        <MotionBox 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          {bankDetails ? (
+            <Card sx={{ 
+              borderRadius: 2, 
+              border: "1px solid #E5E7EB",
+              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
+              background: "linear-gradient(120deg, #1E3A8A 0%, #111827 100%)",
+              color: "#fff",
+              position: "relative",
+              overflow: "hidden"
+            }}>
+              {/* Subtle tech pattern overlay */}
+              <Box sx={{ 
+                position: "absolute", top: 0, right: 0, bottom: 0, left: 0, 
+                opacity: 0.05, 
+                backgroundImage: "radial-gradient(#ffffff 1px, transparent 1px)", 
+                backgroundSize: "20px 20px" 
+              }} />
+              
+              <CardContent sx={{ p: 3, position: "relative", zIndex: 1 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 4 }}>
+                  <Box>
+                    <Typography variant="overline" sx={{ opacity: 0.8, letterSpacing: 1.5, lineHeight: 1 }}>
+                      PRIMARY BANK
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: 0.5 }}>
+                      {bankDetails.bankName}
+                    </Typography>
+                  </Box>
+                  <Chip 
+                    label="Verified" 
+                    size="small" 
+                    icon={<CheckCircle sx={{ color: "#10B981 !important" }} />} 
+                    sx={{ bgcolor: "rgba(16,185,129,0.1)", color: "#10B981", fontWeight: 600, border: "1px solid rgba(16,185,129,0.2)" }} 
+                  />
+                </Box>
+                
+                <Typography variant="h5" sx={{ fontWeight: 500, letterSpacing: 3, mb: 3, fontFamily: "'Roboto Mono', monospace" }}>
+                  •••• •••• {bankDetails.accountNumber.slice(-4)}
+                </Typography>
+                
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box>
+                    <Typography variant="caption" sx={{ opacity: 0.7, letterSpacing: 1, display: "block", textTransform: "uppercase" }}>Card Holder</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 500, textTransform: "uppercase" }}>{bankDetails.accountHolderName}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" sx={{ opacity: 0.7, letterSpacing: 1, display: "block", textTransform: "uppercase" }}>IFSC</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{bankDetails.ifscCode}</Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
           ) : (
-            <>
-              {!showBankForm ? (
-                <Button 
-                  variant="contained" 
-                  fullWidth 
-                  onClick={() => setShowBankForm(true)}
-                  sx={{ borderRadius: 8, textTransform: 'none' }}
-                >
-                  Link Bank Account
-                </Button>
-              ) : (
-                <Stack spacing={2}>
-                  <TextField size="small" label="Account Number" fullWidth value={bankForm.accountNumber} onChange={e => setBankForm({...bankForm, accountNumber: e.target.value})} />
-                  <TextField size="small" label="IFSC Code" fullWidth value={bankForm.ifscCode} onChange={e => setBankForm({...bankForm, ifscCode: e.target.value})} />
-                  <TextField size="small" label="Account Holder Name" fullWidth value={bankForm.accountHolderName} onChange={e => setBankForm({...bankForm, accountHolderName: e.target.value})} />
-                  <TextField size="small" label="Bank Name" fullWidth value={bankForm.bankName} onChange={e => setBankForm({...bankForm, bankName: e.target.value})} />
-                  <Stack direction="row" spacing={2}>
-                    <Button variant="outlined" fullWidth onClick={() => setShowBankForm(false)} sx={{ borderRadius: 8 }}>Cancel</Button>
-                    <Button variant="contained" fullWidth onClick={handleLinkBank} sx={{ borderRadius: 8 }}>Save</Button>
-                  </Stack>
-                </Stack>
-              )}
-            </>
+            <Card sx={{ borderRadius: 2, border: "1px dashed #D1D5DB", bgcolor: "#ffffff", boxShadow: "none" }}>
+              <CardContent sx={{ p: 3 }}>
+                {!showBankForm ? (
+                  <Box sx={{ py: 2, textAlign: "center" }}>
+                    <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", mx: "auto", mb: 2 }}>
+                      <AccountBalance sx={{ color: "#2563EB", fontSize: 24 }} />
+                    </Box>
+                    <Typography variant="subtitle1" fontWeight="600" color="#111827" gutterBottom>
+                      No Bank Account Linked
+                    </Typography>
+                    <Typography variant="body2" color="#6B7280" sx={{ mb: 3, px: 1 }}>
+                      Add your bank details to automatically receive your sales earnings directly to your account.
+                    </Typography>
+                    <Button 
+                      variant="contained" 
+                      onClick={() => setShowBankForm(true)}
+                      disableElevation
+                      sx={{ 
+                        borderRadius: 1.5, 
+                        bgcolor: "#111827", 
+                        color: "#fff",
+                        px: 3, 
+                        py: 1.2,
+                        fontWeight: 600,
+                        textTransform: "none",
+                        "&:hover": { bgcolor: "#374151" }
+                      }}
+                    >
+                      Add Bank Account
+                    </Button>
+                  </Box>
+                ) : (
+                  <Box sx={{ textAlign: "left" }}>
+                    <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1, color: "#111827" }}>
+                      <AddCircleOutline sx={{ color: "#4F46E5", fontSize: 20 }} /> Enter Bank Details
+                    </Typography>
+                    <Stack spacing={2}>
+                      <TextField 
+                        variant="outlined"
+                        size="small"
+                        label="Account Number" 
+                        fullWidth 
+                        value={bankForm.accountNumber} 
+                        onChange={e => setBankForm({...bankForm, accountNumber: e.target.value})}
+                        InputProps={{ sx: { borderRadius: 1.5 } }}
+                      />
+                      <TextField 
+                        variant="outlined"
+                        size="small"
+                        label="IFSC Code" 
+                        fullWidth 
+                        value={bankForm.ifscCode} 
+                        onChange={e => setBankForm({...bankForm, ifscCode: e.target.value})}
+                        InputProps={{ sx: { borderRadius: 1.5 } }}
+                      />
+                      <TextField 
+                        variant="outlined"
+                        size="small"
+                        label="Account Holder Name" 
+                        fullWidth 
+                        value={bankForm.accountHolderName} 
+                        onChange={e => setBankForm({...bankForm, accountHolderName: e.target.value})}
+                        InputProps={{ sx: { borderRadius: 1.5 } }}
+                      />
+                      <TextField 
+                        variant="outlined"
+                        size="small"
+                        label="Bank Name (e.g. HDFC, SBI)" 
+                        fullWidth 
+                        value={bankForm.bankName} 
+                        onChange={e => setBankForm({...bankForm, bankName: e.target.value})}
+                        InputProps={{ sx: { borderRadius: 1.5 } }}
+                      />
+                      <Stack direction="row" spacing={1.5} sx={{ pt: 1 }}>
+                        <Button 
+                          variant="outlined" 
+                          fullWidth 
+                          onClick={() => setShowBankForm(false)} 
+                          sx={{ borderRadius: 1.5, py: 1, fontWeight: 600, textTransform: "none", borderColor: "#D1D5DB", color: "#4B5563", "&:hover": { borderColor: "#9CA3AF", bgcolor: "#F9FAFB" } }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          variant="contained" 
+                          fullWidth 
+                          disableElevation
+                          onClick={handleLinkBank} 
+                          sx={{ borderRadius: 1.5, py: 1, fontWeight: 600, textTransform: "none", bgcolor: "#4F46E5", "&:hover": { bgcolor: "#4338CA" } }}
+                        >
+                          Save Details
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
+        </MotionBox>
+      </Box>
     </Box>
   );
 
-  const renderDashboard = () => (
-    <Box sx={{ p: 2, pb: 10 }}>
+  const renderDashboard = () => {
+    const realStats = dashboardData?.stats;
+    const recentOrdersReal = dashboardData?.recentOrders || myOrders.slice(0, 5);
+    const lowStock = dashboardData?.lowStockProducts || [];
 
-      {/* Welcome Section */}
-      <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="h5"
-          fontWeight="800"
-          sx={{ color: theme.palette.text.primary }}
+    const statCards = [
+      {
+        label: "Total Revenue",
+        value: realStats ? `₹${(realStats.totalEarnings || 0).toLocaleString("en-IN")}` : "—",
+        subLabel: "All time earnings",
+        icon: AttachMoney,
+        color: "#1B5E20",
+        gradient: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)",
+      },
+      {
+        label: "Active Orders",
+        value: realStats ? String(myOrders.filter(o => !["delivered","cancelled"].includes(o.orderStatus)).length) : "—",
+        subLabel: "Orders in progress",
+        icon: OrdersIcon,
+        color: "#1565C0",
+        gradient: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
+      },
+      {
+        label: "Products Listed",
+        value: realStats ? String(realStats.totalProducts || inventoryItems.length) : "—",
+        subLabel: "In your inventory",
+        icon: ProductsIcon,
+        color: "#E65100",
+        gradient: "linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)",
+      },
+      {
+        label: "Pending Payout",
+        value: realStats ? `₹${(realStats.pendingEarnings || 0).toLocaleString("en-IN")}` : "—",
+        subLabel: "Awaiting settlement",
+        icon: AccountBalanceWallet,
+        color: "#6A1B9A",
+        gradient: "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)",
+      },
+    ];
+
+    const getStatusColor = (status) => {
+      switch(status?.toLowerCase()) {
+        case "delivered": return { bg: "#E8F5E9", text: "#1B5E20", label: "Delivered" };
+        case "cancelled": return { bg: "#FFEBEE", text: "#B71C1C", label: "Cancelled" };
+        case "out_for_delivery": return { bg: "#E3F2FD", text: "#0D47A1", label: "Out for Delivery" };
+        case "processing": return { bg: "#FFF8E1", text: "#E65100", label: "Processing" };
+        case "confirmed": return { bg: "#E0F7FA", text: "#006064", label: "Confirmed" };
+        default: return { bg: "#FFF8E1", text: "#E65100", label: status || "Pending" };
+      }
+    };
+
+    return (
+      <Box sx={{ p: 2, pb: 12 }}>
+        {/* Header Section */}
+        <Box
+          sx={{
+            background: "linear-gradient(135deg, #1B5E20 0%, #2E7D32 50%, #388E3C 100%)",
+            borderRadius: "24px",
+            p: 3,
+            mb: 3,
+            position: "relative",
+            overflow: "hidden",
+          }}
         >
-          Overview
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Good Morning, {user?.name?.split(" ")[0] || "Vendor"}!
-        </Typography>
-      </Box>
-
-      {/* Stats Grid */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {stats.map((stat, i) => (
-          <Grid item xs={6} key={i}>
-            <MotionCard
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
+          <Box sx={{ position: "absolute", top: -30, right: -30, opacity: 0.08 }}>
+            <DashboardIcon sx={{ fontSize: 160, color: "white" }} />
+          </Box>
+          <Typography variant="h5" fontWeight="800" color="white">
+            Welcome back! 👋
+          </Typography>
+          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.75)", mb: 2 }}>
+            {user?.name || "Vendor"} · {dashboardData?.vendor?.businessName || user?.vendorProfile?.businessName || "Your Store"}
+          </Typography>
+          <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+            <Chip
+              label={dashboardData?.vendor?.verificationStatus === "approved" ? "✓ Verified" : "Pending Verification"}
+              size="small"
               sx={{
-                bgcolor: stat.bg,
-                color: stat.color,
-                borderRadius: 4,
-                boxShadow: "none",
-                height: "100%",
+                bgcolor: dashboardData?.vendor?.verificationStatus === "approved" ? "rgba(255,255,255,0.25)" : "rgba(255,200,0,0.3)",
+                color: "white",
+                fontWeight: 700,
+                backdropFilter: "blur(10px)",
               }}
-            >
-              <CardContent sx={{ p: 2 }}>
+            />
+            {realStats?.lowStockCount > 0 && (
+              <Chip
+                label={`⚠ ${realStats.lowStockCount} Low Stock`}
+                size="small"
+                sx={{ bgcolor: "rgba(255,100,0,0.3)", color: "white", fontWeight: 700 }}
+              />
+            )}
+          </Stack>
+        </Box>
+
+        {/* Stats Grid */}
+        <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 1 }}>
+          Performance Overview
+        </Typography>
+        <Grid container spacing={1.5} sx={{ mb: 3 }}>
+          {statCards.map((stat, i) => (
+            <Grid item xs={6} key={i}>
+              <MotionCard
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                sx={{
+                  borderRadius: "20px",
+                  background: stat.gradient,
+                  border: "none",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+                  height: "100%",
+                  position: "relative",
+                  overflow: "hidden",
+                  cursor: "default",
+                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                  "&:hover": { transform: "translateY(-2px)", boxShadow: `0 8px 24px ${stat.color}22` },
+                }}
+              >
                 <Box
                   sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    mb: 1,
+                    position: "absolute",
+                    right: -12,
+                    bottom: -12,
+                    opacity: 0.12,
+                    "& > svg": { fontSize: 90, color: stat.color },
                   }}
                 >
                   <stat.icon />
-                  {i === 0 && (
-                    <Chip
-                      label="+15%"
-                      size="small"
-                      sx={{
-                        height: 20,
-                        fontSize: "0.6rem",
-                        bgcolor: "white",
-                        color: stat.color,
-                        fontWeight: "bold",
-                      }}
-                    />
-                  )}
                 </Box>
-                <Typography variant="h5" fontWeight="800">
-                  {stat.value}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  fontWeight="600"
-                  sx={{ opacity: 0.8 }}
-                >
-                  {stat.label}
-                </Typography>
-              </CardContent>
-            </MotionCard>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Quick Actions */}
-      <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>
-        Quick Actions
-      </Typography>
-      <Box
-        sx={{
-          display: "flex",
-          gap: 2,
-          overflowX: "auto",
-          pb: 1,
-          scrollbarWidth: "none",
-        }}
-      >
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          sx={{
-            borderRadius: 3,
-            textTransform: "none",
-            whiteSpace: "nowrap",
-            minWidth: "auto",
-            px: 3,
-          }}
-          onClick={() => navigate("/vendor/add-product")}
-        >
-          Add Product
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<LocalShipping />}
-          sx={{
-            borderRadius: 3,
-            textTransform: "none",
-            whiteSpace: "nowrap",
-            minWidth: "auto",
-            px: 3,
-          }}
-        >
-          Manage Delivery
-        </Button>
-      </Box>
-
-      {/* Recent Orders */}
-      <Box sx={{ mt: 4 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 2,
-          }}
-        >
-          <Typography variant="h6" fontWeight="bold">
-            Recent Actions
-          </Typography>
-          <Button size="small" endIcon={<ArrowForward />}>
-            View All
-          </Button>
-        </Box>
-        {/* Use real myOrders for recent actions */}
-        {myOrders.slice(0, 5).map((order, i) => (
-          <MotionCard
-            key={order._id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 + i * 0.1 }}
-            sx={{
-              mb: 2,
-              borderRadius: 3,
-              border: "1px solid #f0f0f0",
-              boxShadow: "none",
-            }}
-            onClick={() => {
-              setValue(2);
-            }} // Go to Orders tab on click
-          >
-            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <Avatar
+                <CardContent sx={{ p: 2 }}>
+                  <Box
                     sx={{
-                      bgcolor: theme.palette.grey[100],
-                      color: theme.palette.text.secondary,
-                      width: 40,
-                      height: 40,
-                      fontSize: "0.9rem",
-                      fontWeight: "bold",
+                      width: 36,
+                      height: 36,
+                      borderRadius: "10px",
+                      bgcolor: `${stat.color}22`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mb: 1.5,
                     }}
                   >
-                    {order.user?.name?.[0] || "C"}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle2" fontWeight="700">
-                      {order.user?.name || "Customer"}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Order #{order._id.slice(-6).toUpperCase()}
-                    </Typography>
+                    <stat.icon sx={{ fontSize: 18, color: stat.color }} />
                   </Box>
-                </Box>
-                <Box sx={{ textAlign: "right" }}>
-                  <Typography variant="subtitle2" fontWeight="700">
-                    ₹{order.totalAmount}
+                  {loadingDashboard ? (
+                    <Typography variant="h5" fontWeight="800" sx={{ color: stat.color }}>...</Typography>
+                  ) : (
+                    <Typography variant="h5" fontWeight="800" sx={{ color: "#1a1a1a" }}>
+                      {stat.value}
+                    </Typography>
+                  )}
+                  <Typography variant="caption" fontWeight="600" sx={{ color: stat.color, display: "block" }}>
+                    {stat.label}
                   </Typography>
-                  <Chip
-                    label={order.orderStatus}
-                    size="small"
-                    color={
-                      order.orderStatus === "delivered"
-                        ? "success"
-                        : order.orderStatus === "cancelled"
-                          ? "error"
-                          : "warning"
-                    }
-                    sx={{ height: 20, fontSize: "0.65rem", fontWeight: "bold" }}
-                  />
-                </Box>
+                  <Typography variant="caption" sx={{ color: "text.secondary", fontSize: "0.62rem" }}>
+                    {stat.subLabel}
+                  </Typography>
+                </CardContent>
+              </MotionCard>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* Quick Actions */}
+        <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 1 }}>
+          Quick Actions
+        </Typography>
+        <Box sx={{ display: "flex", gap: 1.5, mb: 3, flexWrap: "wrap" }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate("/vendor/add-product")}
+            sx={{
+              borderRadius: "14px",
+              textTransform: "none",
+              fontWeight: 700,
+              px: 3,
+              background: "linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)",
+              boxShadow: "0 4px 16px rgba(76,175,80,0.35)",
+              "&:hover": { boxShadow: "0 6px 20px rgba(76,175,80,0.45)", transform: "translateY(-1px)" },
+            }}
+          >
+            Add Product
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<OrdersIcon />}
+            onClick={() => setValue(2)}
+            sx={{
+              borderRadius: "14px",
+              textTransform: "none",
+              fontWeight: 700,
+              px: 3,
+              borderColor: "#1565C0",
+              color: "#1565C0",
+            }}
+          >
+            View Orders
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<StockIcon />}
+            onClick={() => setValue(1)}
+            sx={{
+              borderRadius: "14px",
+              textTransform: "none",
+              fontWeight: 700,
+              px: 3,
+              borderColor: "#E65100",
+              color: "#E65100",
+            }}
+          >
+            Manage Stock
+          </Button>
+        </Box>
+
+        {/* Low Stock Alerts */}
+        {lowStock.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+              <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 1 }}>
+                ⚠ Low Stock Alerts
+              </Typography>
+            </Box>
+            {lowStock.map((item, i) => (
+              <Box
+                key={i}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 1.5,
+                  mb: 1,
+                  borderRadius: "12px",
+                  bgcolor: "#FFF8E1",
+                  border: "1px solid #FFE082",
+                }}
+              >
+                <Typography variant="body2" fontWeight="600" color="#E65100">
+                  {item.product?.name || "Product"}
+                </Typography>
+                <Chip
+                  label="Low Stock"
+                  size="small"
+                  sx={{ bgcolor: "#FF8F00", color: "white", fontWeight: 700, fontSize: "0.6rem" }}
+                />
               </Box>
-            </CardContent>
-          </MotionCard>
-        ))}
+            ))}
+          </Box>
+        )}
+
+        {/* Recent Orders */}
+        <Box>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+            <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 1 }}>
+              Recent Orders
+            </Typography>
+            <Button size="small" endIcon={<ArrowForward />} onClick={() => setValue(2)}
+              sx={{ textTransform: "none", fontWeight: 600, fontSize: "0.75rem" }}
+            >
+              View All
+            </Button>
+          </Box>
+
+          {loadingOrders ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress size={28} color="success" />
+            </Box>
+          ) : recentOrdersReal.length === 0 ? (
+            <Box
+              sx={{
+                textAlign: "center",
+                py: 5,
+                borderRadius: "20px",
+                bgcolor: "#F9FAFB",
+                border: "2px dashed #E5E7EB",
+              }}
+            >
+              <OrdersIcon sx={{ fontSize: 48, color: "#D1D5DB", mb: 1 }} />
+              <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                No orders yet
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Your recent orders will appear here
+              </Typography>
+            </Box>
+          ) : (
+            recentOrdersReal.slice(0, 5).map((order, i) => {
+              const statusStyle = getStatusColor(order.orderStatus);
+              return (
+                <MotionCard
+                  key={order._id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + i * 0.07 }}
+                  onClick={() => setValue(2)}
+                  sx={{
+                    mb: 1.5,
+                    borderRadius: "16px",
+                    border: "1px solid #F3F4F6",
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    "&:hover": { transform: "translateX(4px)", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" },
+                  }}
+                >
+                  <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <Avatar
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            bgcolor: "#E8F5E9",
+                            color: "#2E7D32",
+                            fontWeight: 800,
+                            fontSize: "1rem",
+                          }}
+                        >
+                          {(order.user?.name?.[0] || "C").toUpperCase()}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight="700" sx={{ color: "#111827" }}>
+                            {order.user?.name || "Customer"}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            #{order._id?.slice(-6)?.toUpperCase()} · {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Box sx={{ textAlign: "right" }}>
+                        <Typography variant="subtitle2" fontWeight="800" sx={{ color: "#111827" }}>
+                          ₹{order.totalAmount?.toLocaleString("en-IN") || 0}
+                        </Typography>
+                        <Chip
+                          label={statusStyle.label}
+                          size="small"
+                          sx={{
+                            bgcolor: statusStyle.bg,
+                            color: statusStyle.text,
+                            fontWeight: 700,
+                            fontSize: "0.6rem",
+                            height: 20,
+                            mt: 0.5,
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </MotionCard>
+              );
+            })
+          )}
+        </Box>
       </Box>
-    </Box>
-  );
+    );
+  };
 
   // ── Inventory State ──
   // Moved to top of component to fix ReferenceError
@@ -1040,216 +1425,128 @@ const MobileVendorDashboard = () => {
       0,
     );
     const lowCount = inventoryItems.filter(
-      (i) =>
-        (i.availableStock ?? i.stock ?? 0) <= 20 &&
-        (i.availableStock ?? i.stock ?? 0) > 0,
+      (i) => (i.availableStock ?? i.stock ?? 0) <= 20 && (i.availableStock ?? i.stock ?? 0) > 0,
     ).length;
     const outCount = inventoryItems.filter(
       (i) => (i.availableStock ?? i.stock ?? 0) <= 0,
     ).length;
+    const inStockCount = inventoryItems.length - lowCount - outCount;
 
     const catColors = {
-      urea: {
-        bg: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
-        text: "#1565C0",
-        accent: "#1E88E5",
-      },
-      dap: {
-        bg: "linear-gradient(135deg, #EDE7F6 0%, #D1C4E9 100%)",
-        text: "#6A1B9A",
-        accent: "#8E24AA",
-      },
-      npk: {
-        bg: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)",
-        text: "#2E7D32",
-        accent: "#43A047",
-      },
-      organic: {
-        bg: "linear-gradient(135deg, #F1F8E9 0%, #DCEDC8 100%)",
-        text: "#33691E",
-        accent: "#558B2F",
-      },
-      other: {
-        bg: "linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%)",
-        text: "#E65100",
-        accent: "#FB8C00",
-      },
-      "Bio-Fertilizers": {
-        bg: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)",
-        text: "#2E7D32",
-        accent: "#43A047",
-      },
-      Micronutrients: {
-        bg: "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)",
-        text: "#7B1FA2",
-        accent: "#8E24AA",
-      },
-      "NPK Fertilizers": {
-        bg: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)",
-        text: "#2E7D32",
-        accent: "#43A047",
-      },
-      Organic: {
-        bg: "linear-gradient(135deg, #F1F8E9 0%, #DCEDC8 100%)",
-        text: "#33691E",
-        accent: "#558B2F",
-      },
-      Pesticides: {
-        bg: "linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%)",
-        text: "#C62828",
-        accent: "#E53935",
-      },
-      Seeds: {
-        bg: "linear-gradient(135deg, #F1F8E9 0%, #DCEDC8 100%)",
-        text: "#558B2F",
-        accent: "#689F38",
-      },
-      Tools: {
-        bg: "linear-gradient(135deg, #ECEFF1 0%, #CFD8DC 100%)",
-        text: "#455A64",
-        accent: "#546E7A",
-      },
-      Urea: {
-        bg: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
-        text: "#1565C0",
-        accent: "#1E88E5",
-      },
+      urea: { bg: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)", text: "#1565C0", accent: "#1E88E5" },
+      dap: { bg: "linear-gradient(135deg, #EDE7F6 0%, #D1C4E9 100%)", text: "#6A1B9A", accent: "#8E24AA" },
+      npk: { bg: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)", text: "#2E7D32", accent: "#43A047" },
+      organic: { bg: "linear-gradient(135deg, #F1F8E9 0%, #DCEDC8 100%)", text: "#33691E", accent: "#558B2F" },
+      other: { bg: "linear-gradient(135deg, #FFF8E1 0%, #FFECB3 100%)", text: "#E65100", accent: "#FB8C00" },
+      "Bio-Fertilizers": { bg: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)", text: "#2E7D32", accent: "#43A047" },
+      Micronutrients: { bg: "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)", text: "#7B1FA2", accent: "#8E24AA" },
+      "NPK Fertilizers": { bg: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)", text: "#2E7D32", accent: "#43A047" },
+      Organic: { bg: "linear-gradient(135deg, #F1F8E9 0%, #DCEDC8 100%)", text: "#33691E", accent: "#558B2F" },
+      Pesticides: { bg: "linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%)", text: "#C62828", accent: "#E53935" },
+      Seeds: { bg: "linear-gradient(135deg, #F1F8E9 0%, #DCEDC8 100%)", text: "#558B2F", accent: "#689F38" },
+      Tools: { bg: "linear-gradient(135deg, #ECEFF1 0%, #CFD8DC 100%)", text: "#455A64", accent: "#546E7A" },
+      Urea: { bg: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)", text: "#1565C0", accent: "#1E88E5" },
     };
 
     return (
-      <Box sx={{ p: 2, pb: 10 }}>
-        {/* Header */}
+      <Box sx={{ p: 2, pb: 12 }}>
+        {/* Hero Header */}
         <Box
           sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 2,
+            background: "linear-gradient(135deg, #E65100 0%, #F57C00 50%, #FF8F00 100%)",
+            borderRadius: "24px",
+            p: 3,
+            mb: 3,
+            position: "relative",
+            overflow: "hidden",
           }}
         >
-          <Box>
-            <Typography
-              variant="h6"
-              fontWeight="800"
-              sx={{ color: "text.primary", letterSpacing: -0.5 }}
-            >
-              My Inventory
-            </Typography>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              fontWeight={500}
-            >
-              {inventoryItems.length} products tracked
-            </Typography>
+          <Box sx={{ position: "absolute", top: -20, right: -20, opacity: 0.08 }}>
+            <ProductsIcon sx={{ fontSize: 160, color: "white" }} />
           </Box>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <Box>
+              <Typography variant="h5" fontWeight="800" color="white">
+                My Inventory
+              </Typography>
+              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mt: 0.5 }}>
+                {inventoryItems.length} products · {totalStock} total units
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => navigate("/vendor/add-product")}
+              sx={{
+                bgcolor: "rgba(255,255,255,0.2)",
+                color: "white",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(255,255,255,0.3)",
+                borderRadius: "12px",
+                textTransform: "none",
+                fontWeight: 700,
+                "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+                boxShadow: "none",
+              }}
+            >
+              Add New
+            </Button>
+          </Box>
+
+          {/* Summary Mini Pills */}
+          {inventoryItems.length > 0 && (
+            <Box sx={{ display: "flex", gap: 1, mt: 2.5, flexWrap: "wrap" }}>
+              {[
+                { label: `${inStockCount} In Stock`, bg: "rgba(76,175,80,0.3)", border: "rgba(76,175,80,0.5)" },
+                { label: `${lowCount} Low Stock`, bg: "rgba(255,152,0,0.3)", border: "rgba(255,152,0,0.5)" },
+                { label: `${outCount} Out of Stock`, bg: "rgba(244,67,54,0.3)", border: "rgba(244,67,54,0.5)" },
+              ].map((pill, i) => (
+                <Chip
+                  key={i}
+                  label={pill.label}
+                  size="small"
+                  sx={{
+                    bgcolor: pill.bg,
+                    border: `1px solid ${pill.border}`,
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: "0.7rem",
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+        </Box>
+
+        {/* Toolbar Row */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Typography variant="subtitle2" fontWeight="700" color="text.secondary"
+            sx={{ textTransform: "uppercase", letterSpacing: 1 }}>
+            All Products
+          </Typography>
           <Button
             size="small"
-            variant="outlined"
             onClick={fetchInventory}
-            startIcon={<span style={{ fontSize: 14 }}>↻</span>}
+            disabled={loadingInventory}
             sx={{
-              borderRadius: 2,
+              borderRadius: "10px",
               textTransform: "none",
               fontWeight: 700,
-              fontSize: "0.78rem",
-              borderColor: "primary.main",
-              color: "primary.main",
-              py: 0.6,
-              px: 1.5,
+              fontSize: "0.75rem",
+              color: "#E65100",
+              border: "1px solid rgba(230,81,0,0.3)",
+              px: 2,
             }}
           >
-            Refresh
+            {loadingInventory ? "Refreshing..." : "↻ Refresh"}
           </Button>
         </Box>
 
-        {/* Summary Stats Row */}
-        {inventoryItems.length > 0 && (
-          <Box
-            sx={{
-              display: "flex",
-              gap: 1.5,
-              mb: 2.5,
-              overflowX: "auto",
-              pb: 0.5,
-              scrollbarWidth: "none",
-            }}
-          >
-            {[
-              {
-                label: "Total Products",
-                value: inventoryItems.length,
-                bg: "#E3F2FD",
-                color: "#1565C0",
-              },
-              {
-                label: "Total Units",
-                value: totalStock,
-                bg: "#E8F5E9",
-                color: "#2E7D32",
-              },
-              {
-                label: "Low Stock",
-                value: lowCount,
-                bg: "#FFF3E0",
-                color: "#E65100",
-              },
-              {
-                label: "Out of Stock",
-                value: outCount,
-                bg: "#FFEBEE",
-                color: "#C62828",
-              },
-            ].map((stat, i) => (
-              <Box
-                key={i}
-                sx={{
-                  minWidth: 90,
-                  flexShrink: 0,
-                  bgcolor: stat.bg,
-                  borderRadius: 2.5,
-                  p: 1.5,
-                  textAlign: "center",
-                }}
-              >
-                <Typography
-                  fontWeight="900"
-                  sx={{ color: stat.color, fontSize: "1.3rem", lineHeight: 1 }}
-                >
-                  {stat.value}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: stat.color,
-                    fontSize: "0.6rem",
-                    fontWeight: 700,
-                    opacity: 0.8,
-                  }}
-                >
-                  {stat.label}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        )}
-
         {loadingInventory ? (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 1.5,
-              mt: 8,
-            }}
-          >
-            <CircularProgress size={36} thickness={4} />
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              fontWeight={600}
-            >
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1.5, mt: 8 }}>
+            <CircularProgress size={36} thickness={4} sx={{ color: "#E65100" }} />
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
               Loading inventory...
             </Typography>
           </Box>
@@ -1258,38 +1555,32 @@ const MobileVendorDashboard = () => {
           <Box
             sx={{
               textAlign: "center",
-              mt: 6,
+              mt: 4,
               p: 4,
-              borderRadius: 4,
-              border: "2px dashed",
-              borderColor: "divider",
-              bgcolor: "grey.50",
+              borderRadius: "24px",
+              border: "2px dashed #E0E0E0",
+              bgcolor: "#FAFAFA",
             }}
           >
             <Typography sx={{ fontSize: 56, mb: 1.5 }}>📦</Typography>
-            <Typography
-              variant="h6"
-              fontWeight="800"
-              color="text.primary"
-              mb={0.5}
-            >
+            <Typography variant="h6" fontWeight="800" color="text.primary" mb={0.5}>
               No Products Yet
             </Typography>
             <Typography variant="body2" color="text.secondary" mb={3}>
-              Add your first product to start selling
+              Add your first product to start selling on Agrokart
             </Typography>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => navigate("/vendor/add-product")}
               sx={{
-                borderRadius: 3,
+                borderRadius: "14px",
                 textTransform: "none",
                 fontWeight: 700,
                 px: 4,
                 py: 1.2,
-                background: "linear-gradient(135deg, #2E7D32, #43A047)",
-                boxShadow: "0 4px 16px rgba(46,125,50,0.3)",
+                background: "linear-gradient(135deg, #E65100, #FF8F00)",
+                boxShadow: "0 6px 20px rgba(230,81,0,0.35)",
               }}
             >
               Add First Product
@@ -1299,36 +1590,42 @@ const MobileVendorDashboard = () => {
           <Grid container spacing={1.5}>
             {inventoryItems.map((item, idx) => {
               const stock = item.availableStock ?? item.stock ?? 0;
-              const productName = item.product?.name || "Unknown Product";
               const color = getStockColor(stock);
-              const label = getStockLabel(stock);
               const max = item.maxStockLevel || Math.max(stock * 1.5, 50);
               const pct = Math.min(100, (stock / max) * 100);
               const cat = item.product?.category || "other";
               const catStyle = catColors[cat] || catColors.other;
+              const isOut = stock <= 0;
+              const isLow = !isOut && stock <= 20;
 
               return (
                 <Grid item xs={6} key={item._id || idx}>
                   <MotionCard
-                    initial={{ opacity: 0, scale: 0.94 }}
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.04, duration: 0.25 }}
                     sx={{
-                      borderRadius: 2.5,
+                      borderRadius: "20px",
                       overflow: "hidden",
-                      boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
-                      border: "1px solid rgba(0,0,0,0.06)",
+                      boxShadow: isOut
+                        ? "0 4px 16px rgba(211,47,47,0.08)"
+                        : "0 4px 16px rgba(0,0,0,0.05)",
+                      border: isOut
+                        ? "1px solid rgba(211,47,47,0.2)"
+                        : isLow
+                        ? "1px solid rgba(245,124,0,0.2)"
+                        : "1px solid rgba(0,0,0,0.05)",
                       height: "100%",
                       display: "flex",
                       flexDirection: "column",
                       transition: "box-shadow 0.2s, transform 0.2s",
                       "&:hover": {
-                        boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
-                        transform: "translateY(-2px)",
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+                        transform: "translateY(-3px)",
                       },
                     }}
                   >
-                    {/* Visual Header — Real Product Image */}
+                    {/* Product Image Area */}
                     <Box
                       sx={{
                         bgcolor: "#fff",
@@ -1338,7 +1635,7 @@ const MobileVendorDashboard = () => {
                         justifyContent: "center",
                         position: "relative",
                         flexShrink: 0,
-                        borderBottom: `3px solid ${catStyle.accent || catStyle.text}22`,
+                        borderBottom: `3px solid ${catStyle.accent}22`,
                       }}
                     >
                       <Box
@@ -1361,7 +1658,6 @@ const MobileVendorDashboard = () => {
                           bgcolor: "#fff",
                         }}
                       />
-                      {/* Fallback emoji (hidden by default, shown when image fails) */}
                       <Box
                         sx={{
                           display: "none",
@@ -1369,7 +1665,7 @@ const MobileVendorDashboard = () => {
                           height: "100%",
                           alignItems: "center",
                           justifyContent: "center",
-                          bgcolor: catStyle.bg,
+                          background: catStyle.bg,
                           fontSize: 36,
                         }}
                       >
@@ -1384,33 +1680,33 @@ const MobileVendorDashboard = () => {
                           right: 8,
                           bgcolor: color,
                           color: "#fff",
-                          px: 0.8,
-                          py: 0.2,
-                          borderRadius: 1,
+                          px: 1,
+                          py: 0.3,
+                          borderRadius: "6px",
                           fontSize: "0.55rem",
                           fontWeight: 800,
-                          lineHeight: 1.4,
-                          textTransform: "uppercase",
+                          letterSpacing: 0.5,
+                          boxShadow: `0 2px 6px ${color}44`,
                         }}
                       >
-                        {stock <= 0 ? "OUT" : stock <= 20 ? "LOW" : "OK"}
+                        {isOut ? "OUT" : isLow ? "LOW" : "OK"}
                       </Box>
 
-                      {/* Category top-left */}
+                      {/* Category badge */}
                       <Box
                         sx={{
                           position: "absolute",
                           top: 8,
                           left: 8,
-                          bgcolor: "rgba(255,255,255,0.9)",
+                          bgcolor: "rgba(255,255,255,0.92)",
+                          backdropFilter: "blur(4px)",
                           border: `1px solid ${catStyle.text}33`,
-                          px: 0.7,
+                          px: 0.8,
                           py: 0.2,
-                          borderRadius: 0.8,
-                          fontSize: "0.55rem",
+                          borderRadius: "6px",
+                          fontSize: "0.5rem",
                           fontWeight: 700,
                           color: catStyle.text,
-                          lineHeight: 1.4,
                           textTransform: "uppercase",
                           letterSpacing: 0.3,
                         }}
@@ -1420,122 +1716,69 @@ const MobileVendorDashboard = () => {
                     </Box>
 
                     {/* Card Body */}
-                    <Box
-                      sx={{
-                        p: 1.2,
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                      }}
-                    >
+                    <Box sx={{ p: 1.5, flex: 1, display: "flex", flexDirection: "column" }}>
                       {/* Product Name */}
                       <Typography
                         variant="body2"
                         fontWeight="700"
                         sx={{
-                          lineHeight: 1.2,
-                          mb: 0.6,
+                          lineHeight: 1.3,
+                          mb: 0.5,
                           fontSize: "0.8rem",
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical",
                           overflow: "hidden",
+                          color: "#111827",
                         }}
                       >
                         {item.product?.name || "Product"}
                       </Typography>
 
                       {/* Price */}
-                      <Typography
-                        fontWeight="900"
-                        sx={{
-                          color: catStyle.text,
-                          fontSize: "1rem",
-                          lineHeight: 1,
-                          mb: 0.2,
-                        }}
-                      >
-                        ₹{Number(item.sellingPrice || item.product?.price || 0).toFixed(2)}
+                      <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5, mb: 1 }}>
                         <Typography
-                          component="span"
-                          variant="caption"
-                          sx={{
-                            color: "text.disabled",
-                            fontWeight: 500,
-                            ml: 0.4,
-                            fontSize: "0.65rem",
-                          }}
+                          fontWeight="900"
+                          sx={{ color: catStyle.text, fontSize: "0.95rem", lineHeight: 1 }}
                         >
+                          ₹{Number(item.sellingPrice || item.product?.price || 0).toFixed(0)}
+                        </Typography>
+                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: "0.6rem" }}>
                           /{item.product?.unit || "unit"}
                         </Typography>
-                      </Typography>
+                      </Box>
 
-                      {/* Stock Row */}
-                      <Box sx={{ mt: 1, mb: 0.5 }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            mb: 0.4,
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: "text.disabled",
-                              fontWeight: 600,
-                              fontSize: "0.6rem",
-                            }}
-                          >
+                      {/* Stock Bar */}
+                      <Box sx={{ mt: "auto" }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+                          <Typography variant="caption" sx={{ color: "text.disabled", fontWeight: 600, fontSize: "0.58rem" }}>
                             STOCK
                           </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{ color, fontWeight: 800, fontSize: "0.75rem" }}
-                          >
+                          <Typography variant="caption" sx={{ color, fontWeight: 800, fontSize: "0.72rem" }}>
                             {stock} units
                           </Typography>
                         </Box>
-                        {/* Progress bar */}
-                        <Box
-                          sx={{
-                            height: 5,
-                            bgcolor: "grey.100",
-                            borderRadius: 3,
-                            overflow: "hidden",
-                          }}
-                        >
+                        <Box sx={{ height: 5, bgcolor: "#F3F4F6", borderRadius: 3, overflow: "hidden" }}>
                           <Box
                             sx={{
                               height: "100%",
                               width: `${pct}%`,
-                              background:
-                                stock <= 0
-                                  ? "#D32F2F"
-                                  : stock <= 20
-                                    ? "linear-gradient(90deg, #F57C00, #FFA726)"
-                                    : "linear-gradient(90deg, #388E3C, #66BB6A)",
+                              background: isOut
+                                ? "#D32F2F"
+                                : isLow
+                                ? "linear-gradient(90deg, #F57C00, #FFA726)"
+                                : "linear-gradient(90deg, #388E3C, #66BB6A)",
                               borderRadius: 3,
-                              transition:
-                                "width 0.7s cubic-bezier(0.4,0,0.2,1)",
+                              transition: "width 0.7s cubic-bezier(0.4,0,0.2,1)",
                             }}
                           />
                         </Box>
+                        {(item.reservedStock || 0) > 0 && (
+                          <Typography variant="caption" sx={{ color: "warning.main", fontSize: "0.58rem", fontWeight: 700, display: "block", mt: 0.5 }}>
+                            ⏳ {item.reservedStock} reserved
+                          </Typography>
+                        )}
                       </Box>
-
-                      {(item.reservedStock || 0) > 0 && (
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "warning.main",
-                            fontSize: "0.6rem",
-                            fontWeight: 700,
-                          }}
-                        >
-                          ⏳ {item.reservedStock} reserved
-                        </Typography>
-                      )}
                     </Box>
                   </MotionCard>
                 </Grid>
@@ -1547,6 +1790,8 @@ const MobileVendorDashboard = () => {
     );
   };
 
+
+  // ── Daily Stock Render ──────────────────────────────────────────────────────
   // ── Daily Stock Render ──────────────────────────────────────────────────────
   const renderDailyStock = () => (
     <Box sx={{ p: 2, pb: 10 }}>
@@ -2046,158 +2291,427 @@ const MobileVendorDashboard = () => {
     </Box>
   );
 
-  const renderProfile = () => (
-    <Box sx={{ p: 2, pb: 10 }}>
-      {/* Profile Header */}
-      <MotionBox
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          mb: 4,
-          mt: 2,
-          p: 3,
-          borderRadius: 4,
-          background: "linear-gradient(135deg, rgba(46, 125, 50, 0.1) 0%, rgba(129, 199, 132, 0.1) 100%)",
-          border: "1px solid rgba(46, 125, 50, 0.2)"
-        }}
-      >
-        <Avatar
-          src={user?.avatar}
+  const renderProfile = () => {
+    const totalRevenue = dashboardData?.stats?.totalEarnings || historyOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const totalOrders = myOrders.length;
+    const deliveredOrders = historyOrders.filter(o => o.orderStatus === "delivered").length;
+    const activeOrders = myOrders.filter(o => !["delivered","cancelled","rejected"].includes(o.orderStatus)).length;
+    const verificationStatus = dashboardData?.vendor?.verificationStatus || user?.vendorProfile?.verificationStatus;
+    const isVerified = verificationStatus === "approved";
+    const businessName = dashboardData?.vendor?.businessName || user?.vendorProfile?.businessName || user?.name || "Your Store";
+    const rating = dashboardData?.vendor?.rating || user?.vendorProfile?.rating;
+
+    const infoRows = [
+      { icon: "📧", label: "Email", value: user?.email || "—" },
+      { icon: "📱", label: "Phone", value: user?.phone || "—" },
+      { icon: "📍", label: "Address", value: user?.address ? `${user.address.street || ""}, ${user.address.city || ""}`.replace(/^,\s*/, "") || "Not provided" : "Not provided" },
+      { icon: "🏙️", label: "City", value: user?.address?.city || "—" },
+      { icon: "📌", label: "Pincode", value: user?.address?.pincode || "—" },
+    ];
+
+    const actionItems = [
+      {
+        icon: <LocationOn sx={{ color: "#1565C0" }} />,
+        label: "Update GPS Location",
+        sub: "Sync exact coordinates via device",
+        iconBg: "#E3F2FD",
+        action: handleUpdateLocation,
+        disabled: updatingLocation,
+        actionLabel: updatingLocation ? "Detecting..." : null,
+      },
+      {
+        icon: <LocationOn sx={{ color: "#2E7D32" }} />,
+        label: "Update Address Manually",
+        sub: "Type in your address and coordinates",
+        iconBg: "#E8F5E9",
+        action: () => setAddressDialogOpen(true),
+      },
+      {
+        icon: <Settings sx={{ color: "#7B1FA2" }} />,
+        label: "Business Settings",
+        sub: "Manage your store preferences",
+        iconBg: "#F3E5F5",
+        action: () => setBusinessSettingsOpen(true),
+      },
+      {
+        icon: <Notifications sx={{ color: "#E65100" }} />,
+        label: "Notifications",
+        sub: "Configure order and alert preferences",
+        iconBg: "#FFF3E0",
+        action: () => setNotificationsSettingsOpen(true),
+      },
+    ];
+
+    return (
+      <Box sx={{ pb: 12, bgcolor: "#F7F8FA", minHeight: "100vh" }}>
+
+        {/* Hero Banner */}
+        <Box
           sx={{
-            width: 90,
-            height: 90,
-            mb: 2,
-            border: `4px solid white`,
-            boxShadow: "0 8px 16px rgba(46, 125, 50, 0.2)"
+            background: "linear-gradient(135deg, #1B5E20 0%, #2E7D32 40%, #43A047 100%)",
+            height: 160,
+            position: "relative",
+            overflow: "hidden",
           }}
-        />
-        <Typography variant="h5" fontWeight="900" color="text.primary">
-          {user?.vendorProfile?.businessName || user?.name || "Vendor"}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-          {user?.address?.street ? `${user.address.street}, ${user.address.city}` : "No Address Provided"}
-        </Typography>
-        <Typography variant="caption" sx={{ mb: 1, fontWeight: "bold", color: "#1B5E20" }}>
-          {user?.email || "No Email Found"}
-        </Typography>
-        <Chip
-          icon={<CheckCircle sx={{ fontSize: "1rem" }} />}
-          label="Verified Premium Vendor"
-          color="success"
-          size="small"
-          sx={{ fontWeight: "bold", bgcolor: "#E8F5E9", color: "#2E7D32" }}
-        />
-      </MotionBox>
+        >
+          {/* Background Pattern */}
+          <Box sx={{ position: "absolute", top: -40, right: -40, opacity: 0.06 }}>
+            <Person sx={{ fontSize: 260, color: "white" }} />
+          </Box>
+          <Box sx={{ position: "absolute", bottom: -20, left: -20, opacity: 0.06 }}>
+            <Inventory sx={{ fontSize: 180, color: "white" }} />
+          </Box>
+        </Box>
 
-      {/* Business Stats Grid */}
-      <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" sx={{ mb: 2, ml: 1 }}>
-        PERFORMANCE OVERVIEW
-      </Typography>
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={6}>
-          <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0" }}>
-            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                <Box sx={{ p: 0.8, borderRadius: 2, bgcolor: "#E3F2FD", color: "#1976D2" }}>
-                  <TrendingUp fontSize="small" />
+        {/* Avatar + Name Card */}
+        <Box sx={{ px: 2 }}>
+          <Box
+            sx={{
+              bgcolor: "white",
+              borderRadius: "24px",
+              mt: -5,
+              p: 2.5,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
+              position: "relative",
+              mb: 2,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "flex-end", gap: 2 }}>
+              {/* Avatar with ring */}
+              <Box sx={{ position: "relative", mt: -6 }}>
+                <Box
+                  sx={{
+                    width: 88,
+                    height: 88,
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #1B5E20, #66BB6A)",
+                    p: "3px",
+                    boxShadow: "0 8px 24px rgba(27,94,32,0.35)",
+                  }}
+                >
+                  <Avatar
+                    src={user?.avatar}
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      fontSize: "2.2rem",
+                      fontWeight: 900,
+                      bgcolor: "#2E7D32",
+                      border: "3px solid white",
+                    }}
+                  >
+                    {(businessName?.[0] || "V").toUpperCase()}
+                  </Avatar>
                 </Box>
-                <Typography variant="caption" fontWeight="bold" color="text.secondary">TOTAL SALES</Typography>
+                {isVerified && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      bottom: 2,
+                      right: 2,
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      bgcolor: "#1565C0",
+                      border: "2px solid white",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CheckCircle sx={{ fontSize: 14, color: "white" }} />
+                  </Box>
+                )}
               </Box>
-              <Typography variant="h6" fontWeight="900">
-                ₹{historyOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0).toLocaleString()}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={6}>
-          <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0" }}>
-            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                <Box sx={{ p: 0.8, borderRadius: 2, bgcolor: "#E8F5E9", color: "#2E7D32" }}>
-                  <Receipt fontSize="small" />
+
+              {/* Name + Status */}
+              <Box sx={{ flex: 1, pb: 0.5 }}>
+                <Typography variant="h6" fontWeight="900" sx={{ color: "#111827", lineHeight: 1.2 }}>
+                  {businessName}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                  {user?.name || "Vendor"} · {user?.email || ""}
+                </Typography>
+                <Chip
+                  label={isVerified ? "✓ Verified Vendor" : "Pending Verification"}
+                  size="small"
+                  sx={{
+                    bgcolor: isVerified ? "#E8F5E9" : "#FFF8E1",
+                    color: isVerified ? "#1B5E20" : "#E65100",
+                    fontWeight: 800,
+                    fontSize: "0.65rem",
+                    border: isVerified ? "1px solid #A5D6A7" : "1px solid #FFCC80",
+                  }}
+                />
+              </Box>
+            </Box>
+
+            {/* Rating row */}
+            {rating > 0 && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 1.5, ml: 0.5 }}>
+                {[1,2,3,4,5].map(star => (
+                  <Box key={star} sx={{ color: star <= Math.round(rating) ? "#FFC107" : "#E0E0E0", fontSize: 16 }}>★</Box>
+                ))}
+                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ ml: 0.5 }}>
+                  {rating.toFixed(1)} rating
+                </Typography>
+              </Box>
+            )}
+          </Box>
+
+          {/* Performance Stats */}
+          <Typography variant="caption" fontWeight={700} color="text.secondary"
+            sx={{ textTransform: "uppercase", letterSpacing: 1, ml: 0.5, mb: 1.5, display: "block" }}>
+            Performance Overview
+          </Typography>
+          <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+            {[
+              {
+                label: "Total Revenue",
+                value: `₹${totalRevenue.toLocaleString("en-IN")}`,
+                icon: "💰",
+                gradient: "linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)",
+                color: "#1B5E20",
+              },
+              {
+                label: "Total Orders",
+                value: totalOrders,
+                icon: "📦",
+                gradient: "linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)",
+                color: "#1565C0",
+              },
+              {
+                label: "Delivered",
+                value: deliveredOrders,
+                icon: "✅",
+                gradient: "linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%)",
+                color: "#6A1B9A",
+              },
+              {
+                label: "Active",
+                value: activeOrders,
+                icon: "🚚",
+                gradient: "linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)",
+                color: "#E65100",
+              },
+            ].map((stat, i) => (
+              <Grid item xs={6} key={i}>
+                <Box
+                  sx={{
+                    background: stat.gradient,
+                    borderRadius: "18px",
+                    p: 2,
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.04)",
+                    border: "1px solid rgba(255,255,255,0.8)",
+                  }}
+                >
+                  <Typography sx={{ fontSize: "1.4rem", mb: 0.5 }}>{stat.icon}</Typography>
+                  <Typography variant="h5" fontWeight="900" sx={{ color: "#111827", lineHeight: 1 }}>
+                    {stat.value}
+                  </Typography>
+                  <Typography variant="caption" fontWeight={700} sx={{ color: stat.color }}>
+                    {stat.label}
+                  </Typography>
                 </Box>
-                <Typography variant="caption" fontWeight="bold" color="text.secondary">ORDERS</Typography>
-              </Box>
-              <Typography variant="h6" fontWeight="900">
-                {historyOrders.length}
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* Inventory Banner */}
+          <Box
+            sx={{
+              background: "linear-gradient(135deg, #1565C0 0%, #1976D2 50%, #42A5F5 100%)",
+              borderRadius: "18px",
+              p: 2.5,
+              mb: 2.5,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <Box sx={{ position: "absolute", right: -10, top: -10, opacity: 0.1 }}>
+              <Inventory sx={{ fontSize: 100, color: "white" }} />
+            </Box>
+            <Box>
+              <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.75)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                Active Inventory
               </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12}>
-          <Card sx={{ borderRadius: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0", background: "linear-gradient(90deg, #1B5E20 0%, #2E7D32 100%)", color: "white" }}>
-            <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 }, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Box>
-                <Typography variant="caption" sx={{ opacity: 0.8, fontWeight: "bold" }}>ACTIVE INVENTORY</Typography>
-                <Typography variant="h5" fontWeight="900" sx={{ mt: 0.5 }}>{inventoryItems.length} Products</Typography>
+              <Typography variant="h4" fontWeight="900" color="white" sx={{ lineHeight: 1.1, mt: 0.5 }}>
+                {inventoryItems.length}
+                <Typography component="span" variant="body2" sx={{ color: "rgba(255,255,255,0.75)", ml: 1 }}>
+                  Products
+                </Typography>
+              </Typography>
+            </Box>
+            <Button
+              size="small"
+              onClick={() => setValue(1)}
+              sx={{
+                color: "white",
+                bgcolor: "rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.3)",
+                borderRadius: "10px",
+                textTransform: "none",
+                fontWeight: 700,
+                backdropFilter: "blur(4px)",
+                "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
+              }}
+            >
+              Manage →
+            </Button>
+          </Box>
+
+          {/* Personal Info */}
+          <Typography variant="caption" fontWeight={700} color="text.secondary"
+            sx={{ textTransform: "uppercase", letterSpacing: 1, ml: 0.5, mb: 1.5, display: "block" }}>
+            Contact Information
+          </Typography>
+          <Box
+            sx={{
+              bgcolor: "white",
+              borderRadius: "20px",
+              overflow: "hidden",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+              mb: 2.5,
+            }}
+          >
+            {infoRows.map((row, i) => (
+              <Box
+                key={i}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  px: 2.5,
+                  py: 1.8,
+                  borderBottom: i < infoRows.length - 1 ? "1px solid #F3F4F6" : "none",
+                }}
+              >
+                <Typography sx={{ fontSize: "1.1rem", width: 28, textAlign: "center" }}>{row.icon}</Typography>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: "uppercase", letterSpacing: 0.5, fontSize: "0.58rem" }}>
+                    {row.label}
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600} color="#111827" noWrap>
+                    {row.value}
+                  </Typography>
+                </Box>
               </Box>
-              <Inventory sx={{ fontSize: 40, opacity: 0.5 }} />
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+            ))}
+          </Box>
 
-      <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" sx={{ mb: 2, ml: 1 }}>
-        ACCOUNT & SETTINGS
-      </Typography>
-      <List
-        component={Paper}
-        elevation={0}
-        sx={{
-          borderRadius: 4,
-          border: "1px solid #f0f0f0",
-          overflow: "hidden",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
-        }}
-      >
-        <ListItemButton divider sx={{ py: 2 }}>
-          <ListItemIcon>
-            <Settings color="primary" />
-          </ListItemIcon>
-          <ListItemText primary="Business Settings" primaryTypographyProps={{ fontWeight: "bold" }} />
-          <ArrowForward fontSize="small" color="disabled" />
-        </ListItemButton>
-        <ListItemButton divider sx={{ py: 2 }}>
-          <ListItemIcon>
-            <Notifications color="primary" />
-          </ListItemIcon>
-          <ListItemText primary="Notifications" primaryTypographyProps={{ fontWeight: "bold" }} />
-          <ArrowForward fontSize="small" color="disabled" />
-        </ListItemButton>
-        <ListItemButton divider sx={{ py: 2 }}>
-          <ListItemIcon>
-            <LocalShipping color="primary" />
-          </ListItemIcon>
-          <ListItemText primary="Delivery Zones" primaryTypographyProps={{ fontWeight: "bold" }} />
-          <ArrowForward fontSize="small" color="disabled" />
-        </ListItemButton>
-        <ListItemButton divider sx={{ py: 2 }} onClick={handleUpdateLocation} disabled={updatingLocation}>
-          <ListItemIcon>
-            <DashboardIcon color="primary" />
-          </ListItemIcon>
-          <ListItemText primary={updatingLocation ? "Detecting..." : "Update Live GPS Location"} secondary="Sync exact coordinates via device" primaryTypographyProps={{ fontWeight: "bold" }} />
-          <ArrowForward fontSize="small" color="disabled" />
-        </ListItemButton>
-        <ListItemButton divider sx={{ py: 2 }} onClick={() => setAddressDialogOpen(true)}>
-          <ListItemIcon>
-            <LocationOn color="primary" />
-          </ListItemIcon>
-          <ListItemText primary="Update Address Manually" secondary="Type in your exact address and coordinates" primaryTypographyProps={{ fontWeight: "bold" }} />
-          <ArrowForward fontSize="small" color="disabled" />
-        </ListItemButton>
-        <ListItemButton onClick={logout} sx={{ py: 2, color: "error.main", bgcolor: "#FFEBEE" }}>
-          <ListItemIcon>
-            <ExitToApp color="error" />
-          </ListItemIcon>
-          <ListItemText primary="Logout" primaryTypographyProps={{ fontWeight: "bold" }} />
-        </ListItemButton>
-      </List>
-    </Box>
-  );
+          {/* Actions */}
+          <Typography variant="caption" fontWeight={700} color="text.secondary"
+            sx={{ textTransform: "uppercase", letterSpacing: 1, ml: 0.5, mb: 1.5, display: "block" }}>
+            Account & Settings
+          </Typography>
+          <Box
+            sx={{
+              bgcolor: "white",
+              borderRadius: "20px",
+              overflow: "hidden",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+              mb: 2,
+            }}
+          >
+            {actionItems.map((item, i) => (
+              <Box
+                key={i}
+                onClick={item.disabled ? undefined : item.action}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  px: 2.5,
+                  py: 2,
+                  borderBottom: i < actionItems.length - 1 ? "1px solid #F3F4F6" : "none",
+                  cursor: item.disabled ? "default" : "pointer",
+                  opacity: item.disabled ? 0.6 : 1,
+                  transition: "background 0.15s",
+                  "&:active": { bgcolor: "#F9FAFB" },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "12px",
+                    bgcolor: item.iconBg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  {item.icon}
+                </Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="body2" fontWeight={700} color="#111827">
+                    {item.actionLabel || item.label}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap>
+                    {item.sub}
+                  </Typography>
+                </Box>
+                <ArrowForward sx={{ fontSize: 16, color: "#D1D5DB" }} />
+              </Box>
+            ))}
+          </Box>
 
+          {/* Logout Button */}
+          <Box
+            onClick={logout}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              px: 2.5,
+              py: 2,
+              bgcolor: "white",
+              borderRadius: "20px",
+              border: "1.5px solid #FECACA",
+              cursor: "pointer",
+              boxShadow: "0 4px 16px rgba(239,68,68,0.06)",
+              transition: "all 0.2s",
+              "&:active": { bgcolor: "#FEF2F2" },
+              mb: 2,
+            }}
+          >
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: "12px",
+                bgcolor: "#FEF2F2",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <ExitToApp sx={{ color: "#EF4444", fontSize: 20 }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" fontWeight={700} sx={{ color: "#EF4444" }}>
+                Logout
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Sign out from your account
+              </Typography>
+            </Box>
+            <ArrowForward sx={{ fontSize: 16, color: "#FECACA" }} />
+          </Box>
+
+          {/* Version footer */}
+          <Typography variant="caption" color="text.disabled" sx={{ textAlign: "center", display: "block", mt: 1 }}>
+            Agrokart Vendor App · v1.0.0
+          </Typography>
+        </Box>
+      </Box>
+    );
+  };
   // --- END Pickup Verification ---
 
   return (
@@ -2708,6 +3222,102 @@ const MobileVendorDashboard = () => {
             sx={{ borderRadius: 2 }}
           >
             {addressUpdating ? "Saving..." : "Save Address"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Business Settings Dialog */}
+      <Dialog
+        open={businessSettingsOpen}
+        onClose={() => setBusinessSettingsOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: "24px", p: 1 } }}
+      >
+        <DialogTitle>
+          <Typography variant="h6" fontWeight="900" color="#111827">Business Settings</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Manage how your store appears to customers on Agrokart.
+          </Typography>
+          
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight="700">Accepting Orders</Typography>
+              <Typography variant="caption" color="text.secondary">Store is visible to customers</Typography>
+            </Box>
+            <Switch checked={vendorSettings.acceptingOrders} onChange={(e) => setVendorSettings({...vendorSettings, acceptingOrders: e.target.checked})} color="success" />
+          </Box>
+          <Divider sx={{ my: 1.5 }} />
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight="700">Auto-Accept Orders</Typography>
+              <Typography variant="caption" color="text.secondary">Automatically accept incoming requests</Typography>
+            </Box>
+            <Switch checked={vendorSettings.autoAcceptOrders} onChange={(e) => setVendorSettings({...vendorSettings, autoAcceptOrders: e.target.checked})} color="success" />
+          </Box>
+          <Divider sx={{ my: 1.5 }} />
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight="700">Cash on Delivery</Typography>
+              <Typography variant="caption" color="text.secondary">Allow customers to pay on arrival</Typography>
+            </Box>
+            <Switch checked={vendorSettings.cashOnDelivery} onChange={(e) => setVendorSettings({...vendorSettings, cashOnDelivery: e.target.checked})} color="success" />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 0 }}>
+          <Button onClick={() => setBusinessSettingsOpen(false)} sx={{ color: "text.secondary", fontWeight: 700, borderRadius: "12px", textTransform: "none" }}>Close</Button>
+          <Button onClick={handleSaveSettings} disabled={settingsSaving} variant="contained" sx={{ bgcolor: "#2E7D32", borderRadius: "12px", fontWeight: 700, textTransform: "none", boxShadow: "0 4px 12px rgba(46,125,50,0.3)", "&:hover": { bgcolor: "#1B5E20" } }}>
+            {settingsSaving ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Notifications Settings Dialog */}
+      <Dialog
+        open={notificationsSettingsOpen}
+        onClose={() => setNotificationsSettingsOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: "24px", p: 1 } }}
+      >
+        <DialogTitle>
+          <Typography variant="h6" fontWeight="900" color="#111827">Notification Preferences</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Choose how you want to be alerted about new orders and stock.
+          </Typography>
+          
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight="700">Push Notifications</Typography>
+              <Typography variant="caption" color="text.secondary">Alerts on your mobile device</Typography>
+            </Box>
+            <Switch checked={vendorNotifications.push} onChange={(e) => setVendorNotifications({...vendorNotifications, push: e.target.checked})} color="warning" />
+          </Box>
+          <Divider sx={{ my: 1.5 }} />
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight="700">SMS Alerts</Typography>
+              <Typography variant="caption" color="text.secondary">Text messages for new orders</Typography>
+            </Box>
+            <Switch checked={vendorNotifications.sms} onChange={(e) => setVendorNotifications({...vendorNotifications, sms: e.target.checked})} color="warning" />
+          </Box>
+          <Divider sx={{ my: 1.5 }} />
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight="700">Low Stock Warnings</Typography>
+              <Typography variant="caption" color="text.secondary">Alert when inventory is below 10</Typography>
+            </Box>
+            <Switch checked={vendorNotifications.lowStock} onChange={(e) => setVendorNotifications({...vendorNotifications, lowStock: e.target.checked})} color="warning" />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 0 }}>
+          <Button onClick={() => setNotificationsSettingsOpen(false)} sx={{ color: "text.secondary", fontWeight: 700, borderRadius: "12px", textTransform: "none" }}>Close</Button>
+          <Button onClick={handleSaveNotifications} disabled={settingsSaving} variant="contained" sx={{ bgcolor: "#E65100", borderRadius: "12px", fontWeight: 700, textTransform: "none", boxShadow: "0 4px 12px rgba(230,81,0,0.3)", "&:hover": { bgcolor: "#E65100" } }}>
+            {settingsSaving ? "Saving..." : "Save Preferences"}
           </Button>
         </DialogActions>
       </Dialog>

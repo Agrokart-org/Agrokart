@@ -637,13 +637,14 @@ const VendorDashboard = () => {
               sx={{
                 borderRadius: "12px",
                 py: 1.5,
+                mb: 0.5,
                 transition: "all 0.3s ease",
                 "&.Mui-selected": {
-                  background: "rgba(74, 222, 128, 0.15)",
+                  background: "linear-gradient(90deg, rgba(74, 222, 128, 0.2) 0%, rgba(74, 222, 128, 0.05) 100%)",
                   borderLeft: "4px solid #4ade80",
-                  "&:hover": { background: "rgba(74, 222, 128, 0.25)" },
-                  "& .MuiListItemIcon-root": { color: "#4ade80" },
-                  "& .MuiTypography-root": { color: "white", fontWeight: 700 },
+                  "&:hover": { background: "linear-gradient(90deg, rgba(74, 222, 128, 0.3) 0%, rgba(74, 222, 128, 0.1) 100%)" },
+                  "& .MuiListItemIcon-root": { color: "#4ade80", filter: "drop-shadow(0 2px 8px rgba(74,222,128,0.4))" },
+                  "& .MuiTypography-root": { color: "white", fontWeight: 800 },
                 },
                 "&:hover": {
                   bgcolor: "rgba(255,255,255,0.05)",
@@ -746,9 +747,10 @@ const VendorDashboard = () => {
           sx={{
             width: { md: `calc(100% - ${drawerWidth}px)` },
             ml: { md: `${drawerWidth}px` },
-            ...theme.glass(0.8),
-            boxShadow: "none",
-            borderBottom: "1px solid rgba(0,0,0,0.05)",
+            bgcolor: "rgba(255, 255, 255, 0.8)",
+            backdropFilter: "blur(20px)",
+            boxShadow: "0 4px 30px rgba(0, 0, 0, 0.03)",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.5)",
           }}
         >
           <Toolbar sx={{ height: 80 }}>
@@ -789,11 +791,17 @@ const VendorDashboard = () => {
                   variant="contained"
                   startIcon={<AddIcon />}
                   sx={{
-                    borderRadius: "12px",
+                    borderRadius: "16px",
                     px: { xs: 2, md: 3 },
+                    py: 1,
                     minWidth: { xs: 40, md: "auto" }, // Smaller on mobile
-                    background: theme.palette.primary.main,
-                    boxShadow: "0 4px 14px 0 rgba(0,118,255,0.39)",
+                    background: "linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)",
+                    boxShadow: "0 8px 24px rgba(76, 175, 80, 0.3)",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      boxShadow: "0 12px 28px rgba(76, 175, 80, 0.4)",
+                      transform: "translateY(-2px)",
+                    },
                     "& .MuiButton-startIcon": {
                       mr: { xs: 0, md: 1 },
                       ml: { xs: 0, md: -0.5 },
@@ -1240,16 +1248,35 @@ const VendorDashboard = () => {
                       whileHover={{ y: -8, transition: { duration: 0.3 } }}
                       sx={{
                         height: "100%",
-                        border: "none",
-                        boxShadow: "0 4px 24px rgba(0,0,0,0.03)",
-                        borderRadius: 4,
-                        overflow: "visible",
+                        border: "1px solid rgba(255,255,255,0.4)",
+                        boxShadow: "0 8px 32px rgba(0,0,0,0.04)",
+                        borderRadius: "20px",
+                        overflow: "hidden",
                         position: "relative",
-                        background: "rgba(255,255,255,0.8)",
+                        background: `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.6) 100%)`,
                         backdropFilter: "blur(20px)",
+                        "&:hover": {
+                           boxShadow: `0 16px 40px ${stat.color}33`,
+                        }
                       }}
                     >
-                      <CardContent sx={{ p: 3 }}>
+                      <CardContent sx={{ p: 3, position: "relative", zIndex: 1 }}>
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            right: -20,
+                            bottom: -20,
+                            opacity: 0.08,
+                            transform: "rotate(-15deg)",
+                            zIndex: -1,
+                            "& > svg": {
+                              fontSize: 140,
+                              color: stat.color,
+                            }
+                          }}
+                        >
+                          <stat.icon />
+                        </Box>
                         <Box
                           sx={{
                             display: "flex",
@@ -1311,8 +1338,11 @@ const VendorDashboard = () => {
                 variants={itemVariants}
                 sx={{
                   mt: 3,
-                  borderRadius: 4,
-                  boxShadow: "0 4px 24px rgba(0,0,0,0.04)",
+                  borderRadius: "24px",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.04)",
+                  border: "1px solid rgba(0,0,0,0.03)",
+                  background: "rgba(255,255,255,0.9)",
+                  backdropFilter: "blur(20px)",
                 }}
               >
                 <CardContent sx={{ p: 3 }}>
@@ -1426,7 +1456,17 @@ const VendorDashboard = () => {
 
             {/* Orders Tab (Index 2) */}
             {(activeTab === 0 || activeTab === 2) && (
-              <MotionCard variants={itemVariants} sx={{ mt: 3 }}>
+              <MotionCard 
+                variants={itemVariants} 
+                sx={{ 
+                  mt: 3,
+                  borderRadius: "24px",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.04)",
+                  border: "1px solid rgba(0,0,0,0.03)",
+                  background: "rgba(255,255,255,0.9)",
+                  backdropFilter: "blur(20px)",
+                }}
+              >
                 <Box
                   sx={{ borderBottom: 1, borderColor: "divider", px: 3, pt: 2 }}
                 >

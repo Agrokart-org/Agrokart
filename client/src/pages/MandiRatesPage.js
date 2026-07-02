@@ -307,9 +307,11 @@ const MandiRatesPage = () => {
         sx={{
           background:
             "linear-gradient(135deg,#FF8F00 0%,#F9A825 40%,#FFF9C4 100%)",
-          borderRadius: 4,
+          borderRadius: 0,
           p: { xs: 3, sm: 4 },
           mb: 3,
+          mx: { xs: -1.5, sm: -3 },
+          mt: { xs: -7, sm: -9 },
           position: "relative",
           overflow: "hidden",
           boxShadow: "0 8px 32px rgba(255,143,0,0.25)",

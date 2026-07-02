@@ -348,7 +348,7 @@ const MobileProductsPage = () => {
 
       {/* Products Grid */}
       <Box sx={{ px: 2, py: 1 }}>
-        <Grid container spacing={2}>
+        <Grid container spacing={0.5}>
           <AnimatePresence>
             {filteredProducts.map((product, index) => {
               const stockVal = product.stock || product.countInStock || 0;
@@ -422,7 +422,7 @@ const MobileProductsPage = () => {
                       navigate(`/product/${product.id || product._id}`)
                     }
                     sx={{
-                      borderRadius: 2.5,
+                      borderRadius: 0.5,
                       boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
                       border: "1px solid rgba(0,0,0,0.06)",
                       overflow: "hidden",

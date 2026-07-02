@@ -16,12 +16,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  ListItemSecondaryAction,
   IconButton,
   Paper,
-  Tab,
-  Tabs,
-  useTheme,
   Chip,
   LinearProgress,
   Badge,
@@ -30,23 +26,17 @@ import {
   DialogContent,
   DialogActions,
   Switch,
-  FormControlLabel,
   Tooltip,
-  useMediaQuery,
   TextField,
   CircularProgress,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
-  Collapse,
+  Snackbar,
+  Alert,
+  ListItemButton
 } from "@mui/material";
 import {
-  Person as PersonIcon,
   LocationOn as LocationIcon,
   Payment as PaymentIcon,
   Favorite as FavoriteIcon,
-  Settings as SettingsIcon,
   Edit as EditIcon,
   ArrowForward as ArrowForwardIcon,
   ShoppingBag as OrderIcon,
@@ -58,171 +48,34 @@ import {
   CameraAlt as CameraIcon,
   VerifiedUser as VerifiedIcon,
   Logout as LogoutIcon,
-  LocalShipping as ShippingIcon,
+  GpsFixed as GpsIcon
 } from "@mui/icons-material";
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { safeFetch, API_BASE_URL } from "../services/api";
 import bannerOrganic from "../assets/banner_organic_harvest.png";
 
-const OrderCard = ({ order }) => {
-  return (
-    <Paper
-      elevation={0}
-      component={motion.div}
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      whileHover={{ y: -5, boxShadow: "0 12px 40px rgba(0,0,0,0.12)" }}
-      transition={{ duration: 0.3 }}
-      sx={{
-        mb: 3,
-        border: "none",
-        borderRadius: 1,
-        overflow: "hidden",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
-        background: "background.paper",
-      }}
-    >
-      <Box sx={{ p: 2 }}>
-        {/* Header */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1,
-          }}
-        >
-          <Typography variant="subtitle1" fontWeight="bold">
-            Order #{order.id}
-          </Typography>
-          <Chip
-            label={order.status}
-            size="small"
-            sx={{
-              bgcolor:
-                order.color === "success"
-                  ? "#e8f5e9"
-                  : order.color === "warning"
-                    ? "#fff3e0"
-                    : "#e3f2fd",
-              color:
-                order.color === "success"
-                  ? "#2e7d32"
-                  : order.color === "warning"
-                    ? "#ef6c00"
-                    : "#1565c0",
-              fontWeight: "bold",
-              borderRadius: 1,
-            }}
-          />
-        </Box>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          display="block"
-          gutterBottom
-        >
-          Placed on {order.date}
-        </Typography>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Items */}
-        <Box sx={{ mb: 2 }}>
-          {order.items.map((item, index) => (
-            <Box
-              key={index}
-              sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}
-            >
-              <Typography variant="body2" color="text.primary">
-                {item.name} x {item.quantity}
-              </Typography>
-              <Typography variant="body2" fontWeight="bold">
-                ₹{item.price}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* Total */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1,
-          }}
-        >
-          <Typography variant="subtitle2" fontWeight="bold">
-            Total Amount
-          </Typography>
-          <Typography variant="h6" fontWeight="bold" color="primary.main">
-            {order.total}
-          </Typography>
-        </Box>
-
-        {/* Tracking Info Text */}
-        {order.trackingText && (
-          <Typography
-            variant="caption"
-            sx={{
-              color:
-                order.color === "success" ? "success.main" : "primary.main",
-              display: "flex",
-              alignItems: "center",
-              mb: 2,
-            }}
-          >
-            {order.status === "Delivered" ? "✓ " : "🚚 "}
-            {order.trackingText}
-          </Typography>
-        )}
-
-        {/* Buttons */}
-        <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-          <Button
-            fullWidth
-            variant="outlined"
-            color="success"
-            sx={{ borderRadius: 2, textTransform: "none", fontWeight: "bold" }}
-          >
-            View Details
-          </Button>
-          <Button
-            fullWidth
-            variant="contained"
-            color="success"
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: "bold",
-              bgcolor: "#4caf50",
-              "&:hover": { bgcolor: "#43a047" },
-            }}
-          >
-            {order.status === "Delivered" ? "Reorder" : "Track Order"}
-          </Button>
-        </Box>
-      </Box>
-    </Paper>
-  );
-};
+import AddressDialog from "../components/profile/AddressDialog";
+import PaymentDialog from "../components/profile/PaymentDialog";
+import LanguageDialog from "../components/profile/LanguageDialog";
+import SecurityDialog from "../components/profile/SecurityDialog";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { user, logout, updateUserProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState(0);
-  const [filterStatus, setFilterStatus] = useState("All Orders"); // New Filter State
+  
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = React.useRef(null);
+  
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
+  
+  // Dialog states
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
+  const [securityDialogOpen, setSecurityDialogOpen] = useState(false);
 
   const handleImageClick = () => {
     fileInputRef.current.click();
@@ -232,34 +85,32 @@ const ProfilePage = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type and size
     if (!file.type.startsWith("image/")) {
       alert("Please upload an image file.");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      // 5MB limit
       alert("File size should be less than 5MB.");
       return;
     }
 
     setUploading(true);
 
-    // Create a reference to 'profile_images/UID_TIMESTAMP'
-    const storageRef = ref(storage, `profile_images/${user.id}_${Date.now()}`);
+    const userId = user?.id || user?.uid || user?._id;
+    if (!userId) {
+      setSnackbar({ open: true, message: "User ID not found. Please log in again.", severity: "error" });
+      setUploading(false);
+      return;
+    }
+
+    const storageRef = ref(storage, `profile_images/${userId}_${Date.now()}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
-    // Promise to handle the upload completion or error
     const uploadPromise = new Promise((resolve, reject) => {
       uploadTask.on(
         "state_changed",
-        (snapshot) => {
-          // You could track progress here if needed
-          // const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        },
-        (error) => {
-          reject(error);
-        },
+        null,
+        (error) => reject(error),
         async () => {
           try {
             if (uploadTask.snapshot.ref) {
@@ -276,52 +127,70 @@ const ProfilePage = () => {
     });
 
     try {
-      if (!user?.id) throw new Error("User ID not found");
-
-      // Race the upload against a 15s timeout to catch "hanging" CORS/Network issues
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                "Upload timed out. Check your network or CORS settings.",
-              ),
-            ),
-          15000,
-        ),
+        setTimeout(() => reject(new Error("Upload timed out.")), 15000),
       );
-
       const photoURL = await Promise.race([uploadPromise, timeoutPromise]);
-
-      // Update user profile immediately
       await updateUserProfile({ photoURL });
-
-      alert("Profile picture updated!");
+      setSnackbar({ open: true, message: "Profile picture updated!", severity: "success" });
     } catch (error) {
       console.error("Error uploading image:", error);
-      let msg = "Failed to upload image.";
-      if (error.message.includes("timed out")) {
-        msg =
-          "Upload timed out. This is often due to CORS issues on localhost. Please configure Firebase Storage CORS.";
-      } else if (error.code === "storage/unauthorized") {
-        msg = "Permission denied. Please check your storage rules.";
-      }
-      alert(msg);
+      setSnackbar({ open: true, message: "Failed to upload image. " + error.message, severity: "error" });
     } finally {
       setUploading(false);
-      // Reset input
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  // Edit Form State
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
   });
 
-  // Initialize form data when user loads or dialog opens
+  const [updatingLocation, setUpdatingLocation] = useState(false);
+
+  const handleUpdateLocation = () => {
+    if (navigator.geolocation) {
+      setUpdatingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const token = localStorage.getItem("authToken");
+            const res = await safeFetch(`${API_BASE_URL}/users/profile`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                "x-auth-token": token,
+              },
+              body: JSON.stringify({
+                address: {
+                  coordinates: [position.coords.longitude, position.coords.latitude]
+                }
+              })
+            });
+            if (res.ok) {
+              setSnackbar({ open: true, message: "Location updated successfully!", severity: "success" });
+            } else {
+              setSnackbar({ open: true, message: "Failed to update location.", severity: "error" });
+            }
+          } catch (e) {
+            setSnackbar({ open: true, message: "Network error updating location.", severity: "error" });
+          } finally {
+            setUpdatingLocation(false);
+          }
+        },
+        (error) => {
+          console.error("GPS Error", error);
+          setSnackbar({ open: true, message: "GPS access denied or unavailable.", severity: "error" });
+          setUpdatingLocation(false);
+        }
+      );
+    } else {
+      setSnackbar({ open: true, message: "Geolocation not supported by browser.", severity: "error" });
+    }
+  };
+
   React.useEffect(() => {
     if (user) {
       setFormData({
@@ -331,17 +200,6 @@ const ProfilePage = () => {
       });
     }
   }, [user]);
-
-  // Statistics
-  const stats = [
-    { label: "Orders", value: "12", icon: OrderIcon, color: "#4CAF50" },
-    { label: "Points", value: "850", icon: StarIcon, color: "#FFC107" },
-    { label: "Saved", value: "₹2.4k", icon: FavoriteIcon, color: "#f44336" },
-  ];
-
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
 
   const handleLogout = () => {
     logout();
@@ -358,602 +216,208 @@ const ProfilePage = () => {
   const handleSaveChanges = async () => {
     setLoading(true);
     try {
-      // Call update function from AuthContext
       await updateUserProfile({
         name: formData.name,
-        // photoURL: formData.photoURL // Support for photo upload could be added here
       });
       setEditDialogOpen(false);
-      // Optional: Add a toast notification here
-      alert("Profile updated successfully!");
+      setSnackbar({ open: true, message: "Profile updated successfully!", severity: "success" });
     } catch (error) {
       console.error("Failed to update profile:", error);
-      alert("Failed to update profile. Please try again.");
+      setSnackbar({ open: true, message: "Failed to update profile.", severity: "error" });
     } finally {
       setLoading(false);
     }
   };
 
-  // Animation variants
+  const showToast = (message, severity = "info") => {
+    setSnackbar({ open: true, message, severity });
+  };
+
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { opacity: 1, x: 0 },
-  };
-
   return (
-    <Container maxWidth="lg" sx={{ py: 4, minHeight: "100vh" }}>
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <Grid container spacing={3}>
-          {/* Left Column: Profile Card */}
-          <Grid item xs={12} md={4}>
-            <Card
-              elevation={4}
+    <Container maxWidth="md" sx={{ py: { xs: 4, md: 8 }, minHeight: "100vh", bgcolor: "#F9FAFB" }}>
+      <motion.div variants={containerVariants} initial="hidden" animate="visible">
+        
+        {/* Profile Header Card */}
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 4,
+            overflow: "hidden",
+            position: "relative",
+            mb: 4,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.06)",
+            border: "1px solid rgba(0,0,0,0.04)"
+          }}
+        >
+          {/* Cover Image */}
+          <Box
+            sx={{
+              height: 180,
+              backgroundImage: `url(${bannerOrganic})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              position: "relative",
+            }}
+          >
+            <Box
               sx={{
-                borderRadius: 2,
-                overflow: "hidden",
-                position: "relative",
-                mb: 3,
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                background: "linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.7))",
               }}
-            >
-              {/* Cover Image */}
-              <Box
-                sx={{
-                  height: 140,
-                  backgroundImage: `url(${bannerOrganic})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  position: "relative",
-                }}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    background:
-                      "linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.6))",
-                  }}
-                />
-              </Box>
+            />
+          </Box>
 
-              <CardContent
-                sx={{ pt: 0, position: "relative", textAlign: "center" }}
-              >
-                <Badge
-                  overlap="circular"
-                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                  badgeContent={
-                    <IconButton
-                      size="small"
-                      sx={{
-                        bgcolor: "primary.main",
-                        color: "white",
-                        border: "2px solid white",
-                        "&:hover": { bgcolor: "primary.dark" },
-                      }}
-                      onClick={() => setEditDialogOpen(true)}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  }
-                >
-                  <Avatar
-                    src={user?.avatar}
-                    sx={{
-                      width: 100,
-                      height: 100,
-                      border: "4px solid white",
-                      mt: -6,
-                      fontSize: "2.5rem",
-                      bgcolor: "primary.main",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                    }}
-                  >
-                    {user?.name?.charAt(0) || "U"}
-                  </Avatar>
-                </Badge>
-
-                <Typography variant="h5" fontWeight="700" sx={{ mt: 1 }}>
-                  {user?.name || "Agro User"}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {user?.role === "customer" ? "Premium Farmer" : "User"}
-                  {user?.isVerified && (
-                    <Tooltip title="Verified">
-                      <VerifiedIcon
-                        sx={{
-                          fontSize: 16,
-                          color: "primary.main",
-                          ml: 0.5,
-                          verticalAlign: "middle",
-                        }}
-                      />
-                    </Tooltip>
-                  )}
-                </Typography>
-
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    gap: 1,
-                    my: 2,
-                  }}
-                >
-                  <Chip
-                    label="Gold Member"
-                    size="small"
-                    sx={{
-                      bgcolor: "orange",
-                      color: "white",
-                      fontWeight: "bold",
-                      fontSize: "0.75rem",
-                    }}
-                  />
-                  <Chip
-                    label="Verified"
-                    size="small"
-                    color="primary"
-                    variant="outlined"
-                    sx={{ fontSize: "0.75rem" }}
-                  />
-                </Box>
-
-                <Grid container spacing={2} sx={{ mt: 2 }}>
-                  {stats.map((stat, idx) => (
-                    <Grid item xs={4} key={idx}>
-                      <Box
-                        sx={{ p: 1, borderRadius: 2, bgcolor: "action.hover" }}
-                      >
-                        <stat.icon
-                          sx={{ color: stat.color, fontSize: 24, mb: 0.5 }}
-                        />
-                        <Typography
-                          variant="h6"
-                          fontWeight="bold"
-                          lineHeight={1}
-                        >
-                          {stat.value}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {stat.label}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-
-                <Button
-                  fullWidth
-                  variant="contained"
-                  startIcon={<EditIcon />}
+          <CardContent sx={{ pt: 0, position: "relative", textAlign: "center", pb: 4 }}>
+            <Badge
+              overlap="circular"
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              badgeContent={
+                <IconButton
+                  size="small"
                   onClick={() => setEditDialogOpen(true)}
-                  sx={{ mt: 3, borderRadius: 20, textTransform: "none" }}
-                >
-                  Edit Profile
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Farm Details Card */}
-            <Card elevation={2} sx={{ borderRadius: 2, mb: 3 }}>
-              <CardContent>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight="bold"
-                  gutterBottom
-                  sx={{ display: "flex", alignItems: "center" }}
-                >
-                  <AgricultureIcon sx={{ mr: 1, color: "primary.main" }} /> Farm
-                  Details
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={75}
                   sx={{
-                    height: 8,
-                    borderRadius: 4,
-                    mb: 1,
-                    bgcolor: "grey.200",
-                  }}
-                />
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    mb: 2,
+                    bgcolor: "black",
+                    color: "white",
+                    border: "3px solid white",
+                    "&:hover": { bgcolor: "#333" },
+                    width: 36, height: 36
                   }}
                 >
-                  <Typography variant="caption" color="text.secondary">
-                    Total Size
-                  </Typography>
-                  <Typography variant="body2" fontWeight="bold">
-                    15 Acres
-                  </Typography>
-                </Box>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  display="block"
-                  mb={1}
-                >
-                  Active Crops
-                </Typography>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                  {["Wheat", "Cotton", "Sugarcane"].map((crop) => (
-                    <Chip
-                      key={crop}
-                      label={crop}
-                      size="small"
-                      variant="outlined"
-                    />
-                  ))}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Right Column: Content Tabs */}
-          <Grid item xs={12} md={8}>
-            <Paper
-              elevation={2}
-              sx={{ borderRadius: 2, overflow: "hidden", minHeight: 400 }}
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              }
             >
-              <Tabs
-                value={activeTab}
-                onChange={handleTabChange}
-                variant={isMobile ? "scrollable" : "fullWidth"}
+              <Avatar
+                src={user?.avatar || user?.photoURL}
                 sx={{
-                  borderBottom: 1,
-                  borderColor: "divider",
-                  "& .MuiTab-root": {
-                    textTransform: "none",
-                    fontWeight: "bold",
-                    fontSize: "1rem",
-                    minHeight: 60,
-                  },
+                  width: 120,
+                  height: 120,
+                  border: "5px solid white",
+                  mt: -7,
+                  fontSize: "3rem",
+                  bgcolor: "primary.main",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
                 }}
               >
-                <Tab
-                  icon={<OrderIcon />}
-                  iconPosition="start"
-                  label="My Orders"
-                />
-                <Tab
-                  icon={<FavoriteIcon />}
-                  iconPosition="start"
-                  label="Favorites"
-                />
-                <Tab
-                  icon={<SettingsIcon />}
-                  iconPosition="start"
-                  label="Settings"
-                />
-              </Tabs>
+                {user?.name?.charAt(0) || "U"}
+              </Avatar>
+            </Badge>
 
-              <Box sx={{ p: 3, bgcolor: "background.default", minHeight: 500 }}>
-                <AnimatePresence mode="wait">
-                  {/* Orders Tab */}
-                  {activeTab === 0 && (
-                    <motion.div
-                      key="orders"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mb: 3 }}
-                      >
-                        <Typography
-                          variant="h6"
-                          fontWeight="bold"
-                          sx={{ flexGrow: 1 }}
-                        >
-                          My Orders
-                        </Typography>
-                        {/* Sub-tabs for filtering */}
-                      </Box>
+            <Typography variant="h4" fontWeight="900" sx={{ mt: 2, letterSpacing: "-0.5px" }}>
+              {user?.name || "Agro User"}
+            </Typography>
+            <Typography variant="subtitle1" fontWeight="600" color="text.secondary" gutterBottom>
+              {user?.role === "customer" ? "Premium Farmer" : "User"}
+            </Typography>
 
-                      <Tabs
-                        value={filterStatus}
-                        onChange={(e, val) => setFilterStatus(val)}
-                        variant="scrollable"
-                        scrollButtons="auto"
-                        sx={{
-                          mb: 3,
-                          minHeight: 40,
-                          "& .MuiTabs-indicator": { display: "none" },
-                          "& .MuiTab-root": {
-                            py: 1,
-                            px: 2,
-                            minHeight: 40,
-                            fontSize: "0.85rem",
-                            textTransform: "capitalize",
-                            fontWeight: "bold",
-                            borderRadius: 20,
-                            mr: 1,
-                            transition: "0.3s",
-                            "&.Mui-selected": {
-                              bgcolor: "primary.main",
-                              color: "white",
-                              boxShadow: "0 4px 12px rgba(46, 125, 50, 0.2)",
-                            },
-                            "&:hover:not(.Mui-selected)": {
-                              bgcolor: "action.hover",
-                            },
-                          },
-                        }}
-                      >
-                        <Tab value="All Orders" label="All Orders" />
-                        <Tab value="Processing" label="Processing" />
-                        <Tab value="Shipped" label="Shipped" />
-                        <Tab value="Delivered" label="Delivered" />
-                      </Tabs>
 
-                      {/* Interactive Order List */}
-                      <LayoutGroup>
-                        <motion.div layout>
-                          {[
-                            {
-                              id: "ORD001",
-                              date: "Jan 15, 2024",
-                              total: "₹1,250",
-                              status: "Delivered",
-                              color: "success",
-                              trackingText: "Delivered on Jan 18, 2024",
-                              items: [
-                                {
-                                  name: "NPK Fertilizer Premium",
-                                  quantity: 2,
-                                  price: 850,
-                                },
-                                {
-                                  name: "Organic Compost",
-                                  quantity: 1,
-                                  price: 400,
-                                },
-                              ],
-                            },
-                            {
-                              id: "ORD002",
-                              date: "Jan 20, 2024",
-                              total: "₹680",
-                              status: "Shipped",
-                              color: "primary",
-                              trackingText: "Expected delivery: Jan 23, 2024",
-                              items: [
-                                {
-                                  name: "Wheat Seeds Premium",
-                                  quantity: 1,
-                                  price: 320,
-                                },
-                                {
-                                  name: "Plant Growth Booster",
-                                  quantity: 1,
-                                  price: 280,
-                                },
-                              ],
-                            },
-                            {
-                              id: "ORD003",
-                              date: "Jan 22, 2024",
-                              total: "₹450",
-                              status: "Processing",
-                              color: "warning",
-                              trackingText: "Packing in progress",
-                              items: [
-                                {
-                                  name: "Garden Tools Set",
-                                  quantity: 1,
-                                  price: 450,
-                                },
-                              ],
-                            },
-                          ]
-                            .filter(
-                              (order) =>
-                                filterStatus === "All Orders" ||
-                                order.status === filterStatus,
-                            )
-                            .map((order) => (
-                              <OrderCard key={order.id} order={order} />
-                            ))}
+            {/* Top Navigation Stats */}
+            <Grid container spacing={2} sx={{ mt: 2, px: { xs: 1, sm: 4 } }}>
+              <Grid item xs={4}>
+                <Box
+                  onClick={() => navigate("/my-orders")}
+                  sx={{
+                    p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid rgba(0,0,0,0.06)",
+                    cursor: "pointer", transition: "all 0.2s",
+                    "&:hover": { transform: "translateY(-4px)", boxShadow: "0 8px 20px rgba(0,0,0,0.08)", borderColor: "primary.main" }
+                  }}
+                >
+                  <OrderIcon sx={{ color: "primary.main", fontSize: 28, mb: 1 }} />
+                  <Typography variant="h6" fontWeight="900">Orders</Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={4}>
+                <Box
+                  onClick={() => navigate("/wishlist")}
+                  sx={{
+                    p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid rgba(0,0,0,0.06)",
+                    cursor: "pointer", transition: "all 0.2s",
+                    "&:hover": { transform: "translateY(-4px)", boxShadow: "0 8px 20px rgba(0,0,0,0.08)", borderColor: "#E91E63" }
+                  }}
+                >
+                  <FavoriteIcon sx={{ color: "#E91E63", fontSize: 28, mb: 1 }} />
+                  <Typography variant="h6" fontWeight="900">Saved</Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={4}>
+                <Box
+                  onClick={() => showToast("Rewards program coming soon!")}
+                  sx={{
+                    p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid rgba(0,0,0,0.06)",
+                    cursor: "pointer", transition: "all 0.2s",
+                    "&:hover": { transform: "translateY(-4px)", boxShadow: "0 8px 20px rgba(0,0,0,0.08)", borderColor: "#F59E0B" }
+                  }}
+                >
+                  <StarIcon sx={{ color: "#F59E0B", fontSize: 28, mb: 1 }} />
+                  <Typography variant="h6" fontWeight="900">Points</Typography>
+                </Box>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
 
-                          <Button
-                            fullWidth
-                            variant="outlined"
-                            onClick={() => navigate("/my-orders")}
-                            sx={{ mt: 2 }}
-                          >
-                            View All Orders
-                          </Button>
-                        </motion.div>
-                      </LayoutGroup>
-                    </motion.div>
-                  )}
 
-                  {/* Favorites Tab */}
-                  {activeTab === 1 && (
-                    <motion.div
-                      key="favorites"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Box sx={{ textAlign: "center", py: 8 }}>
-                        <Box
-                          sx={{
-                            width: 120,
-                            height: 120,
-                            borderRadius: "50%",
-                            bgcolor: "grey.100",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            mx: "auto",
-                            mb: 3,
-                          }}
-                        >
-                          <FavoriteIcon
-                            sx={{ fontSize: 60, color: "grey.300" }}
-                          />
-                        </Box>
-                        <Typography
-                          variant="h6"
-                          color="text.secondary"
-                          gutterBottom
-                        >
-                          No favorites yet
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mb: 3, maxWidth: 300, mx: "auto" }}
-                        >
-                          Save items you want to buy later by clicking the heart
-                          icon on any product.
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          onClick={() => navigate("/products")}
-                        >
-                          Start Shopping
-                        </Button>
-                      </Box>
-                    </motion.div>
-                  )}
+        {/* Settings List */}
+        <Typography variant="h6" fontWeight="900" sx={{ mb: 2, ml: 1 }}>Account Settings</Typography>
+        <Paper elevation={0} sx={{ borderRadius: 4, overflow: "hidden", border: "1px solid rgba(0,0,0,0.06)", mb: 4 }}>
+          <List disablePadding>
+            <ListItem button onClick={() => setAddressDialogOpen(true)} sx={{ py: 2, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+              <ListItemIcon><LocationIcon sx={{ color: "#3B82F6" }} /></ListItemIcon>
+              <ListItemText primary="Addresses" secondary="Manage delivery locations" primaryTypographyProps={{ fontWeight: "700" }} />
+              <ArrowForwardIcon sx={{ color: "text.disabled", fontSize: 18 }} />
+            </ListItem>
+            <ListItem button onClick={() => setPaymentDialogOpen(true)} sx={{ py: 2, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+              <ListItemIcon><PaymentIcon sx={{ color: "#8B5CF6" }} /></ListItemIcon>
+              <ListItemText primary="Payment Methods" secondary="Cards & UPI" primaryTypographyProps={{ fontWeight: "700" }} />
+              <ArrowForwardIcon sx={{ color: "text.disabled", fontSize: 18 }} />
+            </ListItem>
+            <ListItem sx={{ py: 2, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+              <ListItemIcon><NotificationsIcon sx={{ color: "#F59E0B" }} /></ListItemIcon>
+              <ListItemText primary="Notifications" secondary="Manage alerts" primaryTypographyProps={{ fontWeight: "700" }} />
+              <Switch defaultChecked color="primary" />
+            </ListItem>
+            <ListItem button onClick={() => setLanguageDialogOpen(true)} sx={{ py: 2, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+              <ListItemIcon><LanguageIcon sx={{ color: "#10B981" }} /></ListItemIcon>
+              <ListItemText primary="Language" secondary="English (US)" primaryTypographyProps={{ fontWeight: "700" }} />
+              <ArrowForwardIcon sx={{ color: "text.disabled", fontSize: 18 }} />
+            </ListItem>
+            <ListItem button onClick={() => setSecurityDialogOpen(true)} sx={{ py: 2, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+              <ListItemIcon><SecurityIcon sx={{ color: "#EF4444" }} /></ListItemIcon>
+              <ListItemText primary="Security" secondary="Password & 2FA" primaryTypographyProps={{ fontWeight: "700" }} />
+              <ArrowForwardIcon sx={{ color: "text.disabled", fontSize: 18 }} />
+            </ListItem>
+            <ListItemButton onClick={handleUpdateLocation} disabled={updatingLocation} sx={{ py: 2 }}>
+              <ListItemIcon><GpsIcon sx={{ color: "#3B82F6" }} /></ListItemIcon>
+              <ListItemText
+                primary={updatingLocation ? "Detecting..." : "Update Live GPS Location"}
+                secondary="Sync your exact location to the server"
+                primaryTypographyProps={{ fontWeight: 600, color: "primary.main" }}
+              />
+            </ListItemButton>
+          </List>
+        </Paper>
 
-                  {/* Settings Tab */}
-                  {activeTab === 2 && (
-                    <motion.div
-                      key="settings"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <List>
-                        <ListItem
-                          button
-                          sx={{
-                            bgcolor: "white",
-                            mb: 1,
-                            borderRadius: 2,
-                            border: "1px solid #f0f0f0",
-                          }}
-                        >
-                          <ListItemIcon>
-                            <LocationIcon color="primary" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary="Addresses"
-                            secondary="Manage delivery locations"
-                          />
-                          <ArrowForwardIcon color="action" fontSize="small" />
-                        </ListItem>
-                        <ListItem
-                          button
-                          sx={{
-                            bgcolor: "white",
-                            mb: 1,
-                            borderRadius: 2,
-                            border: "1px solid #f0f0f0",
-                          }}
-                        >
-                          <ListItemIcon>
-                            <PaymentIcon color="primary" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary="Payment Methods"
-                            secondary="Cards & UPI"
-                          />
-                          <ArrowForwardIcon color="action" fontSize="small" />
-                        </ListItem>
-                        <ListItem
-                          button
-                          sx={{
-                            bgcolor: "white",
-                            mb: 1,
-                            borderRadius: 2,
-                            border: "1px solid #f0f0f0",
-                          }}
-                        >
-                          <ListItemIcon>
-                            <NotificationsIcon color="primary" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary="Notifications"
-                            secondary="Manage alerts"
-                          />
-                          <Switch defaultChecked />
-                        </ListItem>
-                        <ListItem
-                          button
-                          sx={{
-                            bgcolor: "white",
-                            mb: 1,
-                            borderRadius: 2,
-                            border: "1px solid #f0f0f0",
-                          }}
-                        >
-                          <ListItemIcon>
-                            <LanguageIcon color="primary" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary="Language"
-                            secondary="English (US)"
-                          />
-                          <ArrowForwardIcon color="action" fontSize="small" />
-                        </ListItem>
-                        <ListItem
-                          button
-                          sx={{
-                            bgcolor: "white",
-                            mb: 3,
-                            borderRadius: 2,
-                            border: "1px solid #f0f0f0",
-                          }}
-                        >
-                          <ListItemIcon>
-                            <SecurityIcon color="primary" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary="Security"
-                            secondary="Password & 2FA"
-                          />
-                          <ArrowForwardIcon color="action" fontSize="small" />
-                        </ListItem>
+        <Button
+          fullWidth
+          variant="contained"
+          color="error"
+          size="large"
+          startIcon={<LogoutIcon />}
+          onClick={handleLogout}
+          sx={{ borderRadius: 3, py: 1.5, fontWeight: "800", textTransform: "none", boxShadow: "0 8px 16px rgba(239, 68, 68, 0.2)" }}
+        >
+          Log Out
+        </Button>
 
-                        <Button
-                          fullWidth
-                          variant="outlined"
-                          color="error"
-                          startIcon={<LogoutIcon />}
-                          onClick={handleLogout}
-                        >
-                          Log Out
-                        </Button>
-                      </List>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
       </motion.div>
 
       {/* Edit Profile Dialog */}
@@ -962,40 +426,15 @@ const ProfilePage = () => {
         onClose={() => setEditDialogOpen(false)}
         fullWidth
         maxWidth="sm"
-        PaperProps={{
-          sx: { borderRadius: 3 },
-        }}
+        PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
       >
-        <DialogTitle
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            pb: 1,
-          }}
-        >
-          <Typography variant="h6" fontWeight="bold">
-            Edit Profile
-          </Typography>
-          <IconButton onClick={() => setEditDialogOpen(false)} size="small">
-            {/* Close Icon could go here */}
-          </IconButton>
+        <DialogTitle sx={{ pb: 2 }}>
+          <Typography variant="h5" fontWeight="900">Edit Profile</Typography>
         </DialogTitle>
-        <Divider />
-        <DialogContent sx={{ pt: 3 }}>
+        <DialogContent sx={{ pt: 2 }}>
           <Grid container spacing={3}>
-            <Grid
-              item
-              xs={12}
-              sx={{ display: "flex", justifyContent: "center", mb: 2 }}
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                accept="image/*"
-                onChange={handleImageChange}
-              />
+            <Grid item xs={12} sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+              <input type="file" ref={fileInputRef} style={{ display: "none" }} accept="image/*" onChange={handleImageChange} />
               <Badge
                 overlap="circular"
                 anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
@@ -1003,91 +442,69 @@ const ProfilePage = () => {
                   <IconButton
                     size="small"
                     disabled={uploading}
-                    sx={{
-                      bgcolor: "primary.main",
-                      color: "white",
-                      border: "2px solid white",
-                      "&:hover": { bgcolor: "primary.dark" },
-                      "&:disabled": { bgcolor: "grey.400" },
-                    }}
                     onClick={handleImageClick}
+                    sx={{ bgcolor: "black", color: "white", border: "3px solid white", "&:hover": { bgcolor: "#333" }, "&:disabled": { bgcolor: "grey.400" }, width: 36, height: 36 }}
                   >
-                    {uploading ? (
-                      <CircularProgress size={20} color="inherit" />
-                    ) : (
-                      <CameraIcon fontSize="small" />
-                    )}
+                    {uploading ? <CircularProgress size={16} color="inherit" /> : <CameraIcon fontSize="small" />}
                   </IconButton>
                 }
               >
-                <Avatar
-                  src={user?.avatar || user?.photoURL}
-                  sx={{ width: 100, height: 100, fontSize: "2.5rem" }}
-                >
+                <Avatar src={user?.avatar || user?.photoURL} sx={{ width: 100, height: 100, fontSize: "2.5rem", border: "4px solid white", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   {formData.name?.charAt(0) || "U"}
                 </Avatar>
               </Badge>
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Full Name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                variant="outlined"
-              />
+              <TextField fullWidth label="Full Name" name="name" value={formData.name} onChange={handleInputChange} variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Email"
-                name="email"
-                value={formData.email}
-                disabled
-                variant="filled"
-                helperText="Email cannot be changed"
-              />
+              <TextField fullWidth label="Email" name="email" value={formData.email} disabled variant="filled" helperText="Email cannot be changed" sx={{ "& .MuiFilledInput-root": { borderRadius: 3 } }} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Phone Number"
-                name="phone"
-                value={formData.phone}
-                disabled
-                variant="filled"
-                helperText="Verified phone number"
-              />
+              <TextField fullWidth label="Phone Number" name="phone" value={formData.phone} disabled variant="filled" helperText="Verified phone number" sx={{ "& .MuiFilledInput-root": { borderRadius: 3 } }} />
             </Grid>
             <Grid item xs={12}>
-              <Typography variant="caption" color="text.secondary">
-                To update your email or phone number, please contact customer
-                support or visit verification settings.
+              <Typography variant="caption" color="text.secondary" fontWeight="600">
+                To update your email or phone number, please contact customer support.
               </Typography>
             </Grid>
           </Grid>
         </DialogContent>
-        <Divider />
-        <DialogActions sx={{ p: 3 }}>
-          <Button
-            onClick={() => setEditDialogOpen(false)}
-            sx={{ color: "text.secondary" }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSaveChanges}
-            disabled={loading}
-            startIcon={
-              loading && <CircularProgress size={20} color="inherit" />
-            }
-          >
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setEditDialogOpen(false)} sx={{ color: "text.secondary", fontWeight: "700", textTransform: "none" }}>Cancel</Button>
+          <Button variant="contained" onClick={handleSaveChanges} disabled={loading} sx={{ borderRadius: 2, fontWeight: "700", textTransform: "none", px: 3 }}>
             {loading ? "Saving..." : "Save Changes"}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: "100%", borderRadius: 3, fontWeight: "700" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
+      {/* New Settings Dialogs */}
+      <AddressDialog 
+        open={addressDialogOpen} 
+        onClose={() => setAddressDialogOpen(false)} 
+        user={user} 
+        onSaveSuccess={showToast} 
+      />
+      <PaymentDialog 
+        open={paymentDialogOpen} 
+        onClose={() => setPaymentDialogOpen(false)} 
+      />
+      <LanguageDialog 
+        open={languageDialogOpen} 
+        onClose={() => setLanguageDialogOpen(false)} 
+      />
+      <SecurityDialog 
+        open={securityDialogOpen} 
+        onClose={() => setSecurityDialogOpen(false)} 
+        onSaveSuccess={showToast}
+      />
+
     </Container>
   );
 };

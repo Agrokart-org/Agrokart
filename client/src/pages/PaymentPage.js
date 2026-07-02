@@ -7,6 +7,8 @@ import {
   Grid,
   Paper,
   Button,
+  AppBar,
+  Toolbar,
   Radio,
   RadioGroup,
   FormControlLabel,
@@ -33,7 +35,17 @@ import {
   Support as SupportIcon,
   VerifiedUser as VerifiedUserIcon,
   CheckCircle as CheckCircleIcon,
+  ShoppingCart as ShoppingCartIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+  KeyboardArrowUp as KeyboardArrowUpIcon,
+  LocalOffer as LocalOfferIcon,
+  QrCode as QrCodeIcon,
+  CreditCard as CreditCardIcon,
+  AccountBalance as AccountBalanceIcon,
+  Lock as LockIcon,
 } from "@mui/icons-material";
+import { Collapse, Badge, Chip } from "@mui/material";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { createPaymentOrder, verifyPayment } from "../services/api";
@@ -53,10 +65,14 @@ const PaymentPage = () => {
   });
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showAmountDetails, setShowAmountDetails] = useState(false);
+  const [onlineSubMethod, setOnlineSubMethod] = useState("upi");
+  const [couponApplied, setCouponApplied] = useState(false);
 
   const subtotal = getCartTotal();
   const deliveryFee = subtotal > 5000 ? 0 : 200;
-  const total = subtotal + deliveryFee;
+  const discount = couponApplied ? 50 : 0;
+  const total = subtotal + deliveryFee - discount;
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -340,425 +356,365 @@ const PaymentPage = () => {
   return (
     <Box
       sx={{
-        bgcolor: "#f5f5f5",
+        bgcolor: "#F5F7F5",
         minHeight: "100vh",
-        py: { xs: 1, md: 4 },
-        pb: { xs: "100px", md: 4 },
+        pb: { xs: "220px", md: "150px" },
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 1.5, md: 3 } }}>
+      {/* 1. Header (Green Theme) */}
+      <AppBar position="sticky" elevation={0} sx={{ bgcolor: "#116730", color: "white" }}>
+        <Toolbar sx={{ px: 2, display: "flex", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <IconButton edge="start" onClick={() => navigate(-1)} sx={{ mr: 1, color: "white" }}>
+              <ArrowBackIcon />
+            </IconButton>
+            <Box>
+              <Typography variant="h6" fontWeight="700" sx={{ lineHeight: 1.2 }}>
+                Secure Checkout
+              </Typography>
+              <Typography variant="caption" sx={{ display: "flex", alignItems: "center", gap: 0.5, opacity: 0.9 }}>
+                <CheckCircleIcon sx={{ fontSize: 12 }} /> 100% Secure Payments
+              </Typography>
+            </Box>
+          </Box>
+        </Toolbar>
+      </AppBar>
+
+      <Container maxWidth="md" sx={{ px: { xs: 2, md: 3 }, pt: 3 }}>
+        {/* 2. Amount Payable Card */}
         <Paper
           elevation={0}
           sx={{
             p: 2,
             mb: 3,
-            bgcolor: "#e8f5e9",
-            borderRadius: 3,
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
+            borderRadius: 2,
+            border: "1px solid #E0E0E0",
+            bgcolor: "white"
           }}
         >
-          <IconButton
-            onClick={() => navigate(-1)}
-            sx={{ bgcolor: "white", "&:hover": { bgcolor: "#f1f8e9" } }}
-          >
-            <ArrowBackIcon color="primary" />
-          </IconButton>
-          <Typography
-            variant="h5"
-            component="h1"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1.5,
-              fontWeight: 700,
-              color: "#2E7D32",
-            }}
-          >
-            <PaymentIcon />
-            Secure Payment
-          </Typography>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setShowAmountDetails(!showAmountDetails)}>
+            <Box>
+              <Typography variant="body2" color="text.secondary" fontWeight="500">Amount Payable</Typography>
+              <Typography variant="h5" fontWeight="800">₹{total.toFixed(2)}</Typography>
+            </Box>
+            <Typography variant="body2" fontWeight="700" color="#2E7D32" sx={{ display: "flex", alignItems: "center" }}>
+              View Details {showAmountDetails ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+            </Typography>
+          </Box>
+          <Collapse in={showAmountDetails}>
+            <Divider sx={{ my: 2 }} />
+            <Stack spacing={1}>
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Typography variant="body2" color="text.secondary">Item Total</Typography>
+                <Typography variant="body2" fontWeight="600">₹{subtotal}</Typography>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Typography variant="body2" color="text.secondary">Delivery Fee</Typography>
+                <Typography variant="body2" fontWeight="600" color={deliveryFee === 0 ? "#2E7D32" : "inherit"}>
+                  {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
+                </Typography>
+              </Box>
+              {couponApplied && (
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2" color="#2E7D32">Discount (AGRO50)</Typography>
+                  <Typography variant="body2" fontWeight="600" color="#2E7D32">-₹50</Typography>
+                </Box>
+              )}
+            </Stack>
+          </Collapse>
         </Paper>
 
-        <Grid
-          container
-          spacing={{ xs: 2, md: 4 }}
-          direction={{ xs: "column-reverse", md: "row" }}
-        >
-          {/* Order Summary */}
-          <Grid item xs={12} md={4}>
-            <Paper
-              elevation={0}
+        <Typography variant="subtitle1" fontWeight="800" mb={1.5} color="#1A202C">
+          Select Payment Method
+        </Typography>
+
+        {/* 3. Payment Method Section */}
+        <Box sx={{ mb: 3 }}>
+          {/* Pay Online Card */}
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 2,
+              border: paymentMethod === "online" ? "2px solid #2E7D32" : "1px solid #E0E0E0",
+              bgcolor: "white",
+              mb: 2,
+              overflow: "hidden"
+            }}
+          >
+            <Box
+              onClick={() => setPaymentMethod("online")}
               sx={{
-                p: 3,
-                position: "sticky",
-                top: 20,
-                bgcolor: "#e8f5e9",
-                borderRadius: 3,
-                border: "1px solid #c8e6c9",
-              }}
-            >
-              <Typography
-                variant="h6"
-                gutterBottom
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  fontWeight: 600,
-                  color: "#2E7D32",
-                }}
-              >
-                <VerifiedUserIcon />
-                Order Summary
-              </Typography>
-              <Stack spacing={2}>
-                {cart.map((item) => (
-                  <Box
-                    key={item.cartItemId}
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      p: 1,
-                      borderRadius: 1,
-                      "&:hover": {
-                        bgcolor: "rgba(46, 125, 50, 0.05)",
-                      },
-                    }}
-                  >
-                    <Typography>
-                      {item.name} x {item.quantity}
-                    </Typography>
-                    <Typography>₹{item.price * item.quantity}</Typography>
-                  </Box>
-                ))}
-                <Divider />
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography>Subtotal</Typography>
-                  <Typography>₹{subtotal}</Typography>
-                </Box>
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography>Delivery</Typography>
-                  <Typography
-                    color={deliveryFee === 0 ? "success.main" : "inherit"}
-                  >
-                    {deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}
-                  </Typography>
-                </Box>
-                <Divider />
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography variant="h6">Total</Typography>
-                  <Typography variant="h6" color="primary">
-                    ₹{total}
-                  </Typography>
-                </Box>
-                {deliveryFee > 0 && (
-                  <Alert severity="info">
-                    Add ₹{5000 - subtotal} more to get free delivery!
-                  </Alert>
-                )}
-              </Stack>
-            </Paper>
-          </Grid>
-
-          {/* Payment Form */}
-          <Grid item xs={12} md={8}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: 2, md: 4 },
-                mb: 3,
-                bgcolor: "white",
-                borderRadius: 3,
-              }}
-            >
-              <Typography
-                variant="h6"
-                gutterBottom
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  fontWeight: 600,
-                  mb: 3,
-                }}
-              >
-                <PaymentIcon color="primary" />
-                Select Payment Method
-              </Typography>
-              <FormControl component="fieldset" sx={{ width: "100%" }}>
-                <RadioGroup
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      mb: 2.5,
-                      border:
-                        paymentMethod === "online"
-                          ? "2px solid #2E7D32"
-                          : "1px solid #e0e0e0",
-                      bgcolor: paymentMethod === "online" ? "#f1f8e9" : "white",
-                      borderRadius: 2,
-                      transition: "all 0.2s",
-                      "&:hover": {
-                        bgcolor: "#f1f8e9",
-                        borderColor: "#2E7D32",
-                        cursor: "pointer",
-                        transform: "translateY(-2px)",
-                      },
-                    }}
-                    onClick={() => setPaymentMethod("online")}
-                  >
-                    <CardContent
-                      sx={{
-                        pb: "16px !important",
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <FormControlLabel
-                        value="online"
-                        control={
-                          <Radio
-                            sx={{
-                              color: "#2E7D32",
-                              "&.Mui-checked": { color: "#2E7D32" },
-                            }}
-                          />
-                        }
-                        label=""
-                        sx={{ mr: 1, ml: 0 }}
-                      />
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 2,
-                          width: "100%",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            bgcolor: "white",
-                            p: 1,
-                            borderRadius: "50%",
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                          }}
-                        >
-                          <WalletIcon color="primary" />
-                        </Box>
-                        <Box>
-                          <Typography
-                            variant="subtitle1"
-                            fontWeight="700"
-                            color={
-                              paymentMethod === "online"
-                                ? "primary.main"
-                                : "text.primary"
-                            }
-                          >
-                            Pay Online
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Cards, UPI, Netbanking (Powered by Razorpay)
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      border:
-                        paymentMethod === "cod"
-                          ? "2px solid #2E7D32"
-                          : "1px solid #e0e0e0",
-                      bgcolor: paymentMethod === "cod" ? "#f1f8e9" : "white",
-                      borderRadius: 2,
-                      transition: "all 0.2s",
-                      "&:hover": {
-                        bgcolor: "#f1f8e9",
-                        borderColor: "#2E7D32",
-                        cursor: "pointer",
-                        transform: "translateY(-2px)",
-                      },
-                    }}
-                    onClick={() => setPaymentMethod("cod")}
-                  >
-                    <CardContent
-                      sx={{
-                        pb: "16px !important",
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <FormControlLabel
-                        value="cod"
-                        control={
-                          <Radio
-                            sx={{
-                              color: "#2E7D32",
-                              "&.Mui-checked": { color: "#2E7D32" },
-                            }}
-                          />
-                        }
-                        label=""
-                        sx={{ mr: 1, ml: 0 }}
-                      />
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 2,
-                          width: "100%",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            bgcolor: "white",
-                            p: 1,
-                            borderRadius: "50%",
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                          }}
-                        >
-                          <CashIcon color="primary" />
-                        </Box>
-                        <Box>
-                          <Typography
-                            variant="subtitle1"
-                            fontWeight="700"
-                            color={
-                              paymentMethod === "cod"
-                                ? "primary.main"
-                                : "text.primary"
-                            }
-                          >
-                            Cash on Delivery
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Pay cash when order is delivered
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </RadioGroup>
-              </FormControl>
-
-              {/* The "Pay" button has been moved to a sticky bottom bar */}
-            </Paper>
-
-            {/* Sticky Bottom Bar for Action */}
-            <Paper
-              sx={{
-                position: { xs: "fixed", md: "static" },
-                bottom: { xs: 0, md: "auto" },
-                left: 0,
-                right: 0,
                 p: 2,
-                pb: { xs: 3, md: 2 },
-                mt: { md: 4 },
-                borderTopLeftRadius: { xs: 24, md: 3 },
-                borderTopRightRadius: { xs: 24, md: 3 },
-                borderRadius: { md: 3 },
-                boxShadow: { xs: "0 -8px 32px rgba(0,0,0,0.08)", md: "none" },
-                bgcolor: "white",
-                zIndex: 100,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 2,
+                cursor: "pointer",
+                bgcolor: paymentMethod === "online" ? "#FAFCFA" : "white"
               }}
             >
-              <Button
-                fullWidth
-                variant="contained"
-                size="large"
-                startIcon={
-                  isProcessing ? (
-                    <CircularProgress size={20} color="inherit" />
-                  ) : (
-                    <PaymentIcon />
-                  )
+              <Box sx={{ width: 40, height: 40, borderRadius: 1.5, bgcolor: "#2E7D32", display: "flex", alignItems: "center", justifyContent: "center", mt: 0.5 }}>
+                <CreditCardIcon sx={{ color: "white", fontSize: 24 }} />
+              </Box>
+              <Box flex={1}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                  <Typography variant="subtitle1" fontWeight="800" color="#1A202C">Pay Online</Typography>
+                  <Chip label="Recommended" size="small" sx={{ height: 20, fontSize: "0.65rem", fontWeight: "bold", bgcolor: "#E6F4EA", color: "#2E7D32" }} />
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                  Pay securely using UPI, Cards or Netbanking
+                </Typography>
+                
+                {/* Visual Icons Row */}
+                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                  {["UPI", "VISA", "MC", "RuPay", "Netbank"].map((lbl, i) => (
+                    <Box key={i} sx={{ border: "1px solid #E0E0E0", borderRadius: 1, px: 1, py: 0.2, fontSize: "0.65rem", fontWeight: "bold", color: "#1A202C", bgcolor: "white" }}>
+                      {lbl}
+                    </Box>
+                  ))}
+                  <KeyboardArrowDownIcon sx={{ ml: 1, color: "text.secondary", fontSize: 18 }} />
+                </Box>
+              </Box>
+              <Box>
+                {paymentMethod === "online" ? (
+                  <CheckCircleIcon sx={{ color: "#2E7D32" }} />
+                ) : (
+                  <Box sx={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid #E0E0E0" }} />
+                )}
+              </Box>
+            </Box>
+
+            {/* Expanded Sub-options for Online */}
+            <Collapse in={paymentMethod === "online"}>
+              <Divider />
+              <Box sx={{ bgcolor: "white", p: 0 }}>
+                {/* UPI Sub-option */}
+                <Box
+                  onClick={(e) => { e.stopPropagation(); setOnlineSubMethod("upi"); }}
+                  sx={{ display: "flex", alignItems: "center", p: 2, borderBottom: "1px solid #F0F0F0", cursor: "pointer" }}
+                >
+                  <Box sx={{ width: 32, height: 32, borderRadius: "50%", bgcolor: "#5C4B99", display: "flex", alignItems: "center", justifyContent: "center", mr: 2 }}>
+                    <QrCodeIcon sx={{ color: "white", fontSize: 18 }} />
+                  </Box>
+                  <Box flex={1}>
+                    <Typography variant="subtitle2" fontWeight="700">UPI / QR</Typography>
+                    <Typography variant="caption" color="text.secondary">Pay using any UPI app</Typography>
+                  </Box>
+                  <Radio checked={onlineSubMethod === "upi"} color="success" sx={{ p: 0 }} />
+                </Box>
+
+                {/* Cards Sub-option */}
+                <Box
+                  onClick={(e) => { e.stopPropagation(); setOnlineSubMethod("cards"); }}
+                  sx={{ display: "flex", alignItems: "center", p: 2, borderBottom: "1px solid #F0F0F0", cursor: "pointer" }}
+                >
+                  <Box sx={{ width: 32, height: 32, borderRadius: "50%", bgcolor: "#1877F2", display: "flex", alignItems: "center", justifyContent: "center", mr: 2 }}>
+                    <CreditCardIcon sx={{ color: "white", fontSize: 18 }} />
+                  </Box>
+                  <Box flex={1}>
+                    <Typography variant="subtitle2" fontWeight="700">Cards</Typography>
+                    <Typography variant="caption" color="text.secondary">Visa, Mastercard, RuPay & more</Typography>
+                  </Box>
+                  <Radio checked={onlineSubMethod === "cards"} color="success" sx={{ p: 0 }} />
+                </Box>
+
+                {/* Netbanking Sub-option */}
+                <Box
+                  onClick={(e) => { e.stopPropagation(); setOnlineSubMethod("netbanking"); }}
+                  sx={{ display: "flex", alignItems: "center", p: 2, cursor: "pointer" }}
+                >
+                  <Box sx={{ width: 32, height: 32, borderRadius: "50%", bgcolor: "#00875A", display: "flex", alignItems: "center", justifyContent: "center", mr: 2 }}>
+                    <AccountBalanceIcon sx={{ color: "white", fontSize: 18 }} />
+                  </Box>
+                  <Box flex={1}>
+                    <Typography variant="subtitle2" fontWeight="700">Netbanking</Typography>
+                    <Typography variant="caption" color="text.secondary">All major banks supported</Typography>
+                  </Box>
+                  <Radio checked={onlineSubMethod === "netbanking"} color="success" sx={{ p: 0 }} />
+                </Box>
+              </Box>
+            </Collapse>
+          </Paper>
+
+          {/* Cash on Delivery Card */}
+          <Paper
+            elevation={0}
+            onClick={() => setPaymentMethod("cod")}
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              border: paymentMethod === "cod" ? "2px solid #2E7D32" : "1px solid #E0E0E0",
+              bgcolor: paymentMethod === "cod" ? "#FAFCFA" : "white",
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              cursor: "pointer"
+            }}
+          >
+            <Box sx={{ width: 40, height: 40, borderRadius: 1.5, bgcolor: "#FFEBE0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <CashIcon sx={{ color: "#E05D26", fontSize: 24 }} />
+            </Box>
+            <Box flex={1}>
+              <Typography variant="subtitle1" fontWeight="800" color="#1A202C">Cash on Delivery</Typography>
+              <Typography variant="body2" color="text.secondary">Pay cash when your order is delivered</Typography>
+            </Box>
+            <Box>
+              <Radio checked={paymentMethod === "cod"} color="success" sx={{ p: 0 }} />
+            </Box>
+          </Paper>
+        </Box>
+
+        {/* 4. Trust & Security Notice */}
+        <Box sx={{ display: "flex", gap: 1.5, bgcolor: "#FFF9E6", p: 2, borderRadius: 2, mb: 3 }}>
+          <SecurityIcon sx={{ color: "#B8860B", mt: 0.5 }} />
+          <Box>
+            <Typography variant="body2" color="#8B6508">Your payment information is encrypted and secure.</Typography>
+            <Typography variant="body2" color="#8B6508">We do not store your card or UPI details.</Typography>
+          </Box>
+        </Box>
+
+        {/* 5. Features Strip */}
+        <Box sx={{ display: "flex", gap: 1, overflowX: "auto", pb: 1, mb: 3, "::-webkit-scrollbar": { display: "none" } }}>
+          <Paper elevation={0} sx={{ p: 1.5, border: "1px solid #E0E0E0", borderRadius: 2, display: "flex", alignItems: "center", gap: 1, minWidth: "160px" }}>
+            <VerifiedUserIcon color="success" />
+            <Box>
+              <Typography variant="caption" fontWeight="800" display="block">Secure Payment</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem" }}>256-bit SSL encryption</Typography>
+            </Box>
+          </Paper>
+          <Paper elevation={0} sx={{ p: 1.5, border: "1px solid #E0E0E0", borderRadius: 2, display: "flex", alignItems: "center", gap: 1, minWidth: "160px" }}>
+            <ShippingIcon color="success" />
+            <Box>
+              <Typography variant="caption" fontWeight="800" display="block">Fast Delivery</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem" }}>On time, every time</Typography>
+            </Box>
+          </Paper>
+          <Paper elevation={0} sx={{ p: 1.5, border: "1px solid #E0E0E0", borderRadius: 2, display: "flex", alignItems: "center", gap: 1, minWidth: "160px" }}>
+            <SupportIcon color="success" />
+            <Box>
+              <Typography variant="caption" fontWeight="800" display="block">24/7 Support</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.6rem" }}>We're here to help</Typography>
+            </Box>
+          </Paper>
+        </Box>
+
+        {/* 6. Offers & Discounts */}
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+            <Typography variant="subtitle2" fontWeight="800" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <LocalOfferIcon color="success" fontSize="small" /> Offers & Discounts
+            </Typography>
+            <Typography variant="caption" fontWeight="700" color="#2E7D32" sx={{ cursor: "pointer", display: "flex", alignItems: "center" }} onClick={() => setSnackbar({ open: true, message: "No other offers available right now.", severity: "info" })}>
+              View all offers <KeyboardArrowDownIcon sx={{ transform: "rotate(-90deg)", fontSize: 16 }} />
+            </Typography>
+          </Box>
+          <Paper elevation={0} sx={{ p: 2, border: "1px solid #E0E0E0", borderRadius: 2, bgcolor: "#FAFCFA", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Box sx={{ width: 40, height: 40, border: "1px dashed #2E7D32", borderRadius: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <LocalOfferIcon sx={{ color: "#2E7D32", fontSize: 20 }} />
+              </Box>
+              <Box>
+                <Typography variant="body2" fontWeight="700">Get ₹50 off on online payments</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  Use code: <Chip label="AGRO50" size="small" sx={{ height: 18, fontSize: "0.65rem", fontWeight: "bold", bgcolor: "#E6F4EA", color: "#2E7D32" }} />
+                </Typography>
+              </Box>
+            </Box>
+            <Typography
+              variant="subtitle2"
+              fontWeight="800"
+              color={couponApplied ? "error.main" : "#2E7D32"}
+              sx={{ cursor: "pointer" }}
+              onClick={() => {
+                if (!couponApplied) {
+                  setCouponApplied(true);
+                  setSnackbar({ open: true, message: "Coupon applied successfully!", severity: "success" });
+                } else {
+                  setCouponApplied(false);
+                  setSnackbar({ open: true, message: "Coupon removed.", severity: "info" });
                 }
-                onClick={handlePayment}
-                disabled={isProcessing}
-                sx={{
-                  py: 1.8,
-                  borderRadius: 3,
-                  fontSize: "1.2rem",
-                  fontWeight: "bold",
-                  bgcolor: "#2E7D32",
-                  boxShadow: "0 4px 12px rgba(46, 125, 50, 0.4)",
-                  "&:hover": {
-                    bgcolor: "#1B5E20",
-                    boxShadow: "0 6px 16px rgba(46, 125, 50, 0.6)",
-                    transform: "translateY(-1px)",
-                  },
-                }}
-              >
-                {isProcessing ? "Processing..." : `Pay ₹${total}`}
-              </Button>
-              <Typography
-                variant="caption"
-                display="block"
-                textAlign="center"
-                sx={{ mt: 1.5, color: "text.secondary" }}
-              >
-                <SecurityIcon
-                  sx={{ fontSize: 14, verticalAlign: "middle", mr: 0.5 }}
-                />
-                Secure SSL Payment. Your data is protected.
-              </Typography>
-            </Paper>
-
-            {/* Features Section */}
-            <Grid container spacing={2} sx={{ mt: { xs: 4, md: 8 } }}>
-              {features.map((feature, index) => (
-                <Grid item xs={12} md={4} key={index}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      textAlign: "center",
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 1,
-                      bgcolor: "white",
-                      borderRadius: 3,
-                      "&:hover": {
-                        transform: "translateY(-4px)",
-                        transition: "transform 0.2s ease-in-out",
-                        boxShadow: 2,
-                      },
-                    }}
-                  >
-                    {feature.icon}
-                    <Typography variant="h6">{feature.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {feature.description}
-                    </Typography>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          </Grid>
-        </Grid>
-
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={4000}
-          onClose={handleCloseSnackbar}
-          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-          sx={{ mb: isMobile ? "80px" : 0 }}
-        >
-          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+              }}
+            >
+              {couponApplied ? "Remove" : "Apply"}
+            </Typography>
+          </Paper>
+        </Box>
       </Container>
+
+      {/* 7. Bottom Sticky Action Bar */}
+      <Box
+        sx={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          p: 2,
+          pb: { xs: 12, md: 2 },
+          bgcolor: "white",
+          borderTop: "1px solid #E0E0E0",
+          boxShadow: "0 -8px 24px rgba(0,0,0,0.1)",
+          zIndex: 100,
+        }}
+      >
+        <Container maxWidth="md" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: 0 }}>
+          <Box>
+            <Typography variant="caption" color="text.secondary" display="block">Total Amount</Typography>
+            <Typography variant="h6" fontWeight="900" color="#1A202C" sx={{ lineHeight: 1 }}>₹{total.toFixed(2)}</Typography>
+            <Typography variant="caption" fontWeight="600" color="text.secondary">
+              You saved <span style={{ color: "#2E7D32" }}>₹{discount.toFixed(2)}</span>
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            disabled={isProcessing}
+            onClick={handlePayment}
+            sx={{
+              bgcolor: "#2E7D32",
+              color: "white",
+              borderRadius: 2,
+              px: { xs: 3, md: 6 },
+              py: 1.5,
+              textTransform: "none",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "none",
+              "&:hover": {
+                bgcolor: "#1B5E20",
+                boxShadow: "none"
+              },
+              "&.Mui-disabled": {
+                bgcolor: "#E0E0E0",
+                color: "#9E9E9E",
+              }
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              {isProcessing ? <CircularProgress size={16} color="inherit" /> : <LockIcon sx={{ fontSize: 16 }} />}
+              <Typography variant="subtitle1" fontWeight="800">
+                {isProcessing ? "Processing..." : `Pay ₹${total.toFixed(2)} Securely`}
+              </Typography>
+            </Box>
+            {!isProcessing && (
+              <Typography variant="caption" sx={{ fontSize: "0.6rem", opacity: 0.9, display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                <CheckCircleIcon sx={{ fontSize: 10 }} /> 100% Secure Payment
+              </Typography>
+            )}
+          </Button>
+        </Container>
+      </Box>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ mb: "100px" }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ borderRadius: 2, fontWeight: 600 }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

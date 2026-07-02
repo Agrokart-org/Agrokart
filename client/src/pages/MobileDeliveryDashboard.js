@@ -35,8 +35,27 @@ import {
   DialogTitle,
   Snackbar,
   Alert,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
 } from "@mui/material";
 import {
+  Language,
+  Map,
+  Security,
+  SupportAgent,
+  PrivacyTip,
+  AutoMode,
+  PersonOutline,
+  EmailOutlined,
+  PhoneOutlined,
+  TwoWheeler,
+  BadgeOutlined,
+  ConfirmationNumber,
   Dashboard as DashboardIcon,
   Timeline as HistoryIcon,
   AccountBalanceWallet as WalletIcon,
@@ -58,6 +77,7 @@ import {
   Map as MapIcon,
   Star,
   Menu as MenuIcon,
+  Store,
   ChevronRight,
   Home,
   DarkMode,
@@ -104,6 +124,31 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 const PURPLE_GRADIENT = "linear-gradient(135deg, #6A1B9A 0%, #4A148C 100%)";
 const AMBER_ACCENT = "#FFD740";
 
+// --- TRANSLATIONS ---
+const TRANSLATIONS = {
+  "English (US)": {
+    dashboard: "Home",
+    history: "History",
+    wallet: "Wallet",
+    profile: "Profile",
+    settings: "Settings"
+  },
+  "Hindi (हिंदी)": {
+    dashboard: "डैशबोर्ड",
+    history: "इतिहास",
+    wallet: "वॉलेट",
+    profile: "प्रोफ़ाइल",
+    settings: "सेटिंग्स"
+  },
+  "Marathi (मराठी)": {
+    dashboard: "डॅशबोर्ड",
+    history: "इतिहास",
+    wallet: "पाकीट",
+    profile: "प्रोफाईल",
+    settings: "सेटिंग्ज"
+  }
+};
+
 const MobileDeliveryDashboard = () => {
   const theme = useTheme();
   const { mode, toggleTheme } = useThemeContext(); // Get theme mode and toggle function
@@ -132,6 +177,27 @@ const MobileDeliveryDashboard = () => {
   const [demoCustomer, setDemoCustomer] = useState(null);
   const locationWatchId = useRef(null);
   const notificationTimeout = useRef(null);
+
+  // Settings State
+  const [snackbar, setSnackbar] = useState({ open: false, message: "" });
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [autoNavEnabled, setAutoNavEnabled] = useState(false);
+  const [languageDialogOpen, setLanguageDialogOpen] = useState(false);
+  const [language, setLanguage] = useState("English (US)");
+  const [navigationDialogOpen, setNavigationDialogOpen] = useState(false);
+  const [navigationApp, setNavigationApp] = useState("Google Maps");
+  const [securityDialogOpen, setSecurityDialogOpen] = useState(false);
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
+  
+  // Security PIN states
+  const [currentPin, setCurrentPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+
+  const handleSnackbar = (message) => setSnackbar({ open: true, message });
+
+  const t = (key) => TRANSLATIONS[language]?.[key] || TRANSLATIONS["English (US)"][key] || key;
 
   // Derived theme colors
   const isDark = mode === "dark";
@@ -659,132 +725,137 @@ const MobileDeliveryDashboard = () => {
   }, []);
 
   const renderDashboard = () => (
-    <Box sx={{ pb: 10 }}>
-      {/* Header */}
-      <AppBar
-        position="static"
-        elevation={0}
-        sx={{ 
-          background: PURPLE_GRADIENT,
-          pt: "env(safe-area-inset-top)", // Adjust for Vivo V20 notch
-        }}
-      >
-        <Toolbar sx={{ minHeight: 70 }}>
-          <IconButton edge="start" color="inherit" onClick={handleDrawerToggle}>
-            <MenuIcon />
-          </IconButton>
-          <Box sx={{ flexGrow: 1, ml: 1 }}>
-            <Typography variant="h6" fontWeight="bold">
-              Agrokart
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-              <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                Delivery Partner
+    <Box sx={{ pb: 10, bgcolor: "#F5F3FF", minHeight: "100vh" }}>
+      {/* Structured Purple Header */}
+      <Box sx={{ 
+        px: 2.5, 
+        pt: "calc(env(safe-area-inset-top) + 20px)", 
+        pb: 3, 
+        background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 100%)", // Deep Violet / Purple
+        borderBottom: "4px solid #8B5CF6", // Accent border
+      }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <IconButton edge="start" sx={{ color: "#ffffff" }} onClick={handleDrawerToggle}>
+              <MenuIcon />
+            </IconButton>
+            <Box>
+              <Typography variant="h6" fontWeight="700" sx={{ color: "#ffffff", lineHeight: 1.2 }}>
+                Hello, {user?.name?.split(" ")[0] || "Partner"}
               </Typography>
-              {gpsStatus === "active" ? (
-                <GpsFixed sx={{ fontSize: 14, color: "#00E676" }} />
-              ) : (
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    bgcolor: "rgba(255,0,0,0.2)",
-                    px: 0.5,
-                    borderRadius: 1,
-                  }}
-                >
-                  <LocationOn sx={{ fontSize: 14, color: "#FF5252" }} />
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "#FF5252",
-                      fontWeight: "bold",
-                      fontSize: "0.6rem",
-                    }}
-                  >
-                    GPS OFF
-                  </Typography>
-                </Box>
-              )}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                {gpsStatus === "active" ? (
+                  <Chip size="small" icon={<GpsFixed sx={{ fontSize: "14px !important", color: "#34D399 !important" }} />} label="GPS Active" sx={{ height: 20, fontSize: "0.65rem", fontWeight: 700, bgcolor: "rgba(52,211,153,0.15)", color: "#34D399", border: "1px solid rgba(52,211,153,0.3)", borderRadius: 1 }} />
+                ) : (
+                  <Chip size="small" icon={<LocationOn sx={{ fontSize: "14px !important", color: "#FCA5A5 !important" }} />} label="GPS Off" sx={{ height: 20, fontSize: "0.65rem", fontWeight: 700, bgcolor: "rgba(248,113,113,0.15)", color: "#FCA5A5", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 1 }} />
+                )}
+              </Box>
             </Box>
           </Box>
-
-          <IconButton color="inherit" sx={{ mr: 1 }}>
-            <Badge badgeContent={newOrderNotification ? 1 : 0} color="error">
-              <Notifications />
-            </Badge>
-          </IconButton>
-
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={1}
-            sx={{
-              bgcolor: "rgba(255,255,255,0.15)",
-              px: 2,
-              py: 0.5,
-              borderRadius: 20,
+          
+          <IconButton 
+            sx={{ 
+              color: "#ffffff", 
+              bgcolor: "rgba(255,255,255,0.1)", 
+              borderRadius: 1,
+              transition: "all 0.2s ease-in-out",
+              "&:hover": {
+                bgcolor: "rgba(255,255,255,0.2)",
+                transform: "translateY(-2px)"
+              },
+              "&:active": {
+                transform: "scale(0.92)"
+              },
+              ...(newOrderNotification && {
+                animation: "pulse 1.5s infinite"
+              })
             }}
           >
-            <Box
+            <Badge 
+              badgeContent={newOrderNotification ? 1 : 0} 
+              color="error"
               sx={{
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                bgcolor: isOnline ? "#00E676" : "#FF5252",
-                boxShadow: isOnline ? "0 0 10px #00E676" : "none",
+                "& .MuiBadge-badge": {
+                  boxShadow: "0 0 0 2px #4C1D95", // matches header background
+                }
               }}
-            />
-            <Typography
-              variant="button"
-              fontWeight="bold"
-              sx={{ fontSize: "0.75rem" }}
             >
-              {isOnline ? "ONLINE" : "OFFLINE"}
-            </Typography>
-            <Switch
-              size="small"
-              checked={isOnline}
-              onChange={handleOnlineToggle}
-              color="default"
-              sx={{
-                "& .MuiSwitch-track": { bgcolor: "rgba(255,255,255,0.5)" },
-              }}
-            />
-          </Stack>
-        </Toolbar>
-      </AppBar>
+              <Notifications sx={{ 
+                animation: newOrderNotification ? "ring 2s ease-in-out infinite" : "none",
+                "@keyframes ring": {
+                  "0%": { transform: "rotate(0)" },
+                  "10%": { transform: "rotate(15deg)" },
+                  "20%": { transform: "rotate(-10deg)" },
+                  "30%": { transform: "rotate(5deg)" },
+                  "40%": { transform: "rotate(-5deg)" },
+                  "50%": { transform: "rotate(0)" },
+                  "100%": { transform: "rotate(0)" }
+                },
+                "@keyframes pulse": {
+                  "0%": { boxShadow: "0 0 0 0 rgba(255,255,255,0.4)" },
+                  "70%": { boxShadow: "0 0 0 10px rgba(255,255,255,0)" },
+                  "100%": { boxShadow: "0 0 0 0 rgba(255,255,255,0)" }
+                }
+              }} />
+            </Badge>
+          </IconButton>
+        </Box>
+      </Box>
 
-      <Box sx={{ p: 2 }}>
-        {/* Offline State */}
+      <Box sx={{ px: 2, pt: 3 }}>
+        {/* Status Toggle Box */}
+        <Box sx={{ 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "space-between",
+          bgcolor: isOnline ? "#ECFDF5" : "#ffffff", 
+          border: isOnline ? "1px solid #10B981" : "1px solid #EDE9FE",
+          boxShadow: "0 2px 4px rgba(109, 40, 217, 0.05)",
+          p: 2, 
+          borderRadius: 1.5,
+          mb: 3
+        }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: isOnline ? "#10B981" : "#8B5CF6" }} />
+            <Box>
+              <Typography variant="subtitle2" sx={{ color: isOnline ? "#065F46" : "#4C1D95", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                {isOnline ? "Online" : "Offline"}
+              </Typography>
+              <Typography variant="caption" sx={{ color: isOnline ? "#047857" : "#6D28D9" }}>
+                {isOnline ? "Ready for orders" : "Not accepting orders"}
+              </Typography>
+            </Box>
+          </Box>
+          <Switch
+            checked={isOnline}
+            onChange={handleOnlineToggle}
+            sx={{
+              "& .MuiSwitch-switchBase.Mui-checked": { color: "#10B981" },
+              "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#10B981" },
+              "& .MuiSwitch-switchBase:not(.Mui-checked)": { color: "#8B5CF6" },
+              "& .MuiSwitch-track": { bgcolor: "#C4B5FD" },
+            }}
+          />
+        </Box>
+
+        {/* Offline State Alert */}
         <AnimatePresence>
           {!isOnline && (
             <MotionBox
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
+              style={{ marginBottom: "16px" }}
             >
-              <Card
-                sx={{
-                  bgcolor: isDark ? "rgba(244, 67, 54, 0.1)" : "#ffebee",
-                  color: "#c62828",
-                  mb: 3,
-                  borderRadius: 3,
-                  boxShadow: "none",
-                  border: "1px solid #ffcdd2",
-                }}
-              >
-                <CardContent
-                  sx={{ display: "flex", alignItems: "center", gap: 2 }}
-                >
-                  <Notifications sx={{ fontSize: 32 }} />
+              <Card sx={{ bgcolor: "#ffffff", borderRadius: 1.5, borderLeft: "4px solid #8B5CF6", borderTop: "1px solid #EDE9FE", borderRight: "1px solid #EDE9FE", borderBottom: "1px solid #EDE9FE", boxShadow: "0 2px 4px rgba(109, 40, 217, 0.05)" }}>
+                <CardContent sx={{ display: "flex", alignItems: "flex-start", gap: 2, p: "16px !important" }}>
+                  <LocalShipping sx={{ fontSize: 24, color: "#8B5CF6", mt: 0.5 }} />
                   <Box>
-                    <Typography variant="h6" fontWeight="bold">
-                      You are Offline
+                    <Typography variant="subtitle2" fontWeight="700" color="#4C1D95">
+                      You are currently offline
                     </Typography>
-                    <Typography variant="body2">
-                      Go online to start receiving assignments.
+                    <Typography variant="body2" color="#6D28D9" sx={{ mt: 0.5 }}>
+                      Toggle the switch above to connect to the network and start receiving assignments.
                     </Typography>
                   </Box>
                 </CardContent>
@@ -793,72 +864,50 @@ const MobileDeliveryDashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* Stats Cards */}
+        {/* Sharp Stats Cards with Purple Accents */}
         {isOnline && (
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={6}>
-              <Card
-                sx={{
-                  bgcolor: cardBg,
-                  color: textColor,
-                  p: 1,
-                  borderRadius: 3,
-                  boxShadow: isDark
-                    ? "0 4px 12px rgba(0,0,0,0.4)"
-                    : "0 4px 12px rgba(0,0,0,0.05)",
-                }}
-              >
-                <CardContent>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    fontWeight="bold"
-                  >
-                    TODAY'S EARNINGS
-                  </Typography>
-                  <Typography
-                    variant="h5"
-                    sx={{ color: isDark ? AMBER_ACCENT : "#6A1B9A" }}
-                    fontWeight="bold"
-                  >
-                    ₹{earnings.daily}
-                  </Typography>
-                  <Typography variant="caption" color="success.main">
-                    Today
-                  </Typography>
-                </CardContent>
-              </Card>
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Today's Overview
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <Card sx={{ borderRadius: 1.5, boxShadow: "0 2px 4px rgba(109, 40, 217, 0.05)", border: "1px solid #EDE9FE", bgcolor: "#ffffff" }}>
+                  <CardContent sx={{ p: "16px !important" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+                       <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: "#F5F3FF", display: "flex", alignItems: "center", justifyItems: "center" }}>
+                          <CurrencyRupee sx={{ color: "#8B5CF6", fontSize: 18, margin: "auto" }} />
+                       </Box>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: "#6D28D9", fontWeight: 600, display: "block", mb: 0.5 }}>
+                      EARNINGS
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: "#4C1D95", display: "flex", alignItems: "center" }}>
+                      <span style={{ color: "#8B5CF6", fontSize: "1.2rem", marginRight: "2px" }}>₹</span>
+                      {earnings.daily}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={6}>
+                <Card sx={{ borderRadius: 1.5, boxShadow: "0 2px 4px rgba(109, 40, 217, 0.05)", border: "1px solid #EDE9FE", bgcolor: "#ffffff" }}>
+                  <CardContent sx={{ p: "16px !important" }}>
+                     <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+                       <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: "#F5F3FF", display: "flex", alignItems: "center", justifyItems: "center" }}>
+                          <LocalShipping sx={{ color: "#8B5CF6", fontSize: 18, margin: "auto" }} />
+                       </Box>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: "#6D28D9", fontWeight: 600, display: "block", mb: 0.5 }}>
+                      DELIVERIES
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: "#4C1D95" }}>
+                      {earnings.todayDeliveries}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
-            <Grid item xs={6}>
-              <Card
-                sx={{
-                  bgcolor: cardBg,
-                  color: textColor,
-                  p: 1,
-                  borderRadius: 3,
-                  boxShadow: isDark
-                    ? "0 4px 12px rgba(0,0,0,0.4)"
-                    : "0 4px 12px rgba(0,0,0,0.05)",
-                }}
-              >
-                <CardContent>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    fontWeight="bold"
-                  >
-                    DELIVERIES
-                  </Typography>
-                  <Typography variant="h5" color="secondary" fontWeight="bold">
-                    {earnings.todayDeliveries}
-                  </Typography>
-                  <Typography variant="caption" color="success.main">
-                    Today
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+          </Box>
         )}
 
         {/* Active Assignment */}
@@ -1422,234 +1471,444 @@ const MobileDeliveryDashboard = () => {
   }, [value]);
 
   const renderHistory = () => (
-    <Box sx={{ p: 2 }}>
-      <AppBar position="static" elevation={0} color="transparent">
-        <Toolbar>
-          <IconButton edge="start" onClick={handleDrawerToggle} sx={{ color: textColor }}><MenuIcon /></IconButton>
-          <Typography variant="h6" fontWeight="bold" sx={{ flexGrow: 1, color: textColor }}>Delivery History</Typography>
-        </Toolbar>
-      </AppBar>
+    <Box sx={{ pb: 10, bgcolor: "#F9FAFB", minHeight: "100vh" }}>
+      {/* Premium Header */}
+      <Box sx={{ 
+        px: 2.5, 
+        pt: "calc(env(safe-area-inset-top) + 20px)", 
+        pb: 3, 
+        background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 100%)",
+        borderBottom: "4px solid #8B5CF6",
+        boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)"
+      }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <IconButton edge="start" sx={{ color: "#ffffff", bgcolor: "rgba(255,255,255,0.1)" }} onClick={handleDrawerToggle}>
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" fontWeight="700" sx={{ color: "#ffffff" }}>
+            Delivery History
+          </Typography>
+        </Box>
+      </Box>
 
-      {/* Summary Cards */}
-      <Grid container spacing={1.5} sx={{ mb: 2 }}>
-        {[
-          { label: "Completed", value: historyData.summary?.completedDeliveries || 0, color: "#2E7D32", bg: "#E8F5E9" },
-          { label: "Earnings", value: `₹${historyData.summary?.totalEarnings || 0}`, color: "#1565C0", bg: "#E3F2FD" },
-          { label: "Distance", value: `${historyData.summary?.totalDistance || 0} km`, color: "#E65100", bg: "#FFF3E0" },
-        ].map((s, i) => (
-          <Grid item xs={4} key={i}>
-            <Card sx={{ borderRadius: 3, bgcolor: isDark ? "#1e1e1e" : s.bg, textAlign: "center", p: 1.5, boxShadow: "none" }}>
-              <Typography variant="h6" fontWeight="900" color={s.color}>{s.value}</Typography>
-              <Typography variant="caption" color="text.secondary">{s.label}</Typography>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      <Box sx={{ px: 2, pt: 3 }}>
+        {/* Date Filter Segmented Control */}
+        <Box sx={{ 
+          display: "flex", 
+          bgcolor: "#E5E7EB", 
+          borderRadius: 1.5, 
+          p: 0.5, 
+          mb: 3,
+          overflowX: "auto",
+          "&::-webkit-scrollbar": { display: "none" }
+        }}>
+          {["all", "today", "week", "month"].map((f) => (
+            <Button
+              key={f}
+              onClick={() => { setHistoryFilter(f); fetchHistory(f); }}
+              disableElevation
+              sx={{
+                flex: 1,
+                minWidth: "auto",
+                px: 2,
+                py: 0.75,
+                borderRadius: 1,
+                textTransform: "capitalize",
+                fontWeight: historyFilter === f ? 700 : 600,
+                color: historyFilter === f ? "#ffffff" : "#6B7280",
+                bgcolor: historyFilter === f ? "#111827" : "transparent", // Almost black
+                boxShadow: historyFilter === f ? "0 4px 10px rgba(0,0,0,0.25)" : "none",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                "&:hover": { 
+                  bgcolor: historyFilter === f ? "#000000" : "rgba(0,0,0,0.05)",
+                  transform: historyFilter === f ? "scale(1.02)" : "none"
+                },
+                "&:active": {
+                  transform: "scale(0.95)"
+                }
+              }}
+            >
+              {f}
+            </Button>
+          ))}
+        </Box>
 
-      {/* Date Filter */}
-      <Stack direction="row" spacing={1} sx={{ mb: 2, overflowX: "auto", pb: 1 }}>
-        {["all", "today", "week", "month"].map((f) => (
-          <Chip
-            key={f}
-            label={f.charAt(0).toUpperCase() + f.slice(1)}
-            onClick={() => { setHistoryFilter(f); fetchHistory(f); }}
-            variant={historyFilter === f ? "filled" : "outlined"}
-            color={historyFilter === f ? "primary" : "default"}
-            sx={{ fontWeight: "bold" }}
-          />
-        ))}
-      </Stack>
+        {/* Summary KPIs */}
+        <Grid container spacing={1.5} sx={{ mb: 4 }}>
+          {[
+            { label: "Completed", value: historyData.summary?.completedDeliveries || 0, icon: <CheckCircle sx={{ fontSize: 16 }} />, color: "#10B981" },
+            { label: "Earnings", value: `₹${historyData.summary?.totalEarnings || 0}`, icon: <CurrencyRupee sx={{ fontSize: 16 }} />, color: "#8B5CF6" },
+            { label: "Distance", value: `${historyData.summary?.totalDistance || 0} km`, icon: <Directions sx={{ fontSize: 16 }} />, color: "#3B82F6" },
+          ].map((s, i) => (
+            <Grid item xs={4} key={i}>
+              <Card sx={{ 
+                borderRadius: 1.5, 
+                bgcolor: "#ffffff", 
+                border: "1px solid #E5E7EB", 
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center"
+              }}>
+                <CardContent sx={{ p: "12px !important", textAlign: "center" }}>
+                  <Box sx={{ color: s.color, mb: 0.5, display: "flex", justifyContent: "center" }}>{s.icon}</Box>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: "#111827", lineHeight: 1 }}>{s.value}</Typography>
+                  <Typography variant="caption" sx={{ color: "#6B7280", fontWeight: 600, fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: 0.5, mt: 0.5, display: "block" }}>{s.label}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
 
-      {historyLoading ? <LinearProgress sx={{ mb: 2 }} /> : null}
+        {historyLoading && <LinearProgress sx={{ mb: 2, borderRadius: 1, bgcolor: "#EDE9FE", "& .MuiLinearProgress-bar": { bgcolor: "#8B5CF6" } }} />}
 
-      {/* Delivery Cards */}
-      {historyData.deliveries?.length > 0 ? (
-        historyData.deliveries.map((d, i) => (
-          <Card key={i} sx={{ borderRadius: 3, mb: 1.5, bgcolor: cardBg, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                <Typography variant="subtitle2" fontWeight="bold" color={textColor}>
-                  #{d.order?.trackingNumber || "N/A"}
-                </Typography>
-                <Chip
-                  label={d.status}
-                  size="small"
-                  color={d.status === "delivered" ? "success" : d.status === "cancelled" ? "error" : "warning"}
-                  sx={{ fontWeight: "bold", textTransform: "capitalize" }}
-                />
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" color="text.secondary">
-                  {d.order?.createdAt ? new Date(d.order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "---"}
-                </Typography>
-                <Typography variant="subtitle2" fontWeight="bold" color="#2E7D32">
-                  +₹{Math.min(500, d.deliveryFee || 50)}
-                </Typography>
-              </Stack>
-              <Typography variant="caption" color="text.secondary">
-                {d.vendor?.vendorProfile?.businessName || d.vendor?.name || "Vendor"} → Customer
-              </Typography>
-            </CardContent>
-          </Card>
-        ))
-      ) : !historyLoading ? (
-        <Card sx={{ borderRadius: 3, boxShadow: "none", border: "1px solid #eee", p: 4, textAlign: "center", bgcolor: cardBg }}>
-          <Typography color="text.secondary">No delivery history yet</Typography>
-        </Card>
-      ) : null}
+        {/* Delivery Cards */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Recent Activity
+        </Typography>
+
+        {historyData.deliveries?.length > 0 ? (
+          <Stack spacing={1.5}>
+            {historyData.deliveries.map((d, i) => {
+              const isDelivered = d.status === "delivered";
+              const isCancelled = d.status === "cancelled";
+              return (
+                <Card 
+                  key={i} 
+                  sx={{ 
+                    borderRadius: 1.5, 
+                    bgcolor: "#ffffff", 
+                    border: "1px solid #E5E7EB",
+                    borderLeft: `4px solid ${isDelivered ? "#10B981" : isCancelled ? "#EF4444" : "#F59E0B"}`,
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                  }}
+                >
+                  <CardContent sx={{ p: "16px !important" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: "#6B7280", fontWeight: 600, display: "block", mb: 0.2 }}>
+                          ORDER ID
+                        </Typography>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#111827" }}>
+                          #{d.order?.trackingNumber || (d.order?._id ? d.order._id.slice(-6).toUpperCase() : "N/A")}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={d.status}
+                        size="small"
+                        sx={{ 
+                          height: 22, 
+                          borderRadius: 1,
+                          fontSize: "0.65rem", 
+                          fontWeight: 700, 
+                          textTransform: "uppercase",
+                          bgcolor: isDelivered ? "#ECFDF5" : isCancelled ? "#FEF2F2" : "#FFFBEB",
+                          color: isDelivered ? "#059669" : isCancelled ? "#DC2626" : "#D97706",
+                          border: `1px solid ${isDelivered ? "#A7F3D0" : isCancelled ? "#FECACA" : "#FDE68A"}`
+                        }}
+                      />
+                    </Box>
+                    
+                    <Divider sx={{ my: 1.5, borderColor: "#F3F4F6" }} />
+                    
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: "#6B7280", display: "flex", alignItems: "center", gap: 0.5, fontWeight: 500 }}>
+                          <CalendarToday sx={{ fontSize: 12 }} /> 
+                          {d.order?.createdAt ? new Date(d.order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "---"}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#4B5563", display: "flex", alignItems: "center", gap: 0.5, mt: 0.5, fontWeight: 600 }}>
+                          <Store sx={{ fontSize: 12, color: "#8B5CF6" }} /> 
+                          {d.vendor?.vendorProfile?.businessName || d.vendor?.name || "Vendor"}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ textAlign: "right" }}>
+                        <Typography variant="caption" sx={{ color: "#6B7280", fontWeight: 600, display: "block" }}>
+                          FEE
+                        </Typography>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "#059669" }}>
+                          +₹{Math.min(500, d.deliveryFee || 50)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </Stack>
+        ) : !historyLoading ? (
+          <Box sx={{ textAlign: "center", py: 6, px: 2, bgcolor: "#ffffff", borderRadius: 1.5, border: "1px dashed #D1D5DB" }}>
+            <Box sx={{ width: 64, height: 64, borderRadius: "50%", bgcolor: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", mx: "auto", mb: 2 }}>
+              <HistoryIcon sx={{ fontSize: 32, color: "#9CA3AF" }} />
+            </Box>
+            <Typography variant="subtitle1" fontWeight="700" color="#374151" gutterBottom>
+              No History Found
+            </Typography>
+            <Typography variant="body2" color="#6B7280">
+              You haven't completed any deliveries for the selected time period yet.
+            </Typography>
+          </Box>
+        ) : null}
+      </Box>
     </Box>
   );
 
   const renderWallet = () => (
-    <Box sx={{ p: 2 }}>
-      <AppBar position="static" elevation={0} color="transparent">
-        <Toolbar>
-          <IconButton edge="start" onClick={handleDrawerToggle} sx={{ color: textColor }}><MenuIcon /></IconButton>
-          <Typography variant="h6" fontWeight="bold" sx={{ flexGrow: 1, color: textColor }}>Wallet</Typography>
-        </Toolbar>
-      </AppBar>
-
-      {/* Account Frozen Banner */}
-      {cashData.isAccountFrozen && (
-        <Card sx={{ bgcolor: "#FFEBEE", borderRadius: 3, p: 2, mb: 2, border: "2px solid #EF5350" }}>
-          <Typography variant="subtitle2" fontWeight="bold" color="error">⚠️ Account Frozen</Typography>
-          <Typography variant="body2" color="error.dark">
-            {cashData.frozenReason || "Cash collection limit exceeded. Please deposit immediately."}
-          </Typography>
-        </Card>
-      )}
-
-      {/* Total Balance Card */}
-      <Card sx={{
-        background: PURPLE_GRADIENT, color: "white", borderRadius: 4, p: 3, mb: 2,
-        boxShadow: isDark ? "0 8px 24px rgba(106,27,154,0.4)" : "0 8px 24px rgba(33,150,243,0.3)",
+    <Box sx={{ pb: 10, bgcolor: "#F9FAFB", minHeight: "100vh" }}>
+      {/* Premium Header */}
+      <Box sx={{ 
+        px: 2.5, 
+        pt: "calc(env(safe-area-inset-top) + 20px)", 
+        pb: 3, 
+        background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 100%)",
+        borderBottom: "4px solid #8B5CF6",
+        boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)"
       }}>
-        <Typography variant="caption" sx={{ opacity: 0.8 }}>TOTAL BALANCE</Typography>
-        <Typography variant="h3" fontWeight="bold" sx={{ my: 1, color: isDark ? AMBER_ACCENT : "white" }}>
-          ₹{earnings.monthly}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <IconButton edge="start" sx={{ color: "#ffffff", bgcolor: "rgba(255,255,255,0.1)" }} onClick={handleDrawerToggle}>
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" fontWeight="700" sx={{ color: "#ffffff" }}>
+            Wallet
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box sx={{ px: 2, pt: 3 }}>
+        {/* Account Frozen Banner */}
+        <AnimatePresence>
+          {cashData.isAccountFrozen && (
+            <MotionBox initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} sx={{ mb: 3 }}>
+              <Card sx={{ bgcolor: "#FEF2F2", borderRadius: 1.5, borderLeft: "4px solid #EF4444", borderTop: "1px solid #FCA5A5", borderRight: "1px solid #FCA5A5", borderBottom: "1px solid #FCA5A5", boxShadow: "none" }}>
+                <CardContent sx={{ p: "16px !important", display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+                  <Box sx={{ color: "#EF4444", mt: 0.5 }}>⚠️</Box>
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight="700" color="#991B1B">Account Frozen</Typography>
+                    <Typography variant="body2" color="#B91C1C" sx={{ mt: 0.5 }}>
+                      {cashData.frozenReason || "Cash collection limit exceeded. Please deposit immediately to unfreeze your account."}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </MotionBox>
+          )}
+        </AnimatePresence>
+
+        {/* Total Balance Card (FinTech Style) */}
+        <Card sx={{
+          background: "linear-gradient(135deg, #111827 0%, #374151 100%)", 
+          color: "white", 
+          borderRadius: 1.5, 
+          p: 3, 
+          mb: 3,
+          boxShadow: "0 10px 20px -5px rgba(0,0,0,0.3)",
+          position: "relative",
+          overflow: "hidden"
+        }}>
+          {/* Decorative elements */}
+          <Box sx={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+          <Box sx={{ position: "absolute", bottom: -20, right: 40, width: 60, height: 60, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+          
+          <Box sx={{ position: "relative", zIndex: 1 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+              <Typography variant="caption" sx={{ color: "#9CA3AF", fontWeight: 700, letterSpacing: 1 }}>TOTAL EARNINGS</Typography>
+              <WalletIcon sx={{ color: "#6B7280" }} />
+            </Box>
+            <Typography variant="h3" fontWeight="800" sx={{ mb: 3, color: "#ffffff", display: "flex", alignItems: "center" }}>
+              <span style={{ color: "#9CA3AF", fontSize: "1.8rem", marginRight: "4px" }}>₹</span>
+              {earnings.monthly}
+            </Typography>
+            <Button variant="contained" disableElevation sx={{
+              bgcolor: "#ffffff", color: "#111827",
+              fontWeight: 700, borderRadius: 1, px: 3,
+              "&:hover": { bgcolor: "#F3F4F6" }
+            }}>
+              Withdraw Funds
+            </Button>
+          </Box>
+        </Card>
+
+        {/* Cash Collection Card (Uber-style) */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Cash Collection
         </Typography>
-        <Button variant="contained" sx={{
-          bgcolor: isDark ? "#424242" : "white", color: isDark ? "white" : "#6A1B9A",
-          fontWeight: "bold", mt: 1, borderRadius: 2,
-        }}>Withdraw</Button>
-      </Card>
+        <Card sx={{ borderRadius: 1.5, mb: 4, bgcolor: "#ffffff", border: "1px solid #E5E7EB", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+          <CardContent sx={{ p: "20px !important" }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#F0FDF4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <CurrencyRupee sx={{ color: "#16A34A", fontSize: 18 }} />
+                </Box>
+                <Typography variant="subtitle2" fontWeight="700" color="#111827">Cash On Hand</Typography>
+              </Box>
+              <Chip
+                label={cashData.isOverLimit ? "OVER LIMIT" : "WITHIN LIMIT"}
+                size="small"
+                sx={{ 
+                  height: 22, fontSize: "0.65rem", fontWeight: 700, borderRadius: 1,
+                  bgcolor: cashData.isOverLimit ? "#FEF2F2" : "#F0FDF4",
+                  color: cashData.isOverLimit ? "#DC2626" : "#16A34A",
+                  border: `1px solid ${cashData.isOverLimit ? "#FECACA" : "#BBF7D0"}`
+                }}
+              />
+            </Stack>
 
-      {/* Cash Collection Card (Uber-style ₹5000 limit) */}
-      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg, overflow: "hidden" }}>
-        <CardContent>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-            <Typography variant="subtitle1" fontWeight="bold" color={textColor}>💵 Cash On Hand</Typography>
-            <Chip
-              label={cashData.isOverLimit ? "⚠️ Over Limit" : "Within Limit"}
-              size="small"
-              color={cashData.isOverLimit ? "error" : "success"}
-              sx={{ fontWeight: "bold" }}
-            />
-          </Stack>
-
-          <Typography variant="h4" fontWeight="900" color={cashData.isOverLimit ? "#D32F2F" : "#2E7D32"}>
-            ₹{cashData.currentAmount || 0}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Limit: ₹{cashData.limit || 5000}
-          </Typography>
-
-          {/* Progress Bar */}
-          <LinearProgress
-            variant="determinate"
-            value={Math.min(100, ((cashData.currentAmount || 0) / (cashData.limit || 5000)) * 100)}
-            sx={{
-              mt: 1.5, height: 10, borderRadius: 5,
-              bgcolor: isDark ? "#333" : "#eee",
-              "& .MuiLinearProgress-bar": {
-                borderRadius: 5,
-                bgcolor: (cashData.currentAmount || 0) >= 4000 ? "#D32F2F" : (cashData.currentAmount || 0) >= 3000 ? "#FF9800" : "#4CAF50",
-              },
-            }}
-          />
-
-          {/* Timer if over limit */}
-          {cashData.hoursRemaining !== null && cashData.hoursRemaining !== undefined && (
-            <Card sx={{ mt: 2, bgcolor: "#FFF3E0", borderRadius: 2, p: 1.5 }}>
-              <Typography variant="body2" fontWeight="bold" color="#E65100">
-                ⏱ {cashData.hoursRemaining}h remaining to deposit
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="h4" fontWeight="800" color={cashData.isOverLimit ? "#DC2626" : "#111827"}>
+                ₹{cashData.currentAmount || 0}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Account will freeze if not deposited within 24 hours
+              <Typography variant="caption" color="#6B7280" fontWeight="600">
+                Limit: ₹{cashData.limit || 5000}
               </Typography>
-            </Card>
-          )}
-
-          <Button
-            fullWidth variant="contained" color="warning"
-            disabled={!cashData.currentAmount || cashData.currentAmount === 0}
-            onClick={() => setDepositDialogOpen(true)}
-            sx={{ mt: 2, borderRadius: 2, fontWeight: "bold", textTransform: "none" }}
-          >
-            Deposit to Bank Account
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Bank Account Section */}
-      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
-        <CardContent>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-            <Typography variant="subtitle1" fontWeight="bold" color={textColor}>🏦 Bank Account</Typography>
-            <Chip
-              label={bankDetails.isLinked ? "Linked ✓" : "Not Linked"}
-              size="small"
-              color={bankDetails.isLinked ? "success" : "default"}
-              sx={{ fontWeight: "bold" }}
-            />
-          </Stack>
-
-          {bankDetails.isLinked && !showBankForm ? (
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                {bankDetails.bankName} • ****{bankDetails.accountNumber?.slice(-4)}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {bankDetails.accountHolderName} • IFSC: {bankDetails.ifscCode}
-              </Typography>
-              <Button size="small" onClick={() => setShowBankForm(true)} sx={{ mt: 1 }}>
-                Update
-              </Button>
             </Box>
-          ) : (
-            <Box>
-              <TextField
-                fullWidth size="small" label="Account Number" value={bankForm.accountNumber}
-                onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
-                sx={{ mb: 1.5 }}
+
+            {/* Progress Bar */}
+            <LinearProgress
+              variant="determinate"
+              value={Math.min(100, ((cashData.currentAmount || 0) / (cashData.limit || 5000)) * 100)}
+              sx={{
+                height: 8, borderRadius: 1,
+                bgcolor: "#F3F4F6",
+                "& .MuiLinearProgress-bar": {
+                  borderRadius: 1,
+                  bgcolor: (cashData.currentAmount || 0) >= 4000 ? "#DC2626" : (cashData.currentAmount || 0) >= 3000 ? "#F59E0B" : "#10B981",
+                },
+              }}
+            />
+
+            {/* Timer if over limit */}
+            {cashData.hoursRemaining !== null && cashData.hoursRemaining !== undefined && (
+              <Box sx={{ mt: 2, bgcolor: "#FFFBEB", borderLeft: "3px solid #F59E0B", borderRadius: 1, p: 1.5 }}>
+                <Typography variant="body2" fontWeight="700" color="#B45309" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <AccessTime sx={{ fontSize: 16 }} /> {cashData.hoursRemaining}h remaining
+                </Typography>
+                <Typography variant="caption" color="#92400E" sx={{ mt: 0.5, display: "block" }}>
+                  Deposit cash within {cashData.hoursRemaining} hours to prevent account freezing.
+                </Typography>
+              </Box>
+            )}
+
+            <Button
+              fullWidth variant="contained" disableElevation
+              disabled={!cashData.currentAmount || cashData.currentAmount === 0}
+              onClick={() => setDepositDialogOpen(true)}
+              sx={{ 
+                mt: 3, borderRadius: 1, fontWeight: 700, py: 1.2,
+                bgcolor: "#111827",
+                "&:hover": { bgcolor: "#374151" },
+                "&.Mui-disabled": { bgcolor: "#F3F4F6", color: "#9CA3AF" }
+              }}
+            >
+              Deposit to Bank
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Bank Account Section */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Linked Bank Account
+        </Typography>
+        <Card sx={{ borderRadius: 1.5, mb: 4, bgcolor: "#ffffff", border: "1px solid #E5E7EB", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+          <CardContent sx={{ p: "20px !important" }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <WalletIcon sx={{ color: "#4B5563", fontSize: 18 }} />
+                </Box>
+                <Typography variant="subtitle2" fontWeight="700" color="#111827">Account Details</Typography>
+              </Box>
+              <Chip
+                label={bankDetails.isLinked ? "LINKED" : "UNLINKED"}
+                size="small"
+                sx={{ 
+                  height: 22, fontSize: "0.65rem", fontWeight: 700, borderRadius: 1,
+                  bgcolor: bankDetails.isLinked ? "#ECFDF5" : "#F3F4F6",
+                  color: bankDetails.isLinked ? "#059669" : "#6B7280",
+                  border: `1px solid ${bankDetails.isLinked ? "#A7F3D0" : "#D1D5DB"}`
+                }}
               />
-              <TextField
-                fullWidth size="small" label="IFSC Code" value={bankForm.ifscCode}
-                onChange={(e) => setBankForm({ ...bankForm, ifscCode: e.target.value })}
-                sx={{ mb: 1.5 }}
-              />
-              <TextField
-                fullWidth size="small" label="Account Holder Name" value={bankForm.accountHolderName}
-                onChange={(e) => setBankForm({ ...bankForm, accountHolderName: e.target.value })}
-                sx={{ mb: 1.5 }}
-              />
-              <TextField
-                fullWidth size="small" label="Bank Name" value={bankForm.bankName}
-                onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
-                sx={{ mb: 1.5 }}
-              />
-              <Stack direction="row" spacing={1}>
-                {showBankForm && (
-                  <Button variant="outlined" onClick={() => setShowBankForm(false)}>Cancel</Button>
-                )}
-                <Button variant="contained" onClick={handleLinkBank} sx={{ fontWeight: "bold" }}>
-                  {bankDetails.isLinked ? "Update Account" : "Link Account"}
+            </Stack>
+
+            {bankDetails.isLinked && !showBankForm ? (
+              <Box sx={{ bgcolor: "#F9FAFB", p: 2, borderRadius: 1, border: "1px solid #F3F4F6" }}>
+                <Typography variant="subtitle2" fontWeight="700" color="#111827" sx={{ mb: 0.5 }}>
+                  {bankDetails.bankName}
+                </Typography>
+                <Typography variant="body2" color="#4B5563" sx={{ letterSpacing: 1, mb: 0.5 }}>
+                  •••• •••• •••• {bankDetails.accountNumber?.slice(-4) || "XXXX"}
+                </Typography>
+                <Typography variant="caption" color="#6B7280" sx={{ display: "block", mb: 1 }}>
+                  {bankDetails.accountHolderName} • IFSC: {bankDetails.ifscCode}
+                </Typography>
+                <Button 
+                  size="small" 
+                  onClick={() => setShowBankForm(true)} 
+                  sx={{ fontWeight: 700, color: "#6D28D9", p: 0, "&:hover": { bgcolor: "transparent", color: "#4C1D95" } }}
+                >
+                  Edit Details
                 </Button>
-              </Stack>
-            </Box>
-          )}
-        </CardContent>
-      </Card>
+              </Box>
+            ) : (
+              <Box component="form" sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="bank-name-label" sx={{ "&.Mui-focused": { color: "#6D28D9" } }}>Select Bank</InputLabel>
+                  <Select
+                    labelId="bank-name-label"
+                    value={bankForm.bankName}
+                    label="Select Bank"
+                    onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
+                    sx={{
+                      borderRadius: 1,
+                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#6D28D9" }
+                    }}
+                  >
+                    {[
+                      "State Bank of India",
+                      "HDFC Bank",
+                      "ICICI Bank",
+                      "Axis Bank",
+                      "Kotak Mahindra Bank",
+                      "Punjab National Bank",
+                      "Bank of Baroda",
+                      "IndusInd Bank",
+                      "Yes Bank",
+                      "Union Bank of India"
+                    ].map((bank) => (
+                      <MenuItem key={bank} value={bank}>{bank}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <TextField
+                  fullWidth size="small" label="Account Number" value={bankForm.accountNumber}
+                  onChange={(e) => setBankForm({ ...bankForm, accountNumber: e.target.value })}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1, "&.Mui-focused fieldset": { borderColor: "#6D28D9" } }, "& .MuiInputLabel-root.Mui-focused": { color: "#6D28D9" } }}
+                />
+                <TextField
+                  fullWidth size="small" label="IFSC Code" value={bankForm.ifscCode}
+                  onChange={(e) => setBankForm({ ...bankForm, ifscCode: e.target.value })}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1, "&.Mui-focused fieldset": { borderColor: "#6D28D9" } }, "& .MuiInputLabel-root.Mui-focused": { color: "#6D28D9" } }}
+                />
+                <TextField
+                  fullWidth size="small" label="Account Holder Name" value={bankForm.accountHolderName}
+                  onChange={(e) => setBankForm({ ...bankForm, accountHolderName: e.target.value })}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1, "&.Mui-focused fieldset": { borderColor: "#6D28D9" } }, "& .MuiInputLabel-root.Mui-focused": { color: "#6D28D9" } }}
+                />
+
+                <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
+                  {showBankForm && (
+                    <Button variant="outlined" onClick={() => setShowBankForm(false)} sx={{ borderRadius: 1, fontWeight: 700, color: "#4B5563", borderColor: "#D1D5DB", flex: 1, "&:hover": { bgcolor: "#F9FAFB" } }}>Cancel</Button>
+                  )}
+                  <Button variant="contained" disableElevation onClick={handleLinkBank} sx={{ borderRadius: 1, fontWeight: 700, bgcolor: "#6D28D9", flex: 2, "&:hover": { bgcolor: "#4C1D95" } }}>
+                    {bankDetails.isLinked ? "Save Changes" : "Link Account"}
+                  </Button>
+                </Stack>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Box>
 
       {/* Deposit Dialog */}
       <Dialog open={depositDialogOpen} onClose={() => setDepositDialogOpen(false)}
@@ -1680,210 +1939,413 @@ const MobileDeliveryDashboard = () => {
   );
 
   const renderProfile = () => (
-    <Box sx={{ p: 2 }}>
-      <AppBar position="static" elevation={0} color="transparent">
-        <Toolbar>
-          <IconButton edge="start" onClick={handleDrawerToggle} sx={{ color: textColor }}><MenuIcon /></IconButton>
-          <Typography variant="h6" fontWeight="bold" sx={{ flexGrow: 1, color: textColor }}>Profile</Typography>
-        </Toolbar>
-      </AppBar>
-
-      {/* Profile Header Card */}
-      <Card sx={{
-        background: PURPLE_GRADIENT, borderRadius: 4, p: 3, mb: 2, color: "white", textAlign: "center",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+    <Box sx={{ pb: 10, bgcolor: "#F9FAFB", minHeight: "100vh" }}>
+      {/* Premium Header */}
+      <Box sx={{ 
+        px: 2.5, 
+        pt: "calc(env(safe-area-inset-top) + 20px)", 
+        pb: 4, 
+        background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 100%)",
+        borderBottom: "4px solid #8B5CF6",
       }}>
-        <Avatar
-          src={user?.avatar}
-          sx={{
-            width: 90, height: 90, margin: "0 auto", mb: 1.5,
-            border: `4px solid ${AMBER_ACCENT}`, boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-          }}
-        />
-        <Typography variant="h5" fontWeight="bold">{user?.name || "Delivery Partner"}</Typography>
-        <Typography variant="body2" sx={{ opacity: 0.8, mb: 1 }}>{user?.email}</Typography>
-        <Stack direction="row" spacing={1} justifyContent="center">
-          <Chip
-            label="DELIVERY PARTNER"
-            size="small"
-            sx={{ bgcolor: AMBER_ACCENT, color: "black", fontWeight: "bold" }}
-          />
-          <Chip
-            label={user?.deliveryProfile?.verificationStatus === "verified" ? "✓ Verified" : "⏳ Pending"}
-            size="small"
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <IconButton edge="start" sx={{ color: "#ffffff", bgcolor: "rgba(255,255,255,0.1)" }} onClick={handleDrawerToggle}>
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" fontWeight="700" sx={{ color: "#ffffff" }}>
+            Profile
+          </Typography>
+        </Box>
+      </Box>
+
+      <Box sx={{ px: 2, pt: 0, mt: -3 }}>
+        {/* Profile Header Card */}
+        <Card sx={{
+          background: "linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)", 
+          borderRadius: 1.5, p: 3, mb: 3, textAlign: "center",
+          boxShadow: "0 8px 24px rgba(76, 29, 149, 0.25)", border: "none",
+          position: "relative", overflow: "hidden"
+        }}>
+          {/* Subtle background decoration */}
+          <Box sx={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+          
+          <Avatar
+            variant="rounded"
+            src={user?.avatar}
             sx={{
-              bgcolor: user?.deliveryProfile?.verificationStatus === "verified" ? "#4CAF50" : "#FF9800",
-              color: "white", fontWeight: "bold",
+              width: 80, height: 80, margin: "0 auto", mb: 2,
+              borderRadius: 1.5,
+              border: "3px solid rgba(255,255,255,0.5)", 
+              bgcolor: "rgba(255,255,255,0.2)",
+              color: "#ffffff",
+              backdropFilter: "blur(10px)"
             }}
-          />
-        </Stack>
-      </Card>
+          >
+            <PersonOutline sx={{ fontSize: 40 }} />
+          </Avatar>
+          <Typography variant="h5" fontWeight="800" color="#ffffff">{user?.name || "Delivery Partner"}</Typography>
+          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mb: 2, fontWeight: 500 }}>{user?.email}</Typography>
+          
+          <Stack direction="row" spacing={1} justifyContent="center">
+            <Chip
+              label="DELIVERY PARTNER"
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "#ffffff", fontWeight: 700, borderRadius: 1, letterSpacing: 0.5, border: "1px solid rgba(255,255,255,0.3)" }}
+            />
+            <Chip
+              label={user?.deliveryProfile?.verificationStatus === "verified" ? "VERIFIED" : "PENDING"}
+              size="small"
+              sx={{
+                bgcolor: user?.deliveryProfile?.verificationStatus === "verified" ? "rgba(22, 163, 74, 0.8)" : "rgba(202, 138, 4, 0.8)",
+                color: "#ffffff", 
+                fontWeight: 700, borderRadius: 1, letterSpacing: 0.5,
+                border: "1px solid rgba(255,255,255,0.3)"
+              }}
+            />
+          </Stack>
+        </Card>
 
-      {/* Performance Stats */}
-      <Grid container spacing={1.5} sx={{ mb: 2 }}>
-        {[
-          { label: "Deliveries", value: user?.deliveryProfile?.totalDeliveries || 0, color: "#1565C0", bg: "#E3F2FD" },
-          { label: "Rating", value: `${user?.deliveryProfile?.rating?.average?.toFixed(1) || "5.0"} ⭐`, color: "#E65100", bg: "#FFF3E0" },
-          { label: "Success", value: `${user?.deliveryProfile?.successRate || 100}%`, color: "#2E7D32", bg: "#E8F5E9" },
-          { label: "Earnings", value: `₹${earnings.monthly || 0}`, color: "#6A1B9A", bg: "#F3E5F5" },
-        ].map((s, i) => (
-          <Grid item xs={6} key={i}>
-            <Card sx={{ borderRadius: 3, bgcolor: isDark ? "#1e1e1e" : s.bg, textAlign: "center", p: 2, boxShadow: "none" }}>
-              <Typography variant="h6" fontWeight="900" color={s.color}>{s.value}</Typography>
-              <Typography variant="caption" color="text.secondary">{s.label}</Typography>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+        {/* Performance Stats */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Performance Overview
+        </Typography>
+        <Grid container spacing={1.5} sx={{ mb: 3 }}>
+          {[
+            { label: "Deliveries", value: user?.deliveryProfile?.totalDeliveries || 0, color: "#2563EB", bg: "#EFF6FF", border: "#BFDBFE" },
+            { label: "Rating", value: `${user?.deliveryProfile?.rating?.average?.toFixed(1) || "5.0"} ⭐`, color: "#D97706", bg: "#FEF3C7", border: "#FDE68A" },
+            { label: "Success", value: `${user?.deliveryProfile?.successRate || 100}%`, color: "#16A34A", bg: "#DCFCE7", border: "#BBF7D0" },
+            { label: "Earnings", value: `₹${earnings.monthly || 0}`, color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" },
+          ].map((s, i) => (
+            <Grid item xs={6} key={i}>
+              <Card sx={{ 
+                borderRadius: 1.5, bgcolor: isDark ? "#1e1e1e" : s.bg, 
+                border: `1px solid ${s.border}`,
+                textAlign: "center", p: 2, boxShadow: "none" 
+              }}>
+                <Typography variant="h5" fontWeight="900" color={s.color}>{s.value}</Typography>
+                <Typography variant="caption" fontWeight="700" color={s.color} sx={{ opacity: 0.8, textTransform: "uppercase" }}>{s.label}</Typography>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
 
-      {/* Personal Info */}
-      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
-        <CardContent>
-          <Typography variant="subtitle1" fontWeight="bold" color={textColor} sx={{ mb: 1.5 }}>Personal Information</Typography>
+        {/* Personal Info */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Personal Details
+        </Typography>
+        <Card sx={{ borderRadius: 1.5, mb: 3, bgcolor: "#ffffff", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
           <List disablePadding>
             {[
-              { icon: "👤", label: "Name", value: user?.name },
-              { icon: "📧", label: "Email", value: user?.email },
-              { icon: "📱", label: "Phone", value: user?.phone },
+              { icon: <PersonOutline sx={{ color: "#6B7280" }} />, label: "Full Name", value: user?.name },
+              { icon: <EmailOutlined sx={{ color: "#6B7280" }} />, label: "Email Address", value: user?.email },
+              { icon: <PhoneOutlined sx={{ color: "#6B7280" }} />, label: "Mobile Number", value: user?.phone },
             ].map((item, i) => (
-              <ListItem key={i} disablePadding sx={{ py: 0.5 }}>
-                <ListItemText
-                  primary={<Typography variant="caption" color="text.secondary">{item.icon} {item.label}</Typography>}
-                  secondary={<Typography variant="body2" fontWeight="bold" color={textColor}>{item.value || "Not set"}</Typography>}
-                />
-              </ListItem>
+              <React.Fragment key={i}>
+                <ListItem sx={{ py: 1.5, px: 2 }}>
+                  <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" fontWeight="600" color="#6B7280">{item.label}</Typography>}
+                    secondary={<Typography variant="body2" fontWeight="700" color="#111827">{item.value || "Not set"}</Typography>}
+                  />
+                </ListItem>
+                {i < 2 && <Divider />}
+              </React.Fragment>
             ))}
           </List>
-        </CardContent>
-      </Card>
+        </Card>
 
-      {/* Vehicle Details */}
-      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
-        <CardContent>
-          <Typography variant="subtitle1" fontWeight="bold" color={textColor} sx={{ mb: 1.5 }}>Vehicle Details</Typography>
+        {/* Vehicle Details */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Vehicle Information
+        </Typography>
+        <Card sx={{ borderRadius: 1.5, mb: 3, bgcolor: "#ffffff", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
           <List disablePadding>
             {[
-              { icon: "🏍️", label: "Vehicle", value: user?.deliveryProfile?.vehicleType?.toUpperCase() },
-              { icon: "🔢", label: "Number", value: user?.deliveryProfile?.vehicleNumber },
-              { icon: "📋", label: "License", value: user?.deliveryProfile?.licenseNumber },
+              { icon: <TwoWheeler sx={{ color: "#6B7280" }} />, label: "Vehicle Type", value: user?.deliveryProfile?.vehicleType?.toUpperCase() },
+              { icon: <ConfirmationNumber sx={{ color: "#6B7280" }} />, label: "Registration Number", value: user?.deliveryProfile?.vehicleNumber },
+              { icon: <BadgeOutlined sx={{ color: "#6B7280" }} />, label: "Driving License", value: user?.deliveryProfile?.licenseNumber },
             ].map((item, i) => (
-              <ListItem key={i} disablePadding sx={{ py: 0.5 }}>
-                <ListItemText
-                  primary={<Typography variant="caption" color="text.secondary">{item.icon} {item.label}</Typography>}
-                  secondary={<Typography variant="body2" fontWeight="bold" color={textColor}>{item.value || "Not provided"}</Typography>}
-                />
-              </ListItem>
+              <React.Fragment key={i}>
+                <ListItem sx={{ py: 1.5, px: 2 }}>
+                  <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                  <ListItemText
+                    primary={<Typography variant="caption" fontWeight="600" color="#6B7280">{item.label}</Typography>}
+                    secondary={<Typography variant="body2" fontWeight="700" color="#111827">{item.value || "Not provided"}</Typography>}
+                  />
+                </ListItem>
+                {i < 2 && <Divider />}
+              </React.Fragment>
             ))}
           </List>
-        </CardContent>
-      </Card>
+        </Card>
 
-      {/* Bank Account Status */}
-      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
-        <CardContent>
-          <ListItemButton onClick={() => setValue(2)} sx={{ borderRadius: 2, mx: -2 }}>
-            <ListItemIcon><Typography>🏦</Typography></ListItemIcon>
-            <ListItemText
-              primary="Bank Account"
-              secondary={bankDetails.isLinked ? `${bankDetails.bankName} • ****${bankDetails.accountNumber?.slice(-4)}` : "Not linked yet"}
-            />
-            <ChevronRight />
-          </ListItemButton>
-        </CardContent>
-      </Card>
+        {/* Quick Actions */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Settings & Actions
+        </Typography>
+        <Card sx={{ borderRadius: 1.5, mb: 4, bgcolor: "#ffffff", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <List disablePadding>
+            <ListItemButton onClick={() => setValue(2)} sx={{ py: 2 }}>
+              <ListItemIcon sx={{ minWidth: 40 }}><WalletIcon sx={{ color: "#4C1D95" }} /></ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Bank Account</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">{bankDetails.isLinked ? `${bankDetails.bankName} • ****${bankDetails.accountNumber?.slice(-4)}` : "Not linked yet"}</Typography>}
+              />
+              <ChevronRight sx={{ color: "#9CA3AF" }} />
+            </ListItemButton>
+            <Divider />
+            
+            <ListItemButton onClick={handleUpdateLocation} disabled={updatingLocation} sx={{ py: 2 }}>
+              <ListItemIcon sx={{ minWidth: 40 }}><GpsFixed sx={{ color: "#2563EB" }} /></ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">{updatingLocation ? "Detecting..." : "Live GPS Sync"}</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">Update your current coordinates</Typography>}
+              />
+              <ChevronRight sx={{ color: "#9CA3AF" }} />
+            </ListItemButton>
+            <Divider />
 
-      {/* Update Location */}
-      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg }}>
-        <CardContent>
-          <ListItemButton onClick={handleUpdateLocation} disabled={updatingLocation} sx={{ borderRadius: 2, mx: -2 }}>
-            <ListItemIcon><Typography>📍</Typography></ListItemIcon>
-            <ListItemText
-              primary={updatingLocation ? "Detecting..." : "Update Live GPS Location"}
-              secondary="Sync exact coordinates to server"
-            />
-            <ChevronRight />
-          </ListItemButton>
-          <Divider />
-          <ListItemButton onClick={() => setAddressDialogOpen(true)} disabled={updatingLocation}>
-            <ListItemIcon sx={{ color: textColor }}>
-              <LocationOn />
-            </ListItemIcon>
-            <ListItemText
-              primary="Update Address Manually"
-              secondary="Type in your exact address and coordinates"
-            />
-            <ChevronRight />
-          </ListItemButton>
-        </CardContent>
-      </Card>
+            <ListItemButton onClick={() => setAddressDialogOpen(true)} disabled={updatingLocation} sx={{ py: 2 }}>
+              <ListItemIcon sx={{ minWidth: 40 }}><LocationOn sx={{ color: "#D97706" }} /></ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Manual Address</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">Edit exact location details</Typography>}
+              />
+              <ChevronRight sx={{ color: "#9CA3AF" }} />
+            </ListItemButton>
+          </List>
+        </Card>
 
-      {/* Logout */}
-      <Card sx={{ borderRadius: 3, bgcolor: cardBg }}>
-        <ListItemButton onClick={logout} sx={{ borderRadius: 3, py: 2 }}>
-          <ListItemIcon><ExitToApp color="error" /></ListItemIcon>
-          <ListItemText primary="Logout" sx={{ color: "error.main" }} primaryTypographyProps={{ fontWeight: "bold" }} />
-        </ListItemButton>
-      </Card>
+        {/* Logout */}
+        <Button
+          fullWidth
+          variant="outlined"
+          color="error"
+          onClick={logout}
+          startIcon={<ExitToApp />}
+          sx={{ 
+            borderRadius: 1.5, py: 1.5, fontWeight: 800, mb: 4,
+            borderWidth: 2, "&:hover": { borderWidth: 2, bgcolor: "#FEF2F2" }
+          }}
+        >
+          LOG OUT SECURELY
+        </Button>
+      </Box>
     </Box>
   );
 
   const renderSettings = () => (
-    <Box sx={{ p: 2 }}>
-      <AppBar position="static" elevation={0} color="transparent">
-        <Toolbar>
-          <IconButton
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ color: textColor }}
-          >
+    <Box sx={{ pb: 10, bgcolor: "#F9FAFB", minHeight: "100vh" }}>
+      {/* Premium Header */}
+      <Box sx={{ 
+        px: 2.5, 
+        pt: "calc(env(safe-area-inset-top) + 20px)", 
+        pb: 3, 
+        background: "linear-gradient(135deg, #4C1D95 0%, #6D28D9 100%)",
+        borderBottom: "4px solid #8B5CF6",
+        boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)"
+      }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <IconButton edge="start" sx={{ color: "#ffffff", bgcolor: "rgba(255,255,255,0.1)" }} onClick={handleDrawerToggle}>
             <MenuIcon />
           </IconButton>
-          <Typography
-            variant="h6"
-            fontWeight="bold"
-            sx={{ flexGrow: 1, color: textColor }}
-          >
-            Settings
+          <Typography variant="h6" fontWeight="700" sx={{ color: "#ffffff" }}>
+            {t("settings")}
           </Typography>
-        </Toolbar>
-      </AppBar>
+        </Box>
+      </Box>
 
-      <Card sx={{ borderRadius: 3, mb: 2, bgcolor: cardBg, color: textColor }}>
-        <List>
-          <ListItem>
-            <ListItemIcon sx={{ color: textColor }}>
-              {isDark ? <DarkMode /> : <LightMode />}
-            </ListItemIcon>
-            <ListItemText
-              primary="Dark Mode"
-              secondary={isDark ? "On" : "Off"}
-              secondaryTypographyProps={{ color: "text.secondary" }}
-            />
-            <Switch checked={isDark} onChange={toggleTheme} color="secondary" />
-          </ListItem>
-          <Divider
-            variant="inset"
-            component="li"
-            sx={{ borderColor: "divider" }}
-          />
-          <ListItem>
-            <ListItemIcon sx={{ color: textColor }}>
-              <Notifications />
-            </ListItemIcon>
-            <ListItemText
-              primary="Push Notifications"
-              secondary="Receive order updates"
-              secondaryTypographyProps={{ color: "text.secondary" }}
-            />
-            <Switch defaultChecked color="primary" />
-          </ListItem>
-        </List>
-      </Card>
-
-      <Box sx={{ mt: 4, textAlign: "center" }}>
-        <Typography variant="body2" color="text.secondary">
-          Agrokart Delivery App v1.0.0
+      <Box sx={{ px: 2, pt: 3 }}>
+        
+        {/* Account Settings */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Account Settings
         </Typography>
+        <Card sx={{ borderRadius: 1.5, mb: 4, bgcolor: "#ffffff", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <List disablePadding>
+            <ListItemButton sx={{ py: 1.5, px: 2 }} onClick={() => setValue(3)}>
+              <ListItemIcon sx={{ minWidth: 44 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#E0E7FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ProfileIcon sx={{ color: "#4F46E5", fontSize: 20 }} />
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Personal Profile</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">Update name, phone, and vehicle</Typography>}
+              />
+              <ChevronRight sx={{ color: "#9CA3AF" }} />
+            </ListItemButton>
+            <Divider component="li" />
+            <ListItemButton sx={{ py: 1.5, px: 2 }} onClick={() => setSecurityDialogOpen(true)}>
+              <ListItemIcon sx={{ minWidth: 44 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#FEE2E2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Security sx={{ color: "#EF4444", fontSize: 20 }} />
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Security & Password</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">Change PIN and biometrics</Typography>}
+              />
+              <ChevronRight sx={{ color: "#9CA3AF" }} />
+            </ListItemButton>
+          </List>
+        </Card>
+
+        {/* Preferences */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          App Preferences
+        </Typography>
+        <Card sx={{ borderRadius: 1.5, mb: 4, bgcolor: "#ffffff", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <List disablePadding>
+            <ListItem sx={{ py: 1.5, px: 2 }}>
+              <ListItemIcon sx={{ minWidth: 44 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {isDark ? <DarkMode sx={{ color: "#D97706", fontSize: 20 }} /> : <LightMode sx={{ color: "#D97706", fontSize: 20 }} />}
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Dark Mode</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">{isDark ? "Enabled" : "Disabled"}</Typography>}
+              />
+              <Switch 
+                checked={isDark} 
+                onChange={toggleTheme} 
+                sx={{
+                  "& .MuiSwitch-switchBase.Mui-checked": { color: "#6D28D9" },
+                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#6D28D9" },
+                }}
+              />
+            </ListItem>
+            <Divider component="li" />
+            
+            <ListItem sx={{ py: 1.5, px: 2 }}>
+              <ListItemIcon sx={{ minWidth: 44 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Notifications sx={{ color: "#16A34A", fontSize: 20 }} />
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Push Notifications</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">Receive order alerts instantly</Typography>}
+              />
+              <Switch 
+                checked={pushEnabled}
+                onChange={() => {
+                  setPushEnabled(!pushEnabled);
+                  handleSnackbar(pushEnabled ? "Push Notifications Disabled" : "Push Notifications Enabled");
+                }}
+                sx={{
+                  "& .MuiSwitch-switchBase.Mui-checked": { color: "#6D28D9" },
+                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#6D28D9" },
+                }}
+              />
+            </ListItem>
+            <Divider component="li" />
+
+            <ListItemButton sx={{ py: 1.5, px: 2 }} onClick={() => setLanguageDialogOpen(true)}>
+              <ListItemIcon sx={{ minWidth: 44 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#F3E8FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Language sx={{ color: "#9333EA", fontSize: 20 }} />
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Language</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">{language}</Typography>}
+              />
+              <ChevronRight sx={{ color: "#9CA3AF" }} />
+            </ListItemButton>
+          </List>
+        </Card>
+
+        {/* Navigation & Maps */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Navigation
+        </Typography>
+        <Card sx={{ borderRadius: 1.5, mb: 4, bgcolor: "#ffffff", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <List disablePadding>
+            <ListItemButton sx={{ py: 1.5, px: 2 }} onClick={() => setNavigationDialogOpen(true)}>
+              <ListItemIcon sx={{ minWidth: 44 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#E0F2FE", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Map sx={{ color: "#0284C7", fontSize: 20 }} />
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Default Navigation App</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">{navigationApp}</Typography>}
+              />
+              <ChevronRight sx={{ color: "#9CA3AF" }} />
+            </ListItemButton>
+            <Divider component="li" />
+            <ListItem sx={{ py: 1.5, px: 2 }}>
+              <ListItemIcon sx={{ minWidth: 44 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#FFE4E6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <AutoMode sx={{ color: "#E11D48", fontSize: 20 }} />
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Auto-Navigate</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">Start route on order accept</Typography>}
+              />
+              <Switch 
+                checked={autoNavEnabled}
+                onChange={() => {
+                  setAutoNavEnabled(!autoNavEnabled);
+                  handleSnackbar(autoNavEnabled ? "Auto-Navigate Disabled" : "Auto-Navigate Enabled");
+                }}
+                sx={{
+                  "& .MuiSwitch-switchBase.Mui-checked": { color: "#6D28D9" },
+                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#6D28D9" },
+                }}
+              />
+            </ListItem>
+          </List>
+        </Card>
+
+        {/* Support & Info */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#6D28D9", mb: 1.5, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Support & Info
+        </Typography>
+        <Card sx={{ borderRadius: 1.5, mb: 4, bgcolor: "#ffffff", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <List disablePadding>
+            <ListItemButton sx={{ py: 1.5, px: 2 }} onClick={() => setHelpDialogOpen(true)}>
+              <ListItemIcon sx={{ minWidth: 44 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#ECFCCB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <SupportAgent sx={{ color: "#65A30D", fontSize: 20 }} />
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Help Center</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">24/7 partner support</Typography>}
+              />
+              <ChevronRight sx={{ color: "#9CA3AF" }} />
+            </ListItemButton>
+            <Divider component="li" />
+            <ListItemButton sx={{ py: 1.5, px: 2 }} onClick={() => setPrivacyDialogOpen(true)}>
+              <ListItemIcon sx={{ minWidth: 44 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <PrivacyTip sx={{ color: "#4B5563", fontSize: 20 }} />
+                </Box>
+              </ListItemIcon>
+              <ListItemText
+                primary={<Typography variant="subtitle2" fontWeight="700" color="#111827">Privacy Policy</Typography>}
+                secondary={<Typography variant="caption" color="#6B7280">How we handle your data</Typography>}
+              />
+              <ChevronRight sx={{ color: "#9CA3AF" }} />
+            </ListItemButton>
+          </List>
+        </Card>
+
+        <Box sx={{ mt: 2, mb: 4, textAlign: "center" }}>
+          <Box sx={{ width: 48, height: 48, borderRadius: 1, bgcolor: "#EEDEFF", display: "flex", alignItems: "center", justifyContent: "center", mx: "auto", mb: 1 }}>
+            <LocalShipping sx={{ color: "#6D28D9", fontSize: 24 }} />
+          </Box>
+          <Typography variant="subtitle2" fontWeight="800" color="#4B5563">
+            Agrokart Delivery
+          </Typography>
+          <Typography variant="caption" color="#9CA3AF" fontWeight="600" letterSpacing={0.5}>
+            VERSION 1.0.0
+          </Typography>
+        </Box>
       </Box>
     </Box>
   );
@@ -1961,7 +2423,7 @@ const MobileDeliveryDashboard = () => {
           sx={{ bgcolor: bottomNavBg }}
         >
           <BottomNavigationAction
-            label="Home"
+            label={t("dashboard")}
             icon={<Home />}
             sx={{
               color: textSecondary,
@@ -1969,7 +2431,7 @@ const MobileDeliveryDashboard = () => {
             }}
           />
           <BottomNavigationAction
-            label="History"
+            label={t("history")}
             icon={<HistoryIcon />}
             sx={{
               color: textSecondary,
@@ -1977,7 +2439,7 @@ const MobileDeliveryDashboard = () => {
             }}
           />
           <BottomNavigationAction
-            label="Wallet"
+            label={t("wallet")}
             icon={<WalletIcon />}
             sx={{
               color: textSecondary,
@@ -1985,7 +2447,7 @@ const MobileDeliveryDashboard = () => {
             }}
           />
           <BottomNavigationAction
-            label="Profile"
+            label={t("profile")}
             icon={<ProfileIcon />}
             sx={{
               color: textSecondary,
@@ -2326,6 +2788,106 @@ const MobileDeliveryDashboard = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Settings Dialogs */}
+      <Dialog open={languageDialogOpen} onClose={() => setLanguageDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3, width: "90%", maxWidth: 400 } }}>
+        <DialogTitle sx={{ fontWeight: "bold" }}>Select Language</DialogTitle>
+        <DialogContent>
+          <RadioGroup value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <FormControlLabel value="English (US)" control={<Radio color="secondary" />} label="English (US)" />
+            <FormControlLabel value="Hindi (हिंदी)" control={<Radio color="secondary" />} label="Hindi (हिंदी)" />
+            <FormControlLabel value="Marathi (मराठी)" control={<Radio color="secondary" />} label="Marathi (मराठी)" />
+          </RadioGroup>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setLanguageDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" sx={{ bgcolor: "#6D28D9", color: "white" }} onClick={() => setLanguageDialogOpen(false)}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={navigationDialogOpen} onClose={() => setNavigationDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3, width: "90%", maxWidth: 400 } }}>
+        <DialogTitle sx={{ fontWeight: "bold" }}>Navigation App</DialogTitle>
+        <DialogContent>
+          <RadioGroup value={navigationApp} onChange={(e) => setNavigationApp(e.target.value)}>
+            <FormControlLabel value="Google Maps" control={<Radio color="secondary" />} label="Google Maps" />
+            <FormControlLabel value="Waze" control={<Radio color="secondary" />} label="Waze" />
+            <FormControlLabel value="Apple Maps" control={<Radio color="secondary" />} label="Apple Maps" />
+          </RadioGroup>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setNavigationDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" sx={{ bgcolor: "#6D28D9", color: "white" }} onClick={() => setNavigationDialogOpen(false)}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={securityDialogOpen} onClose={() => setSecurityDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3, width: "90%", maxWidth: 400 } }}>
+        <DialogTitle sx={{ fontWeight: "bold" }}>Security & Password</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Update your app login PIN to keep your account secure.
+          </Typography>
+          <TextField fullWidth type="password" label="Current PIN" size="small" sx={{ mb: 2 }} value={currentPin} onChange={(e) => setCurrentPin(e.target.value)} />
+          <TextField fullWidth type="password" label="New PIN" size="small" sx={{ mb: 2 }} value={newPin} onChange={(e) => setNewPin(e.target.value)} />
+          <TextField fullWidth type="password" label="Confirm New PIN" size="small" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setSecurityDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" sx={{ bgcolor: "#6D28D9", color: "white" }} onClick={() => {
+            if (!currentPin || !newPin || !confirmPin) {
+              handleSnackbar("Please fill all fields.");
+              return;
+            }
+            if (newPin !== confirmPin) {
+              handleSnackbar("New PINs do not match.");
+              return;
+            }
+            setSecurityDialogOpen(false);
+            setCurrentPin("");
+            setNewPin("");
+            setConfirmPin("");
+            handleSnackbar("PIN updated successfully.");
+          }}>Update PIN</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={helpDialogOpen} onClose={() => setHelpDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3, width: "90%", maxWidth: 400 } }}>
+        <DialogTitle sx={{ fontWeight: "bold" }}>Help Center</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" fontWeight="bold" sx={{ mb: 1 }}>Need assistance?</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Our partner support team is available 24/7 to help you with active orders, account issues, or payment queries.
+          </Typography>
+          <Button fullWidth variant="outlined" startIcon={<PhoneOutlined />} sx={{ mb: 1.5, py: 1.5, borderRadius: 2 }}>Call Support</Button>
+          <Button fullWidth variant="outlined" startIcon={<EmailOutlined />} sx={{ py: 1.5, borderRadius: 2 }}>Email Support</Button>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setHelpDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={privacyDialogOpen} onClose={() => setPrivacyDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3, width: "90%", maxWidth: 400 } }}>
+        <DialogTitle sx={{ fontWeight: "bold" }}>Privacy Policy</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Agrokart collects location data to enable order tracking, distance calculations, and delivery assignments even when the app is closed or not in use.
+            <br/><br/>
+            Your data is encrypted and securely stored. We do not share your exact location with third parties beyond what is necessary to fulfill orders.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button variant="contained" sx={{ bgcolor: "#6D28D9", color: "white" }} onClick={() => setPrivacyDialogOpen(false)}>I Understand</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Global Snackbar for User Feedback */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={2500}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        message={snackbar.message}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ bottom: { xs: 90, sm: 24 } }}
+      />
     </Box>
   );
 };

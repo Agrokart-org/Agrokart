@@ -290,54 +290,81 @@ const OrderDetailsPage = () => {
   return (
     <Container
       maxWidth="md"
+      disableGutters={true}
       sx={{
-        py: { xs: 2, md: 4 },
-        px: { xs: 2, md: 3 },
+        py: { xs: 0, sm: 4 },
+        px: { xs: 0, sm: 3 },
         pb: { xs: 10, md: 12 },
       }}
     >
-      {/* Header */}
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
+      {/* Modern Glassmorphic Header */}
+      <Box 
+        sx={{ 
+          position: "sticky", 
+          top: 0, 
+          zIndex: 1000, 
+          backdropFilter: "blur(20px)",
+          bgcolor: "rgba(255, 255, 255, 0.85)",
+          mx: { xs: 0, sm: -3 },
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          mb: { xs: 0, sm: 4 },
+          borderBottom: "1px solid rgba(0,0,0,0.06)",
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+          boxShadow: "0 10px 30px -10px rgba(0,0,0,0.05)"
+        }}
+      >
         <IconButton
           onClick={() => navigate("/my-orders")}
-          sx={{ bgcolor: "white", boxShadow: 1 }}
+          sx={{ 
+            bgcolor: "white", 
+            border: "1px solid rgba(0,0,0,0.08)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+            transition: "all 0.2s",
+            "&:hover": { transform: "scale(1.05)", bgcolor: "white" }
+          }}
         >
           <BackIcon />
         </IconButton>
-        <Typography variant="h5" fontWeight="800" sx={{ flexGrow: 1 }}>
-          Order Details
+        <Typography variant="h5" fontWeight="900" sx={{ flexGrow: 1, letterSpacing: "-0.5px" }}>
+          Order Summary
         </Typography>
 
         {["confirmed", "shipped", "out_for_delivery", "delivered"].includes(
           order.status || order.orderStatus,
         ) && (
           <Button
-            variant="outlined"
+            variant="contained"
             startIcon={<DownloadIcon />}
             onClick={handleDownload}
-            size="small"
-            sx={{ bgcolor: "white" }}
+            sx={{ 
+              borderRadius: 3, 
+              textTransform: "none", 
+              fontWeight: 700,
+              boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+              bgcolor: "primary.main"
+            }}
           >
             Invoice
           </Button>
         )}
-      </Stack>
+      </Box>
 
       {/* Main Content */}
-      <Stack
-        spacing={3}
-        component={motion.div}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        {/* Status Banner */}
-        <Paper
-          elevation={0}
+      <Stack spacing={4}>
+        {/* Dynamic Status Banner */}
+        <Box
           sx={{
-            p: 3,
-            borderRadius: 4,
+            p: { xs: 3, sm: 4 },
+            borderRadius: { xs: 0, sm: 4 },
             bgcolor: statusBg,
-            border: `1px solid ${alpha(statusColor, 0.2)}`,
+            color: statusColor,
+            position: "relative",
+            overflow: "hidden",
+            border: { xs: "none", sm: `1px solid ${alpha(statusColor, 0.2)}` },
+            borderBottom: { xs: `1px solid ${alpha(statusColor, 0.2)}`, sm: `1px solid ${alpha(statusColor, 0.2)}` },
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -345,92 +372,84 @@ const OrderDetailsPage = () => {
             gap: 2,
           }}
         >
-          <Box>
-            <Typography
-              variant="subtitle2"
-              color="text.secondary"
-              fontWeight="600"
-            >
+          {/* Subtle Background Pattern */}
+          <Box sx={{ position: "absolute", top: -20, right: -20, opacity: 0.1, transform: "scale(2)" }}>
+             <OrderIcon sx={{ fontSize: 150 }} />
+          </Box>
+          
+          <Box sx={{ position: "relative", zIndex: 1 }}>
+            <Typography variant="subtitle2" sx={{ opacity: 0.8, fontWeight: 700, letterSpacing: 1, mb: 0.5 }}>
               ORDER ID
             </Typography>
-            <Typography variant="h6" fontWeight="800">
+            <Typography variant="h4" fontWeight="900" sx={{ letterSpacing: "-1px", color: statusColor }}>
               #{order.trackingNumber || order._id?.slice(-8).toUpperCase()}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Placed on{" "}
-              {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                dateStyle: "long",
-              })}
+            <Typography variant="body2" sx={{ mt: 1, opacity: 0.8, fontWeight: 600 }}>
+              Placed on {new Date(order.createdAt).toLocaleDateString("en-IN", { dateStyle: "long" })}
             </Typography>
           </Box>
-          <Chip
-            label={(
-              order.status ||
-              order.orderStatus ||
-              "Pending"
-            ).toUpperCase()}
-            sx={{
+          <Box 
+            sx={{ 
               bgcolor: statusColor,
               color: "white",
-              fontWeight: "bold",
+              px: 2, py: 1, 
               borderRadius: 2,
-              px: 1,
-              height: 32,
+              display: "inline-flex",
+              alignItems: "center",
+              position: "relative", zIndex: 1,
+              boxShadow: `0 4px 12px ${alpha(statusColor, 0.3)}`
             }}
-          />
-        </Paper>
+          >
+            <Typography variant="subtitle1" fontWeight="800">
+              {(order.status || order.orderStatus || "Pending").toUpperCase()}
+            </Typography>
+          </Box>
+        </Box>
 
-        {/* Delivery PIN Banner */}
-        {["confirmed", "shipped", "out_for_delivery"].includes(
-          order.status || order.orderStatus,
-        ) &&
-          order.deliveryPin && (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                border: `1px dashed ${theme.palette.primary.main}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <Box>
-                <Typography
-                  variant="subtitle2"
-                  color="primary.main"
-                  fontWeight="bold"
-                >
-                  DELIVERY PIN
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Share this PIN with the delivery partner to receive your order
-                </Typography>
-              </Box>
-              <Typography
-                variant="h3"
-                color="primary.main"
-                fontWeight="800"
-                sx={{ letterSpacing: 4 }}
-              >
-                {order.deliveryPin}
+        {/* Delivery PIN Banner (If Applicable) */}
+        {["confirmed", "shipped", "out_for_delivery"].includes(order.status || order.orderStatus) && order.deliveryPin && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: { xs: 0, sm: 4 },
+              background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)}, ${alpha(theme.palette.primary.main, 0.05)})`,
+              border: { xs: "none", sm: `2px dashed ${alpha(theme.palette.secondary.main, 0.4)}` },
+              borderBottom: { xs: `2px dashed ${alpha(theme.palette.secondary.main, 0.4)}`, sm: `2px dashed ${alpha(theme.palette.secondary.main, 0.4)}` },
+              display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: { xs: "flex-start", sm: "center" },
+              justifyContent: "space-between",
+              gap: 2
+            }}
+          >
+            <Box>
+              <Typography variant="subtitle2" color="secondary.main" fontWeight="800" sx={{ letterSpacing: 1 }}>
+                SECURE DELIVERY PIN
               </Typography>
-            </Paper>
-          )}
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mt: 0.5 }}>
+                Share this PIN with the delivery partner upon arrival
+              </Typography>
+            </Box>
+            <Typography variant="h3" color="secondary.main" fontWeight="900" sx={{ letterSpacing: 6, textShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
+              {order.deliveryPin}
+            </Typography>
+          </Paper>
+        )}
 
         {/* Tracking Timeline */}
         <Paper
           elevation={0}
           sx={{
             p: 4,
-            borderRadius: 4,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+            borderRadius: { xs: 0, sm: 4 },
+            border: { xs: "none", sm: "1px solid rgba(0,0,0,0.06)" },
+            borderBottom: { xs: "1px solid rgba(0,0,0,0.06)", sm: "1px solid rgba(0,0,0,0.06)" },
+            boxShadow: { xs: "none", sm: "0 8px 30px rgba(0,0,0,0.03)" },
           }}
         >
-          <Typography variant="h6" fontWeight="bold" sx={{ mb: 4 }}>
-            Order Status
+          <Typography variant="h6" fontWeight="900" sx={{ mb: 4 }}>
+            Tracking Progress
           </Typography>
           <Stepper
             alternativeLabel
@@ -447,25 +466,41 @@ const OrderDetailsPage = () => {
               <Step key={step.label}>
                 <StepLabel
                   StepIconComponent={() => (
-                    <Avatar
-                      sx={{
-                        bgcolor:
-                          step.completed || step.active
-                            ? theme.palette.primary.main
-                            : theme.palette.grey[200],
-                        color:
-                          step.completed || step.active
-                            ? "white"
-                            : theme.palette.grey[500],
-                        width: 40,
-                        height: 40,
-                      }}
-                    >
-                      {step.icon}
-                    </Avatar>
+                    <Box sx={{ position: "relative" }}>
+                      {/* Glow effect for active step */}
+                      {step.active && (
+                        <Box
+                          component={motion.div}
+                          animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.1, 0.5] }}
+                          transition={{ repeat: Infinity, duration: 2 }}
+                          sx={{
+                            position: "absolute",
+                            top: -6, left: -6, right: -6, bottom: -6,
+                            borderRadius: 4,
+                            bgcolor: theme.palette.primary.main,
+                            zIndex: 0
+                          }}
+                        />
+                      )}
+                      <Avatar
+                        variant="rounded"
+                        sx={{
+                          position: "relative",
+                          zIndex: 1,
+                          bgcolor: step.completed || step.active ? theme.palette.primary.main : "#f3f4f6",
+                          color: step.completed || step.active ? "white" : "#9ca3af",
+                          width: 46,
+                          height: 46,
+                          borderRadius: 3,
+                          boxShadow: step.active ? `0 4px 15px ${alpha(theme.palette.primary.main, 0.4)}` : "none",
+                        }}
+                      >
+                        {step.icon}
+                      </Avatar>
+                    </Box>
                   )}
                 >
-                  <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={step.active ? "900" : "600"} color={step.active ? "text.primary" : "text.secondary"} sx={{ mt: 1 }}>
                     {step.label}
                   </Typography>
                 </StepLabel>
@@ -474,45 +509,28 @@ const OrderDetailsPage = () => {
           </Stepper>
         </Paper>
 
-        {/* Live Tracking Map + Track Button */}
-        {["confirmed", "shipped", "out_for_delivery", "processing"].includes(
-          order.status || order.orderStatus,
-        ) && (
-          <>
+        {/* Live Tracking Map */}
+        {["confirmed", "shipped", "out_for_delivery", "processing"].includes(order.status || order.orderStatus) && (
+          <Box sx={{ px: { xs: 2, sm: 0 } }}>
             <Paper
               elevation={0}
               sx={{
-                height: 300,
-                borderRadius: 4,
+                height: 320,
+                borderRadius: { xs: 3, sm: 4 },
                 overflow: "hidden",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+                border: "1px solid rgba(0,0,0,0.06)",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.04)",
+                mb: 2,
+                position: "relative"
               }}
             >
               <LiveTrackingMap
                 riderPosition={driverLocation}
                 pickupPosition={
-                  DEMO_MODE && demoPickup
-                    ? demoPickup
-                    : {
-                        lat:
-                          order.deliveryAddress?.coordinates
-                            ?.coordinates?.[1] || 18.5204,
-                        lng:
-                          order.deliveryAddress?.coordinates
-                            ?.coordinates?.[0] || 73.8567,
-                      }
+                  DEMO_MODE && demoPickup ? demoPickup : { lat: order.deliveryAddress?.coordinates?.coordinates?.[1] || 18.5204, lng: order.deliveryAddress?.coordinates?.coordinates?.[0] || 73.8567 }
                 }
                 customerPosition={
-                  DEMO_MODE && demoCustomer
-                    ? demoCustomer
-                    : {
-                        lat:
-                          order.deliveryAddress?.coordinates
-                            ?.coordinates?.[1] || 18.525,
-                        lng:
-                          order.deliveryAddress?.coordinates
-                            ?.coordinates?.[0] || 73.861,
-                      }
+                  DEMO_MODE && demoCustomer ? demoCustomer : { lat: order.deliveryAddress?.coordinates?.coordinates?.[1] || 18.525, lng: order.deliveryAddress?.coordinates?.coordinates?.[0] || 73.861 }
                 }
                 riderName="Delivery Partner"
                 followRider={true}
@@ -525,60 +543,72 @@ const OrderDetailsPage = () => {
               onClick={() => navigate(`/track/${order._id}`)}
               sx={{
                 borderRadius: 3,
-                py: 1.5,
-                fontWeight: 700,
-                background: "linear-gradient(135deg, #2E7D32, #43A047)",
-                boxShadow: "0 4px 16px rgba(46,125,50,0.3)",
+                py: 2,
+                fontWeight: 800,
+                fontSize: "1.05rem",
+                background: "linear-gradient(135deg, #10B981, #059669)",
+                boxShadow: "0 8px 24px rgba(16,185,129,0.3)",
+                transition: "all 0.2s",
                 "&:hover": {
-                  background: "linear-gradient(135deg, #1B5E20, #2E7D32)",
+                  background: "linear-gradient(135deg, #059669, #047857)",
+                  transform: "translateY(-2px)"
                 },
               }}
-              startIcon={<ShippingIcon />}
+              startIcon={<LocationIcon />}
             >
-              🗺️ Track Order Live
+              Live GPS Tracking
             </Button>
-          </>
+          </Box>
         )}
 
-        {/* Items */}
+        {/* Items List */}
         <Paper
           elevation={0}
           sx={{
-            p: 3,
-            borderRadius: 4,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+            p: { xs: 3, sm: 4 },
+            borderRadius: { xs: 0, sm: 4 },
+            border: { xs: "none", sm: "1px solid rgba(0,0,0,0.06)" },
+            borderBottom: { xs: "1px solid rgba(0,0,0,0.06)", sm: "1px solid rgba(0,0,0,0.06)" },
+            boxShadow: { xs: "none", sm: "0 8px 30px rgba(0,0,0,0.03)" },
           }}
         >
-          <Typography variant="h6" fontWeight="bold" sx={{ mb: 3 }}>
-            Items ordered
+          <Typography variant="h6" fontWeight="900" sx={{ mb: 3 }}>
+            Items Ordered
           </Typography>
-          <Stack spacing={3}>
+          <Stack spacing={2}>
             {order.items?.map((item, index) => (
-              <Box key={index} sx={{ display: "flex", gap: 2 }}>
+              <Box 
+                key={index} 
+                sx={{ 
+                  display: "flex", 
+                  gap: 3, 
+                  p: 2,
+                  borderRadius: 3,
+                  border: "1px solid rgba(0,0,0,0.04)",
+                  bgcolor: "#fafafa",
+                  alignItems: "center"
+                }}
+              >
                 <Avatar
                   src={item.product?.images?.[0] || "/placeholder.png"}
                   variant="rounded"
                   sx={{
-                    width: 80,
-                    height: 80,
+                    width: 90,
+                    height: 90,
                     borderRadius: 3,
-                    bgcolor: "#f5f5f5",
+                    bgcolor: "white",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
                   }}
                 />
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="subtitle1" fontWeight="bold">
+                  <Typography variant="subtitle1" fontWeight="800" sx={{ mb: 0.5 }}>
                     {item.product?.name || item.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Quantity: {item.quantity} &bull;{" "}
-                    {item.product?.unit || "Unit"}
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    color="primary.main"
-                    fontWeight="bold"
-                    sx={{ mt: 1 }}
-                  >
+                  <Box sx={{ display: "flex", gap: 1, mb: 1 }}>
+                    <Chip label={`Qty: ${item.quantity}`} size="small" sx={{ fontWeight: 700, bgcolor: "white", border: "1px solid #e0e0e0" }} />
+                    <Chip label={item.product?.unit || "Unit"} size="small" sx={{ fontWeight: 700, bgcolor: "white", border: "1px solid #e0e0e0" }} />
+                  </Box>
+                  <Typography variant="h6" color="primary.main" fontWeight="900">
                     ₹{item.price * item.quantity}
                   </Typography>
                 </Box>
@@ -593,74 +623,71 @@ const OrderDetailsPage = () => {
             <Paper
               elevation={0}
               sx={{
-                p: 3,
+                p: 4,
                 height: "100%",
-                borderRadius: 4,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+                borderRadius: 5,
+                border: "1px solid rgba(0,0,0,0.06)",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.03)",
               }}
             >
-              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                    color: "primary.main",
-                  }}
-                >
+              <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                <Avatar variant="rounded" sx={{ bgcolor: alpha("#3B82F6", 0.1), color: "#3B82F6", width: 50, height: 50, borderRadius: 3 }}>
                   <LocationIcon />
                 </Avatar>
                 <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle1" fontWeight="800">
                     Delivery Address
                   </Typography>
-                  <Typography variant="body1" fontWeight="600" sx={{ mt: 0.5 }}>
+                  <Typography variant="body1" fontWeight="600" sx={{ mt: 1 }}>
                     {order.deliveryAddress?.street}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {order.deliveryAddress?.city},{" "}
-                    {order.deliveryAddress?.state} -{" "}
-                    {order.deliveryAddress?.pincode}
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, lineHeight: 1.6 }}>
+                    {order.deliveryAddress?.city}, {order.deliveryAddress?.state} - {order.deliveryAddress?.pincode}
                   </Typography>
                 </Box>
-              </Stack>
+              </Box>
             </Paper>
           </Grid>
           <Grid item xs={12} md={6}>
             <Paper
               elevation={0}
               sx={{
-                p: 3,
+                p: 4,
                 height: "100%",
-                borderRadius: 4,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+                borderRadius: 5,
+                border: "1px solid rgba(0,0,0,0.06)",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.03)",
               }}
             >
-              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                <Avatar
-                  sx={{
-                    bgcolor: alpha(theme.palette.secondary.main, 0.1),
-                    color: "secondary.main",
-                  }}
-                >
+              <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                <Avatar variant="rounded" sx={{ bgcolor: alpha("#8B5CF6", 0.1), color: "#8B5CF6", width: 50, height: 50, borderRadius: 3 }}>
                   <PaymentIcon />
                 </Avatar>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
+                <Box sx={{ width: "100%" }}>
+                  <Typography variant="subtitle1" fontWeight="800">
                     Payment Info
                   </Typography>
-                  <Typography variant="body1" fontWeight="600" sx={{ mt: 0.5 }}>
-                    {order.paymentMethod === "cod"
-                      ? "Cash on Delivery"
-                      : "Online Payment"}
-                  </Typography>
-                  <Typography
-                    variant="subtitle1"
-                    fontWeight="800"
-                    sx={{ mt: 0.5, color: "success.main" }}
-                  >
-                    Total: ₹{order.totalAmount}
-                  </Typography>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1, alignItems: "center" }}>
+                    <Typography variant="body2" color="text.secondary" fontWeight="600">
+                      Method
+                    </Typography>
+                    <Chip 
+                      label={order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"} 
+                      size="small" 
+                      sx={{ fontWeight: 700, bgcolor: "#f3f4f6" }}
+                    />
+                  </Box>
+                  <Divider sx={{ my: 1.5 }} />
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography variant="body1" fontWeight="800">
+                      Total Paid
+                    </Typography>
+                    <Typography variant="h5" fontWeight="900" color="success.main">
+                      ₹{order.totalAmount}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Stack>
+              </Box>
             </Paper>
           </Grid>
         </Grid>
@@ -669,20 +696,22 @@ const OrderDetailsPage = () => {
         <Paper
           elevation={0}
           sx={{
-            p: 2,
-            borderRadius: 3,
-            bgcolor: "#f8f9fa",
-            border: "1px dashed #ced4da",
+            p: 3,
+            borderRadius: { xs: 0, sm: 4 },
+            bgcolor: "#F8FAFC",
+            border: "2px dashed #CBD5E1",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             gap: 2,
             cursor: "pointer",
+            transition: "all 0.2s",
+            "&:hover": { bgcolor: "#F1F5F9", borderColor: "#94A3B8" }
           }}
           onClick={() => window.open("mailto:support@agrokart.com")}
         >
-          <HelpIcon color="action" />
-          <Typography variant="body2" fontWeight="600" color="text.secondary">
+          <HelpIcon sx={{ color: "#64748B" }} />
+          <Typography variant="subtitle2" fontWeight="700" color="#475569">
             Need help with this order? Contact Support
           </Typography>
         </Paper>

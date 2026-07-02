@@ -538,68 +538,61 @@ const MobileHomePage = () => {
           </Button>
         </Box>
 
-        <Stack
-          direction="row"
-          spacing={1.5}
+        <Box
           sx={{
-            overflowX: "auto",
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 1.5,
             pb: 1,
-            "::-webkit-scrollbar": { display: "none" },
           }}
         >
           {categories.map((category, index) => (
-            <Box key={category.id} sx={{ flexShrink: 0, width: 85 }}>
+            <Box key={category.id}>
               <Fade in={isVisible} timeout={400 + index * 100}>
                 <Paper
                   elevation={0}
                   sx={{
-                    p: 1.5,
+                    p: 1,
                     textAlign: "center",
                     cursor: "pointer",
                     borderRadius: 3,
                     background: `linear-gradient(135deg, ${alpha(category.color, 0.1)} 0%, ${alpha(category.color, 0.05)} 100%)`,
-                    border: `2px solid ${alpha(category.color, 0.2)}`,
+                    border: `1.5px solid ${alpha(category.color, 0.15)}`,
                     transition: "all 0.3s ease",
                     "&:hover": {
-                      transform: "translateY(-4px)",
-                      boxShadow: `0 8px 24px ${alpha(category.color, 0.2)}`,
+                      transform: "translateY(-2px)",
+                      boxShadow: `0 6px 16px ${alpha(category.color, 0.2)}`,
                       borderColor: category.color,
                     },
                     "&:active": {
-                      transform: "translateY(-2px)",
+                      transform: "translateY(-1px)",
                     },
                   }}
                   onClick={() => handleCategoryClick(category)}
                 >
                   <Typography
-                    variant="h4"
+                    variant="h5"
                     sx={{
-                      mb: 1,
+                      mb: 0.5,
                       animation: `${float} 3s ease-in-out infinite ${index * 0.2}s`,
+                      fontSize: "1.5rem"
                     }}
                   >
                     {category.icon}
                   </Typography>
                   <Typography
                     variant="caption"
-                    fontWeight="bold"
+                    fontWeight="800"
                     display="block"
-                    sx={{ color: category.color }}
+                    sx={{ color: category.color, fontSize: "0.55rem", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
                   >
                     {category.name}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ fontSize: "0.65rem" }}
-                  >
-                    {category.count} items
                   </Typography>
                 </Paper>
               </Fade>
             </Box>
           ))}
-        </Stack>
+        </Box>
       </Box>
 
       {/* Featured Products */}

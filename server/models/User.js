@@ -109,6 +109,16 @@ const userSchema = new mongoose.Schema(
         type: Number,
         default: 10, // percentage
       },
+      settings: {
+        acceptingOrders: { type: Boolean, default: true },
+        autoAcceptOrders: { type: Boolean, default: false },
+        cashOnDelivery: { type: Boolean, default: true },
+      },
+      notifications: {
+        push: { type: Boolean, default: true },
+        sms: { type: Boolean, default: false },
+        lowStock: { type: Boolean, default: true },
+      },
     },
     deliveryProfile: {
       vehicleType: {

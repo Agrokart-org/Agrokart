@@ -85,7 +85,17 @@ const CustomerDashboard = () => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [currentBanner, setCurrentBanner] = useState(0);
-  const [wishlist, setWishlist] = useState([]);
+  const [wishlist, setWishlist] = useState(() => {
+    const saved = localStorage.getItem("agrokart_wishlist");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -127,21 +137,21 @@ const CustomerDashboard = () => {
       id: 1,
       name: t("dashboard.categories.npk"),
       dbCategory: "npk",
-      icon: <Agriculture sx={{ fontSize: 32 }} />,
+      image: "/images/products/npk.jpg",
       color: "#2E7D32",
     },
     {
       id: 2,
       name: t("dashboard.categories.organic"),
       dbCategory: "organic",
-      icon: <Spa sx={{ fontSize: 30 }} />,
+      image: "/images/categories/organic.jpg",
       color: "#388E3C",
     },
     {
       id: 3,
       name: t("dashboard.categories.urea"),
       dbCategory: "urea",
-      icon: <InvertColors sx={{ fontSize: 30 }} />,
+      image: "/images/products/urea.jpg",
       color: "#0288D1",
     },
     {
@@ -149,7 +159,7 @@ const CustomerDashboard = () => {
       name: t("dashboard.categories.seeds"),
       dbCategory: null,
       searchTerm: "seeds",
-      icon: <Grain sx={{ fontSize: 30 }} />,
+      image: "/images/products/Seeds/cucumber seeds.jpeg",
       color: "#F57F17",
     },
     {
@@ -157,7 +167,7 @@ const CustomerDashboard = () => {
       name: t("dashboard.categories.pesticides"),
       dbCategory: null,
       searchTerm: "pesticides",
-      icon: <BugReport sx={{ fontSize: 30 }} />,
+      image: "/images/products/Pesticides/Confidor (Bayer).jpg",
       color: "#D32F2F",
     },
     {
@@ -165,7 +175,7 @@ const CustomerDashboard = () => {
       name: t("dashboard.categories.tools"),
       dbCategory: null,
       searchTerm: "tools",
-      icon: <Build sx={{ fontSize: 28 }} />,
+      image: "/images/products/Tools/Khurpi (Hand Hoe).jpg",
       color: "#5D4037",
     },
     {
@@ -173,14 +183,14 @@ const CustomerDashboard = () => {
       name: t("dashboard.categories.micro"),
       dbCategory: null,
       searchTerm: "micronutrients",
-      icon: <Science sx={{ fontSize: 30 }} />,
+      image: "/images/products/Micronutrients/Zinc Sulphate 21%.jpg",
       color: "#7B1FA2",
     },
     {
       id: 8,
       name: t("dashboard.categories.bio"),
       dbCategory: "organic",
-      icon: <EmojiNature sx={{ fontSize: 32 }} />,
+      image: "/images/categories/bio.jpg",
       color: "#388E3C",
     },
   ];
@@ -253,12 +263,23 @@ const CustomerDashboard = () => {
     return () => clearInterval(timer);
   }, [banners.length]);
 
-  const handleWishlist = (productId) => {
-    setWishlist((prev) =>
-      prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId],
-    );
+  const handleWishlist = (e, product) => {
+    e.stopPropagation();
+    setWishlist((prev) => {
+      const exists = prev.find((p) => p._id === product._id || p.id === product.id);
+      const newWishlist = exists
+        ? prev.filter((p) => (p._id || p.id) !== (product._id || product.id))
+        : [...prev, product];
+      localStorage.setItem("agrokart_wishlist", JSON.stringify(newWishlist));
+      return newWishlist;
+    });
+    setSnackbar({
+      open: true,
+      message: wishlist.find((p) => (p._id || p.id) === (product._id || product.id))
+        ? "Removed from wishlist"
+        : "Added to wishlist!",
+      severity: "success",
+    });
   };
 
   const handleAddToCart = (e, product) => {
@@ -338,7 +359,7 @@ const CustomerDashboard = () => {
         onClick={() => handleProductClick(product.id)}
         sx={{
           cursor: "pointer",
-          borderRadius: 2.5,
+          borderRadius: 0.5,
           overflow: "hidden",
           boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
           border: "1px solid rgba(0,0,0,0.06)",
@@ -377,6 +398,29 @@ const CustomerDashboard = () => {
             }}
             sx={{ width: "100%", height: "100%", objectFit: "contain", p: 1 }}
           />
+          {/* Wishlist Button */}
+          <IconButton
+            onClick={(e) => handleWishlist(e, product)}
+            sx={{
+              position: "absolute",
+              top: 10,
+              right: 10,
+              bgcolor: "rgba(255,255,255,0.9)",
+              backdropFilter: "blur(4px)",
+              width: 32,
+              height: 32,
+              "&:hover": { bgcolor: "white", transform: "scale(1.1)" },
+              zIndex: 2,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            {wishlist.find((p) => (p._id || p.id) === (product._id || product.id)) ? (
+              <FavoriteFilled sx={{ color: "#E91E63", fontSize: 18 }} />
+            ) : (
+              <FavoriteIcon sx={{ color: "#757575", fontSize: 18 }} />
+            )}
+          </IconButton>
+
           {/* Fallback emoji */}
           <Box
             sx={{
@@ -395,8 +439,8 @@ const CustomerDashboard = () => {
           <Box
             sx={{
               position: "absolute",
-              top: 10,
-              right: 10,
+              bottom: 10,
+              left: 10,
               bgcolor: sc,
               color: "#fff",
               px: 0.8,
@@ -869,7 +913,7 @@ const CustomerDashboard = () => {
             {categories.map((category) => (
               <Grid
                 item
-                xs={4}
+                xs={3}
                 sm={3}
                 md={2}
                 lg={1.5}
@@ -907,9 +951,9 @@ const CustomerDashboard = () => {
                 >
                   <Box
                     sx={{
-                      width: 75,
-                      height: 75,
-                      borderRadius: "22px",
+                      width: 55,
+                      height: 55,
+                      borderRadius: "16px",
                       bgcolor: alpha(category.color, 0.08),
                       color: category.color,
                       display: "flex",
@@ -940,17 +984,24 @@ const CustomerDashboard = () => {
                           opacity: 1,
                         },
                       },
+                      backgroundImage: category.image ? `url("${category.image}")` : "none",
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
                     }}
                   >
-                    {category.icon}
+                    {!category.image && category.icon}
                   </Box>
                   <Typography
                     variant="caption"
                     sx={{
-                      fontSize: "0.85rem",
+                      fontSize: "0.75rem",
                       fontWeight: 600,
                       color: "#374151",
                       display: "block",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "100%",
                       lineHeight: 1.2,
                     }}
                   >
@@ -1015,7 +1066,7 @@ const CustomerDashboard = () => {
 
           <Grid
             container
-            spacing={2.5}
+            spacing={0.5}
             component={motion.div}
             variants={containerVariants}
             initial="visible"
@@ -1031,7 +1082,7 @@ const CustomerDashboard = () => {
               </Grid>
             ) : (
               products.slice(0, 20).map((product, index) => (
-                <Grid item xs={6} sm={4} md={3} key={product.id}>
+                <Grid item xs={4} sm={4} md={3} key={product.id}>
                   <ProductCard product={product} index={index} />
                 </Grid>
               ))
@@ -1092,7 +1143,7 @@ const CustomerDashboard = () => {
 
           <Grid
             container
-            spacing={2.5}
+            spacing={0.5}
             component={motion.div}
             variants={containerVariants}
             initial="visible"
