@@ -37,7 +37,7 @@ module.exports = async function (req, res, next) {
         firebaseUid: uid,
         email: email || `${uid}@guest.agrokart.com`,
         name: decodedToken.name || "Agrokart User",
-        phone: decodedToken.phone_number || "",
+        phone: decodedToken.phone_number || `+00${Date.now().toString().slice(-10)}`,
         role: "customer" // Default to customer
       });
       await user.save();
