@@ -83,7 +83,6 @@ const DeliveryDetailsPage = () => {
     return "";
   };
 
-  const [isCapturingLocation, setIsCapturingLocation] = useState(false);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [formData, setFormData] = useState({
     fullName: user?.name || "",
@@ -101,12 +100,9 @@ const DeliveryDetailsPage = () => {
     isDefault: false
   });
   const [errors, setErrors] = useState({});
-  const [deliverySlot, setDeliverySlot] = useState("today");
 
   const states = Object.keys(hierarchicalLocationData);
   const getDistricts = (state) => state && hierarchicalLocationData[state] ? Object.keys(hierarchicalLocationData[state]) : [];
-  const getTalukas = (state, district) => state && district && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] ? Object.keys(hierarchicalLocationData[state][district]) : [];
-  const getVillages = (state, district, taluka) => state && district && taluka && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] && hierarchicalLocationData[state][district][taluka] ? hierarchicalLocationData[state][district][taluka] : [];
 
   // Local state for addresses
   const [userAddresses, setUserAddresses] = useState([
@@ -605,35 +601,25 @@ const DeliveryDetailsPage = () => {
                     <Grid item xs={12} sm={6}>
                       <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Taluka</Typography>
                       <TextField
-                        select
                         fullWidth
+                        placeholder="e.g. Haveli"
                         value={formData.taluka}
                         onChange={handleChange("taluka")}
-                        disabled={!formData.district}
-                        SelectProps={{ native: true }}
                         variant="outlined"
                         InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
-                      >
-                        <option value=""></option>
-                        {getTalukas(formData.state, formData.district).map((taluka) => <option key={taluka} value={taluka}>{taluka}</option>)}
-                      </TextField>
+                      />
                     </Grid>
 
                     <Grid item xs={12} sm={6}>
                       <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Village / City</Typography>
                       <TextField
-                        select
                         fullWidth
+                        placeholder="e.g. Pune"
                         value={formData.village}
                         onChange={handleChange("village")}
-                        disabled={!formData.taluka}
-                        SelectProps={{ native: true }}
                         variant="outlined"
                         InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
-                      >
-                        <option value=""></option>
-                        {getVillages(formData.state, formData.district, formData.taluka).map((village) => <option key={village} value={village}>{village}</option>)}
-                      </TextField>
+                      />
                     </Grid>
 
                     <Grid item xs={12} sm={6}>
