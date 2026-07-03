@@ -83,6 +83,8 @@ const DeliveryDetailsPage = () => {
     return "";
   };
 
+  const [isCapturingLocation, setIsCapturingLocation] = useState(false);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [formData, setFormData] = useState({
     fullName: user?.name || "",
     phone: user?.phone || "",
@@ -178,6 +180,74 @@ const DeliveryDetailsPage = () => {
     });
     setErrors({});
     setView("form");
+  };
+
+  const handleUseCurrentLocation = async () => {
+    setIsReverseGeocoding(true);
+    
+    const getLocation = async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform()) {
+          const { Geolocation } = await import("@capacitor/geolocation");
+          const perm = await Geolocation.checkPermissions();
+          if (perm.location !== "granted") {
+            await Geolocation.requestPermissions();
+          }
+          const position = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: true, timeout: 10000, maximumAge: 0,
+          });
+          return { lat: position.coords.latitude, lon: position.coords.longitude };
+        }
+      } catch (e) {
+        console.warn("Capacitor geolocation failed, trying browser:", e);
+      }
+      return new Promise((resolve, reject) => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => resolve({ lat: position.coords.latitude, lon: position.coords.longitude }),
+            (error) => reject(error),
+            { timeout: 5000, enableHighAccuracy: true },
+          );
+        } else {
+          reject(new Error("Geolocation not supported"));
+        }
+      });
+    };
+
+    try {
+      const coords = await getLocation();
+      
+      // Use OpenStreetMap Nominatim for free reverse geocoding
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lon}&zoom=18&addressdetails=1`);
+      const data = await response.json();
+      
+      if (data && data.address) {
+        const addr = data.address;
+        
+        // Try to map OSM data to our form fields
+        let newState = addr.state || "";
+        let newDistrict = addr.state_district || addr.county || "";
+        let newCity = addr.city || addr.town || addr.village || "";
+        let newPincode = addr.postcode || "";
+        let newStreet = [addr.house_number, addr.road, addr.suburb, addr.neighbourhood].filter(Boolean).join(", ");
+        
+        // Update form data with whatever we found
+        setFormData(prev => ({
+          ...prev,
+          state: newState,
+          district: newDistrict,
+          city: newCity,
+          pincode: newPincode,
+          address: newStreet || prev.address
+        }));
+      }
+    } catch (error) {
+      console.error("Error getting current location:", error);
+      alert("Could not determine your location. Please check permissions or enter manually.");
+    } finally {
+      setIsReverseGeocoding(false);
+    }
   };
 
   const handleSaveAddress = () => {
@@ -464,49 +534,6 @@ const DeliveryDetailsPage = () => {
                     </CardActionArea>
                   </Card>
                 </Stack>
-
-                {/* Delivery Slot */}
-                <Box sx={{ mt: 4 }}>
-                  <Typography variant="subtitle1" fontWeight="700" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
-                    <LocalShippingIcon fontSize="small" /> Delivery slot
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <Card
-                        variant="outlined"
-                        sx={{
-                          borderColor: deliverySlot === "today" ? "#2E7D32" : "#e0e0e0",
-                          borderWidth: deliverySlot === "today" ? 2 : 1,
-                          bgcolor: deliverySlot === "today" ? "#f9fbe7" : "white",
-                          borderRadius: 2,
-                          cursor: "pointer",
-                        }}
-                        onClick={() => setDeliverySlot("today")}
-                      >
-                        <CardActionArea sx={{ p: 2, textAlign: "center" }}>
-                          <Typography fontWeight="700" color={deliverySlot === "today" ? "primary" : "text.primary"}>Today, 4-6 PM</Typography>
-                        </CardActionArea>
-                      </Card>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Card
-                        variant="outlined"
-                        sx={{
-                          borderColor: deliverySlot === "tomorrow" ? "#2E7D32" : "#e0e0e0",
-                          borderWidth: deliverySlot === "tomorrow" ? 2 : 1,
-                          bgcolor: deliverySlot === "tomorrow" ? "#f9fbe7" : "white",
-                          borderRadius: 2,
-                          cursor: "pointer",
-                        }}
-                        onClick={() => setDeliverySlot("tomorrow")}
-                      >
-                        <CardActionArea sx={{ p: 2, textAlign: "center" }}>
-                          <Typography fontWeight="700" color={deliverySlot === "tomorrow" ? "primary" : "text.primary"}>Tomorrow, 9-11 AM</Typography>
-                        </CardActionArea>
-                      </Card>
-                    </Grid>
-                  </Grid>
-                </Box>
               </Box>
             )}
 
@@ -515,8 +542,14 @@ const DeliveryDetailsPage = () => {
               <Box>
                 {/* Map Placeholder */}
                 <Box sx={{ height: 200, bgcolor: "#e0e0e0", backgroundImage: "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)", backgroundSize: "20px 20px", backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px", position: "relative", mb: 3 }}>
-                  <Button variant="contained" startIcon={<MyLocationIcon />} sx={{ position: "absolute", bottom: 16, right: 16, bgcolor: "#333", "&:hover": { bgcolor: "#111" }, borderRadius: 8, textTransform: "none", px: 3 }}>
-                    Use current location
+                  <Button 
+                    variant="contained" 
+                    startIcon={<MyLocationIcon />} 
+                    onClick={handleUseCurrentLocation}
+                    disabled={isReverseGeocoding}
+                    sx={{ position: "absolute", bottom: 16, right: 16, bgcolor: "#333", "&:hover": { bgcolor: "#111" }, borderRadius: 8, textTransform: "none", px: 3 }}
+                  >
+                    {isReverseGeocoding ? "Locating..." : "Use current location"}
                   </Button>
                 </Box>
 
@@ -787,7 +820,7 @@ const DeliveryDetailsPage = () => {
         }}
       >
         <Container maxWidth="lg">
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Box sx={{ display: "flex", justifyContent: "center" }}>
             {view === "select" ? (
               <Button
                 variant="contained"
