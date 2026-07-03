@@ -18,6 +18,7 @@ import {
   Add as AddIcon
 } from "@mui/icons-material";
 import { safeFetch, API_BASE_URL } from "../../services/api";
+import { hierarchicalLocationData } from "../../data/hierarchicalLocationData";
 
 const AddressDialog = ({ open, onClose, user, onSaveSuccess }) => {
   const [loading, setLoading] = useState(false);
@@ -25,9 +26,18 @@ const AddressDialog = ({ open, onClose, user, onSaveSuccess }) => {
   const [formData, setFormData] = useState({
     street: "",
     city: "",
+    district: "",
+    taluka: "",
+    village: "",
     state: "",
     pincode: "",
   });
+
+  const states = Object.keys(hierarchicalLocationData);
+  const getDistricts = (state) => state && hierarchicalLocationData[state] ? Object.keys(hierarchicalLocationData[state]) : [];
+  const getTalukas = (state, district) => state && district && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] ? Object.keys(hierarchicalLocationData[state][district]) : [];
+  const getVillages = (state, district, taluka) => state && district && taluka && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] && hierarchicalLocationData[state][district][taluka] ? hierarchicalLocationData[state][district][taluka] : [];
+
 
   // Check if user has a valid saved address
   const hasSavedAddress = user?.address && (user.address.street || user.address.city);
@@ -37,6 +47,9 @@ const AddressDialog = ({ open, onClose, user, onSaveSuccess }) => {
       setFormData({
         street: user.address.street || "",
         city: user.address.city || "",
+        district: user.address.district || "",
+        taluka: user.address.taluka || "",
+        village: user.address.village || "",
         state: user.address.state || "",
         pincode: user.address.pincode || "",
       });
@@ -47,11 +60,26 @@ const AddressDialog = ({ open, onClose, user, onSaveSuccess }) => {
     }
   }, [user, open, hasSavedAddress]);
 
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    const newFormData = { ...formData, [name]: value };
+
+    if (name === "state") {
+      newFormData.district = "";
+      newFormData.taluka = "";
+      newFormData.village = "";
+      newFormData.city = "";
+    } else if (name === "district") {
+      newFormData.taluka = "";
+      newFormData.village = "";
+      newFormData.city = "";
+    } else if (name === "taluka") {
+      newFormData.village = "";
+      newFormData.city = "";
+    } else if (name === "village") {
+      newFormData.city = value; // Default city to village for backwards compatibility
+    }
+
+    setFormData(newFormData);
   };
 
   const handleSave = async () => {
@@ -68,6 +96,9 @@ const AddressDialog = ({ open, onClose, user, onSaveSuccess }) => {
           address: {
             street: formData.street,
             city: formData.city,
+            district: formData.district,
+            taluka: formData.taluka,
+            village: formData.village,
             state: formData.state,
             pincode: formData.pincode,
           },
@@ -146,7 +177,7 @@ const AddressDialog = ({ open, onClose, user, onSaveSuccess }) => {
                 variant="outlined" 
                 startIcon={<AddIcon />} 
                 onClick={() => {
-                  setFormData({ street: "", city: "", state: "", pincode: "" });
+                  setFormData({ street: "", city: "", district: "", taluka: "", village: "", state: "", pincode: "" });
                   setIsEditing(true);
                 }} 
                 sx={{ borderRadius: 2, textTransform: "none", fontWeight: "700" }}
@@ -161,12 +192,78 @@ const AddressDialog = ({ open, onClose, user, onSaveSuccess }) => {
             <Grid item xs={12}>
               <TextField fullWidth label="Street / House No." name="street" value={formData.street} onChange={handleInputChange} variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }} />
             </Grid>
+            
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="City" name="city" value={formData.city} onChange={handleInputChange} variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }} />
+              <TextField 
+                select
+                fullWidth 
+                label="State" 
+                name="state" 
+                value={formData.state} 
+                onChange={handleInputChange} 
+                variant="outlined" 
+                SelectProps={{ native: true }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
+              >
+                <option value=""></option>
+                {states.map(s => <option key={s} value={s}>{s}</option>)}
+              </TextField>
             </Grid>
+            
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="State" name="state" value={formData.state} onChange={handleInputChange} variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }} />
+              <TextField 
+                select
+                fullWidth 
+                label="District" 
+                name="district" 
+                value={formData.district} 
+                onChange={handleInputChange} 
+                variant="outlined" 
+                disabled={!formData.state}
+                SelectProps={{ native: true }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
+              >
+                <option value=""></option>
+                {getDistricts(formData.state).map(d => <option key={d} value={d}>{d}</option>)}
+              </TextField>
             </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField 
+                select
+                fullWidth 
+                label="Taluka" 
+                name="taluka" 
+                value={formData.taluka} 
+                onChange={handleInputChange} 
+                variant="outlined" 
+                disabled={!formData.district}
+                SelectProps={{ native: true }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
+              >
+                <option value=""></option>
+                {getTalukas(formData.state, formData.district).map(t => <option key={t} value={t}>{t}</option>)}
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField 
+                select
+                fullWidth 
+                label="Village / City" 
+                name="village" 
+                value={formData.village} 
+                onChange={handleInputChange} 
+                variant="outlined" 
+                disabled={!formData.taluka}
+                SelectProps={{ native: true }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
+              >
+                <option value=""></option>
+                {getVillages(formData.state, formData.district, formData.taluka).map(v => <option key={v} value={v}>{v}</option>)}
+              </TextField>
+            </Grid>
+
             <Grid item xs={12}>
               <TextField fullWidth label="Pincode" name="pincode" value={formData.pincode} onChange={handleInputChange} variant="outlined" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }} />
             </Grid>

@@ -38,6 +38,9 @@ const userSchema = new mongoose.Schema(
     address: {
       street: String,
       city: String,
+      district: String,
+      taluka: String,
+      village: String,
       state: String,
       pincode: String,
       coordinates: {

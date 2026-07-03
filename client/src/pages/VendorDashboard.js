@@ -69,6 +69,7 @@ import {
   getVendorOrders,
   API_BASE_URL,
 } from "../services/api";
+import { hierarchicalLocationData } from "../data/hierarchicalLocationData";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import theme from "../theme"; // Using the main theme we just updated
@@ -128,11 +129,20 @@ const VendorDashboard = () => {
   const [locationData, setLocationData] = useState({
     street: "",
     city: "",
+    district: "",
+    taluka: "",
+    village: "",
     state: "",
     pincode: "",
     latitude: "",
     longitude: "",
   });
+
+  const states = Object.keys(hierarchicalLocationData);
+  const getDistricts = (state) => state && hierarchicalLocationData[state] ? Object.keys(hierarchicalLocationData[state]) : [];
+  const getTalukas = (state, district) => state && district && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] ? Object.keys(hierarchicalLocationData[state][district]) : [];
+  const getVillages = (state, district, taluka) => state && district && taluka && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] && hierarchicalLocationData[state][district][taluka] ? hierarchicalLocationData[state][district][taluka] : [];
+
   const [updatingLocation, setUpdatingLocation] = useState(false);
 
   // --- Pickup PIN Verification Logic ---
@@ -155,6 +165,9 @@ const VendorDashboard = () => {
       setLocationData({
         street: user.address.street || "",
         city: user.address.city || "",
+        district: user.address.district || "",
+        taluka: user.address.taluka || "",
+        village: user.address.village || "",
         state: user.address.state || "",
         pincode: user.address.pincode || "",
         latitude: user.address.coordinates?.coordinates?.[1] || "",
@@ -422,6 +435,9 @@ const VendorDashboard = () => {
         address: {
           street: locationData.street,
           city: locationData.city,
+          district: locationData.district,
+          taluka: locationData.taluka,
+          village: locationData.village,
           state: locationData.state,
           pincode: locationData.pincode,
           coordinates: {
@@ -1784,13 +1800,88 @@ const VendorDashboard = () => {
               </Grid>
               <Grid item xs={6}>
                 <TextField
-                  label="City"
+                  select
+                  label="State"
                   fullWidth
-                  value={locationData.city}
+                  value={locationData.state}
                   onChange={(e) =>
-                    setLocationData({ ...locationData, city: e.target.value })
+                    setLocationData({
+                      ...locationData,
+                      state: e.target.value,
+                      district: "",
+                      taluka: "",
+                      village: "",
+                      city: "",
+                    })
                   }
-                />
+                  SelectProps={{ native: true }}
+                >
+                  <option value=""></option>
+                  {states.map(s => <option key={s} value={s}>{s}</option>)}
+                </TextField>
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  select
+                  label="District"
+                  fullWidth
+                  value={locationData.district}
+                  onChange={(e) =>
+                    setLocationData({
+                      ...locationData,
+                      district: e.target.value,
+                      taluka: "",
+                      village: "",
+                      city: "",
+                    })
+                  }
+                  SelectProps={{ native: true }}
+                  disabled={!locationData.state}
+                >
+                  <option value=""></option>
+                  {getDistricts(locationData.state).map(d => <option key={d} value={d}>{d}</option>)}
+                </TextField>
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  select
+                  label="Taluka"
+                  fullWidth
+                  value={locationData.taluka}
+                  onChange={(e) =>
+                    setLocationData({
+                      ...locationData,
+                      taluka: e.target.value,
+                      village: "",
+                      city: "",
+                    })
+                  }
+                  SelectProps={{ native: true }}
+                  disabled={!locationData.district}
+                >
+                  <option value=""></option>
+                  {getTalukas(locationData.state, locationData.district).map(t => <option key={t} value={t}>{t}</option>)}
+                </TextField>
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  select
+                  label="Village / City"
+                  fullWidth
+                  value={locationData.village}
+                  onChange={(e) =>
+                    setLocationData({
+                      ...locationData,
+                      village: e.target.value,
+                      city: e.target.value,
+                    })
+                  }
+                  SelectProps={{ native: true }}
+                  disabled={!locationData.taluka}
+                >
+                  <option value=""></option>
+                  {getVillages(locationData.state, locationData.district, locationData.taluka).map(v => <option key={v} value={v}>{v}</option>)}
+                </TextField>
               </Grid>
               <Grid item xs={6}>
                 <TextField

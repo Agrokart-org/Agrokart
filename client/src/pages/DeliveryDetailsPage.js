@@ -41,6 +41,7 @@ import {
 } from "@mui/icons-material";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { hierarchicalLocationData } from "../data/hierarchicalLocationData";
 
 const DeliveryDetailsPage = () => {
   const navigate = useNavigate();
@@ -146,6 +147,9 @@ const DeliveryDetailsPage = () => {
     phone: user?.phone || "",
     address: getAddressString(user?.address) || "",
     landmark: "",
+    district: getAddressComponent(user?.address, "district") || "",
+    taluka: getAddressComponent(user?.address, "taluka") || "",
+    village: getAddressComponent(user?.address, "village") || "",
     city: getAddressComponent(user?.address, "city") || "",
     state: getAddressComponent(user?.address, "state") || "",
     pincode: getAddressComponent(user?.address, "pincode") || "",
@@ -153,66 +157,11 @@ const DeliveryDetailsPage = () => {
   });
   const [errors, setErrors] = useState({});
 
-  // Data for States and Cities
-  const stateCityData = {
-    Maharashtra: [
-      "Mumbai",
-      "Pune",
-      "Nagpur",
-      "Nashik",
-      "Aurangabad",
-      "Solapur",
-      "Kolhapur",
-      "Amravati",
-      "Nanded",
-      "Sangli",
-    ],
-    Gujarat: [
-      "Ahmedabad",
-      "Surat",
-      "Vadodara",
-      "Rajkot",
-      "Bhavnagar",
-      "Jamnagar",
-      "Junagadh",
-      "Gandhinagar",
-    ],
-    Karnataka: [
-      "Bangalore",
-      "Mysore",
-      "Hubli",
-      "Mangalore",
-      "Belgaum",
-      "Gulbarga",
-      "Davangere",
-    ],
-    "Madhya Pradesh": [
-      "Indore",
-      "Bhopal",
-      "Jabalpur",
-      "Gwalior",
-      "Ujjain",
-      "Sagar",
-    ],
-    Telangana: ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar"],
-    "Andhra Pradesh": [
-      "Visakhapatnam",
-      "Vijayawada",
-      "Guntur",
-      "Nellore",
-      "Kurnool",
-    ],
-    "Tamil Nadu": [
-      "Chennai",
-      "Coimbatore",
-      "Madurai",
-      "Tiruchirappalli",
-      "Salem",
-    ],
-    Punjab: ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Bathinda"],
-  };
-
-  const states = Object.keys(stateCityData);
+  // Data for States, Districts, Talukas, Villages
+  const states = Object.keys(hierarchicalLocationData);
+  const getDistricts = (state) => state && hierarchicalLocationData[state] ? Object.keys(hierarchicalLocationData[state]) : [];
+  const getTalukas = (state, district) => state && district && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] ? Object.keys(hierarchicalLocationData[state][district]) : [];
+  const getVillages = (state, district, taluka) => state && district && taluka && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] && hierarchicalLocationData[state][district][taluka] ? hierarchicalLocationData[state][district][taluka] : [];
 
   // Mock saved addresses
   const savedAddresses = [
@@ -236,17 +185,24 @@ const DeliveryDetailsPage = () => {
     },
   ];
 
-  const handleUseSavedAddress = (addr) => {
+  const handleUseSavedAddress = async (addr) => {
     setSelectedAddressId(addr.id);
-    setFormData({
+    const updatedFormData = {
       ...formData,
       address: addr.address,
       city: addr.city,
+      district: addr.district || "",
+      taluka: addr.taluka || "",
+      village: addr.village || "",
       state: addr.state,
       pincode: addr.pincode,
-      phone: addr.phone || formData.phone, // Use saved phone if available, else keep existing
-    });
-    setErrors({}); // Clear errors
+      phone: addr.phone || formData.phone,
+    };
+    setFormData(updatedFormData);
+    setErrors({});
+    
+    // Auto proceed
+    await submitWithData(updatedFormData);
   };
 
   const subtotal = getCartTotal();
@@ -260,13 +216,18 @@ const DeliveryDetailsPage = () => {
     });
 
     // Reset selected address if user manually edits fields
-    if (["address", "city", "state", "pincode"].includes(field)) {
+    if (["address", "city", "district", "taluka", "village", "state", "pincode"].includes(field)) {
       setSelectedAddressId(null);
     }
 
-    // Reset city if state changes
     if (field === "state") {
-      setFormData((prev) => ({ ...prev, state: event.target.value, city: "" }));
+      setFormData((prev) => ({ ...prev, state: event.target.value, district: "", taluka: "", village: "", city: "" }));
+    } else if (field === "district") {
+      setFormData((prev) => ({ ...prev, district: event.target.value, taluka: "", village: "", city: "" }));
+    } else if (field === "taluka") {
+      setFormData((prev) => ({ ...prev, taluka: event.target.value, village: "", city: "" }));
+    } else if (field === "village") {
+      setFormData((prev) => ({ ...prev, village: event.target.value, city: event.target.value }));
     }
 
     if (errors[field]) {
@@ -295,15 +256,12 @@ const DeliveryDetailsPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
+  const submitWithData = async (dataToSubmit) => {
     setIsCapturingLocation(true);
 
     // Function to get coordinates from city lookup as fallback
     const getCityCoordinates = () => {
-      const cityInput = (formData.city || "").trim().toLowerCase();
+      const cityInput = (dataToSubmit.city || "").trim().toLowerCase();
       const cityKey = Object.keys(cityCoordinates).find(
         (key) => key.toLowerCase() === cityInput
       );
@@ -378,7 +336,7 @@ const DeliveryDetailsPage = () => {
 
       // Save delivery details WITH coordinates
       const deliveryDetailsWithCoords = {
-        ...formData,
+        ...dataToSubmit,
         coordinates: {
           type: "Point",
           coordinates: [coords.longitude, coords.latitude],
@@ -396,7 +354,7 @@ const DeliveryDetailsPage = () => {
       // Still save with fallback coordinates
       const fallbackCoords = getCityCoordinates();
       const deliveryDetailsWithCoords = {
-        ...formData,
+        ...dataToSubmit,
         coordinates: {
           type: "Point",
           coordinates: [fallbackCoords.longitude, fallbackCoords.latitude],
@@ -408,6 +366,13 @@ const DeliveryDetailsPage = () => {
       );
       setIsCapturingLocation(false);
       navigate("/payment");
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (validateForm()) {
+      submitWithData(formData);
     }
   };
 
@@ -686,7 +651,9 @@ const DeliveryDetailsPage = () => {
                 variant="h6"
                 fontWeight="700"
                 mb={3}
-                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                pb={2}
+                borderBottom="1px solid #eee"
+                sx={{ display: "flex", alignItems: "center", gap: 1, color: "#1a1a1a" }}
               >
                 <LocationIcon color="primary" /> Shipping Address
               </Typography>
@@ -701,7 +668,10 @@ const DeliveryDetailsPage = () => {
                         onChange={handleChange("fullName")}
                         error={!!errors.fullName}
                         helperText={errors.fullName}
+                        variant="filled"
+                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
                         InputProps={{
+                          disableUnderline: true,
                           startAdornment: (
                             <InputAdornment position="start">
                               <PersonIcon color="action" />
@@ -718,7 +688,10 @@ const DeliveryDetailsPage = () => {
                         onChange={handleChange("phone")}
                         error={!!errors.phone}
                         helperText={errors.phone}
+                        variant="filled"
+                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
                         InputProps={{
+                          disableUnderline: true,
                           startAdornment: (
                             <InputAdornment position="start">
                               <PhoneIcon color="action" />
@@ -736,6 +709,9 @@ const DeliveryDetailsPage = () => {
                     onChange={handleChange("address")}
                     error={!!errors.address}
                     helperText={errors.address}
+                    variant="filled"
+                    sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                    InputProps={{ disableUnderline: true }}
                     multiline
                     rows={3}
                   />
@@ -746,7 +722,10 @@ const DeliveryDetailsPage = () => {
                     value={formData.landmark}
                     onChange={handleChange("landmark")}
                     placeholder="Near temple, school, etc."
+                    variant="filled"
+                    sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
                     InputProps={{
+                      disableUnderline: true,
                       startAdornment: (
                         <InputAdornment position="start">
                           <HomeIcon color="action" />
@@ -757,48 +736,90 @@ const DeliveryDetailsPage = () => {
 
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
-                      <FormControl fullWidth error={!!errors.state}>
-                        <InputLabel>State</InputLabel>
-                        <Select
-                          value={formData.state}
-                          label="State"
-                          onChange={handleChange("state")}
-                        >
-                          <MenuItem value="">
-                            <em>Select State</em>
-                          </MenuItem>
-                          {states.map((state) => (
-                            <MenuItem key={state} value={state}>
-                              {state}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <FormControl
+                      <TextField
+                        select
                         fullWidth
-                        error={!!errors.city}
-                        disabled={!formData.state}
+                        label="State"
+                        value={formData.state}
+                        onChange={handleChange("state")}
+                        error={!!errors.state}
+                        helperText={errors.state}
+                        SelectProps={{ native: true }}
+                        variant="filled"
+                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
                       >
-                        <InputLabel>City</InputLabel>
-                        <Select
-                          value={formData.city}
-                          label="City"
-                          onChange={handleChange("city")}
-                        >
-                          <MenuItem value="">
-                            <em>Select City</em>
-                          </MenuItem>
-                          {formData.state && stateCityData[formData.state]
-                            ? stateCityData[formData.state].map((city) => (
-                                <MenuItem key={city} value={city}>
-                                  {city}
-                                </MenuItem>
-                              ))
-                            : null}
-                        </Select>
-                      </FormControl>
+                        <option value=""></option>
+                        {states.map((state) => (
+                          <option key={state} value={state}>
+                            {state}
+                          </option>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        select
+                        fullWidth
+                        label="District"
+                        value={formData.district}
+                        onChange={handleChange("district")}
+                        disabled={!formData.state}
+                        SelectProps={{ native: true }}
+                        variant="filled"
+                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                      >
+                        <option value=""></option>
+                        {getDistricts(formData.state).map((district) => (
+                          <option key={district} value={district}>
+                            {district}
+                          </option>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        select
+                        fullWidth
+                        label="Taluka"
+                        value={formData.taluka}
+                        onChange={handleChange("taluka")}
+                        disabled={!formData.district}
+                        SelectProps={{ native: true }}
+                        variant="filled"
+                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                      >
+                        <option value=""></option>
+                        {getTalukas(formData.state, formData.district).map((taluka) => (
+                          <option key={taluka} value={taluka}>
+                            {taluka}
+                          </option>
+                        ))}
+                      </TextField>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        select
+                        fullWidth
+                        label="Village / City"
+                        value={formData.village}
+                        onChange={handleChange("village")}
+                        error={!!errors.city}
+                        helperText={errors.city}
+                        disabled={!formData.taluka}
+                        SelectProps={{ native: true }}
+                        variant="filled"
+                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                      >
+                        <option value=""></option>
+                        {getVillages(formData.state, formData.district, formData.taluka).map((village) => (
+                          <option key={village} value={village}>
+                            {village}
+                          </option>
+                        ))}
+                      </TextField>
                     </Grid>
                   </Grid>
 
@@ -808,7 +829,9 @@ const DeliveryDetailsPage = () => {
                     value={formData.pincode}
                     onChange={handleChange("pincode")}
                     error={!!errors.pincode}
-                    helperText={errors.pincode}
+                    variant="filled"
+                    sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                    InputProps={{ disableUnderline: true }}
                   />
 
                   <TextField
@@ -816,6 +839,9 @@ const DeliveryDetailsPage = () => {
                     label="Delivery Instructions (Optional)"
                     value={formData.deliveryInstructions}
                     onChange={handleChange("deliveryInstructions")}
+                    variant="filled"
+                    sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                    InputProps={{ disableUnderline: true }}
                     multiline
                     rows={2}
                     placeholder="Any specific instructions for delivery"
