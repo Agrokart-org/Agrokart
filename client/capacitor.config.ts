@@ -30,8 +30,8 @@ const config: CapacitorConfig = {
       useDialog: true,
     },
     StatusBar: {
-      style: "LIGHT",
-      backgroundColor: "#4CAF50"
+      style: "DARK",
+      backgroundColor: "#FFFFFF"
     },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]

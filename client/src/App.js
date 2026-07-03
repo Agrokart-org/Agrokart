@@ -41,8 +41,8 @@ const AppContent = () => {
       try {
         await MobileServices.initialize();
         if (Capacitor.isNativePlatform()) {
-          await StatusBar.setStyle({ style: Style.Light });
-          await StatusBar.setBackgroundColor({ color: "#4CAF50" });
+          await StatusBar.setStyle({ style: Style.Dark });
+          await StatusBar.setBackgroundColor({ color: "#FFFFFF" });
         }
         setMobileInitialized(true);
         console.log("🚀 Mobile app initialized successfully");

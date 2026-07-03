@@ -473,7 +473,6 @@ const PaymentPage = () => {
                       {lbl}
                     </Box>
                   ))}
-                  <KeyboardArrowDownIcon sx={{ ml: 1, color: "text.secondary", fontSize: 18 }} />
                 </Box>
               </Box>
               <Box>
@@ -485,56 +484,7 @@ const PaymentPage = () => {
               </Box>
             </Box>
 
-            {/* Expanded Sub-options for Online */}
-            <Collapse in={paymentMethod === "online"}>
-              <Divider />
-              <Box sx={{ bgcolor: "white", p: 0 }}>
-                {/* UPI Sub-option */}
-                <Box
-                  onClick={(e) => { e.stopPropagation(); setOnlineSubMethod("upi"); }}
-                  sx={{ display: "flex", alignItems: "center", p: 2, borderBottom: "1px solid #F0F0F0", cursor: "pointer" }}
-                >
-                  <Box sx={{ width: 32, height: 32, borderRadius: "50%", bgcolor: "#5C4B99", display: "flex", alignItems: "center", justifyContent: "center", mr: 2 }}>
-                    <QrCodeIcon sx={{ color: "white", fontSize: 18 }} />
-                  </Box>
-                  <Box flex={1}>
-                    <Typography variant="subtitle2" fontWeight="700">UPI / QR</Typography>
-                    <Typography variant="caption" color="text.secondary">Pay using any UPI app</Typography>
-                  </Box>
-                  <Radio checked={onlineSubMethod === "upi"} color="success" sx={{ p: 0 }} />
-                </Box>
 
-                {/* Cards Sub-option */}
-                <Box
-                  onClick={(e) => { e.stopPropagation(); setOnlineSubMethod("cards"); }}
-                  sx={{ display: "flex", alignItems: "center", p: 2, borderBottom: "1px solid #F0F0F0", cursor: "pointer" }}
-                >
-                  <Box sx={{ width: 32, height: 32, borderRadius: "50%", bgcolor: "#1877F2", display: "flex", alignItems: "center", justifyContent: "center", mr: 2 }}>
-                    <CreditCardIcon sx={{ color: "white", fontSize: 18 }} />
-                  </Box>
-                  <Box flex={1}>
-                    <Typography variant="subtitle2" fontWeight="700">Cards</Typography>
-                    <Typography variant="caption" color="text.secondary">Visa, Mastercard, RuPay & more</Typography>
-                  </Box>
-                  <Radio checked={onlineSubMethod === "cards"} color="success" sx={{ p: 0 }} />
-                </Box>
-
-                {/* Netbanking Sub-option */}
-                <Box
-                  onClick={(e) => { e.stopPropagation(); setOnlineSubMethod("netbanking"); }}
-                  sx={{ display: "flex", alignItems: "center", p: 2, cursor: "pointer" }}
-                >
-                  <Box sx={{ width: 32, height: 32, borderRadius: "50%", bgcolor: "#00875A", display: "flex", alignItems: "center", justifyContent: "center", mr: 2 }}>
-                    <AccountBalanceIcon sx={{ color: "white", fontSize: 18 }} />
-                  </Box>
-                  <Box flex={1}>
-                    <Typography variant="subtitle2" fontWeight="700">Netbanking</Typography>
-                    <Typography variant="caption" color="text.secondary">All major banks supported</Typography>
-                  </Box>
-                  <Radio checked={onlineSubMethod === "netbanking"} color="success" sx={{ p: 0 }} />
-                </Box>
-              </Box>
-            </Collapse>
           </Paper>
 
           {/* Cash on Delivery Card */}

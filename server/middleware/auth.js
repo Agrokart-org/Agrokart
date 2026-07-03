@@ -32,9 +32,15 @@ module.exports = async function (req, res, next) {
     }
 
     if (!user) {
-      return res
-        .status(403)
-        .json({ message: "User account not found in database." });
+      // Auto-create user if missing in DB but exists in Firebase
+      user = new User({
+        firebaseUid: uid,
+        email: email || `${uid}@guest.agrokart.com`,
+        name: decodedToken.name || "Agrokart User",
+        phone: decodedToken.phone_number || "",
+        role: "customer" // Default to customer
+      });
+      await user.save();
     }
 
     // Role-Based Access Control strict enforcement

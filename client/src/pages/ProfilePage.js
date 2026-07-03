@@ -318,6 +318,9 @@ const ProfilePage = () => {
             <Typography variant="subtitle1" fontWeight="600" color="text.secondary" gutterBottom>
               {user?.role === "customer" ? "Premium Farmer" : "User"}
             </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
+              {user?.email || "guest@agrokart.com"}
+            </Typography>
 
 
             {/* Top Navigation Stats */}
