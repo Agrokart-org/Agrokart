@@ -60,6 +60,7 @@ const AddressDialog = ({ open, onClose, user, onSaveSuccess }) => {
     }
   }, [user, open, hasSavedAddress]);
 
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
     const newFormData = { ...formData, [name]: value };
 
