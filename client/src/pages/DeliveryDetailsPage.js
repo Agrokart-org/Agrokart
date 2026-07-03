@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Container,
@@ -9,13 +9,7 @@ import {
   Button,
   Grid,
   Stack,
-  useTheme,
-  alpha,
   Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   IconButton,
   Divider,
   Card,
@@ -25,19 +19,21 @@ import {
   Step,
   StepLabel,
   InputAdornment,
+  Radio,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
-  LocalShipping as ShippingIcon,
   LocalShipping as LocalShippingIcon,
-  LocationOn as LocationIcon,
-  Phone as PhoneIcon,
-  Person as PersonIcon,
   Home as HomeIcon,
-  CheckCircle as CheckCircleIcon,
   Security as SecurityIcon,
   Edit as EditIcon,
   Add as AddIcon,
+  Search as SearchIcon,
+  MyLocation as MyLocationIcon,
+  Business as BusinessIcon,
+  Place as PlaceIcon,
 } from "@mui/icons-material";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -45,76 +41,22 @@ import { hierarchicalLocationData } from "../data/hierarchicalLocationData";
 
 const DeliveryDetailsPage = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
   const { cart, getCartTotal } = useCart();
   const { user } = useAuth();
-  const [selectedAddressId, setSelectedAddressId] = useState(null);
-  const [isCapturingLocation, setIsCapturingLocation] = useState(false);
-  const [capturedCoords, setCapturedCoords] = useState(null);
-
+  
+  // State for View Management
+  const [view, setView] = useState("select"); // "select" or "form"
+  
+  const [selectedAddressId, setSelectedAddressId] = useState(1);
+  
   // City coordinates lookup for fallback when geolocation is unavailable
   const cityCoordinates = {
-    // Maharashtra
     Mumbai: [72.8777, 19.076],
     Pune: [73.8567, 18.5204],
-    Nagpur: [79.0882, 21.1458],
     Nashik: [73.7898, 19.9975],
-    Aurangabad: [75.3433, 19.8762],
-    Solapur: [75.9064, 17.6599],
-    Kolhapur: [74.2433, 16.705],
-    Amravati: [77.7523, 20.9374],
-    Nanded: [77.321, 19.1383],
-    Sangli: [74.5815, 16.8524],
-    // Gujarat
-    Ahmedabad: [72.5714, 23.0225],
-    Surat: [72.8311, 21.1702],
-    Vadodara: [73.1812, 22.3072],
-    Rajkot: [70.8022, 22.3039],
-    Bhavnagar: [72.1519, 21.7645],
-    Jamnagar: [70.0577, 22.4707],
-    Junagadh: [70.4579, 21.5222],
-    Gandhinagar: [72.6369, 23.2156],
-    // Karnataka
-    Bangalore: [77.5946, 12.9716],
-    Mysore: [76.6394, 12.2958],
-    Hubli: [75.124, 15.3647],
-    Mangalore: [74.856, 12.9141],
-    Belgaum: [74.4977, 15.8497],
-    Gulbarga: [76.8343, 17.3297],
-    Davangere: [75.9218, 14.4644],
-    // Madhya Pradesh
-    Indore: [75.8577, 22.7196],
-    Bhopal: [77.4126, 23.2599],
-    Jabalpur: [79.9864, 23.1815],
-    Gwalior: [78.1828, 26.2183],
-    Ujjain: [75.7885, 23.1765],
-    Sagar: [78.7378, 23.8388],
-    // Telangana
-    Hyderabad: [78.4867, 17.385],
-    Warangal: [79.5941, 17.9784],
-    Nizamabad: [78.0941, 18.6725],
-    Karimnagar: [79.1288, 18.4386],
-    // Andhra Pradesh
-    Visakhapatnam: [83.2185, 17.6868],
-    Vijayawada: [80.648, 16.5062],
-    Guntur: [80.4365, 16.3067],
-    Nellore: [79.9865, 14.4426],
-    Kurnool: [78.0373, 15.8281],
-    // Tamil Nadu
-    Chennai: [80.2707, 13.0827],
-    Coimbatore: [76.9558, 11.0168],
-    Madurai: [78.1198, 9.9252],
-    Tiruchirappalli: [78.7047, 10.7905],
-    Salem: [78.146, 11.6643],
-    // Punjab
-    Ludhiana: [75.8573, 30.901],
-    Amritsar: [74.8723, 31.634],
-    Jalandhar: [75.5762, 31.326],
-    Patiala: [76.3869, 30.3398],
-    Bathinda: [74.9455, 30.211],
+    // ... add more if needed
   };
 
-  // Helper function to extract address string from user object
   const getAddressString = (userAddress) => {
     if (!userAddress) return "";
     if (typeof userAddress === "string") return userAddress;
@@ -129,7 +71,6 @@ const DeliveryDetailsPage = () => {
     return "";
   };
 
-  // Helper function to extract individual address components
   const getAddressComponent = (userAddress, component) => {
     if (!userAddress) return "";
     if (typeof userAddress === "string") {
@@ -154,55 +95,128 @@ const DeliveryDetailsPage = () => {
     state: getAddressComponent(user?.address, "state") || "",
     pincode: getAddressComponent(user?.address, "pincode") || "",
     deliveryInstructions: "",
+    addressType: "Home",
+    isDefault: false
   });
   const [errors, setErrors] = useState({});
+  const [deliverySlot, setDeliverySlot] = useState("today");
 
-  // Data for States, Districts, Talukas, Villages
   const states = Object.keys(hierarchicalLocationData);
   const getDistricts = (state) => state && hierarchicalLocationData[state] ? Object.keys(hierarchicalLocationData[state]) : [];
   const getTalukas = (state, district) => state && district && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] ? Object.keys(hierarchicalLocationData[state][district]) : [];
   const getVillages = (state, district, taluka) => state && district && taluka && hierarchicalLocationData[state] && hierarchicalLocationData[state][district] && hierarchicalLocationData[state][district][taluka] ? hierarchicalLocationData[state][district][taluka] : [];
 
-  // Mock saved addresses
-  const savedAddresses = [
+  // Local state for addresses
+  const [userAddresses, setUserAddresses] = useState([
     {
       id: 1,
       type: "Home",
       address: "123 Farm Road, Green Valley",
+      district: "Pune",
+      taluka: "Pune City",
+      village: "Pune",
       city: "Pune",
       state: "Maharashtra",
       pincode: "411001",
       phone: "9876543210",
+      fullName: user?.name || "John Doe",
+      isDefault: true
     },
     {
       id: 2,
       type: "Farm House",
       address: "Plot 45, Agro Zone, Near River",
+      district: "Nashik",
+      taluka: "Nashik",
+      village: "Nashik",
       city: "Nashik",
       state: "Maharashtra",
       pincode: "422001",
       phone: "9876543210",
+      fullName: user?.name || "John Doe",
+      isDefault: false
     },
-  ];
+  ]);
 
-  const handleUseSavedAddress = async (addr) => {
-    setSelectedAddressId(addr.id);
-    const updatedFormData = {
-      ...formData,
-      address: addr.address,
-      city: addr.city,
+  const handleEditAddress = (addr) => {
+    setFormData({
+      fullName: addr.fullName || user?.name || "",
+      phone: addr.phone || user?.phone || "",
+      address: addr.address || "",
+      landmark: addr.landmark || "",
       district: addr.district || "",
       taluka: addr.taluka || "",
       village: addr.village || "",
-      state: addr.state,
-      pincode: addr.pincode,
-      phone: addr.phone || formData.phone,
-    };
-    setFormData(updatedFormData);
+      city: addr.city || "",
+      state: addr.state || "",
+      pincode: addr.pincode || "",
+      deliveryInstructions: addr.deliveryInstructions || "",
+      addressType: addr.type || "Home",
+      isDefault: addr.isDefault || false,
+      id: addr.id
+    });
     setErrors({});
+    setView("form");
+  };
+
+  const handleAddNewAddress = () => {
+    setFormData({
+      fullName: user?.name || "",
+      phone: user?.phone || "",
+      address: "",
+      landmark: "",
+      district: "",
+      taluka: "",
+      village: "",
+      city: "",
+      state: "",
+      pincode: "",
+      deliveryInstructions: "",
+      addressType: "Home",
+      isDefault: false,
+      id: null
+    });
+    setErrors({});
+    setView("form");
+  };
+
+  const handleSaveAddress = () => {
+    if (!validateForm()) return;
     
-    // Auto proceed
-    await submitWithData(updatedFormData);
+    const newAddress = {
+      id: formData.id || Date.now(),
+      type: formData.addressType,
+      address: formData.address,
+      landmark: formData.landmark,
+      district: formData.district,
+      taluka: formData.taluka,
+      village: formData.village,
+      city: formData.city || formData.village,
+      state: formData.state,
+      pincode: formData.pincode,
+      phone: formData.phone,
+      fullName: formData.fullName,
+      isDefault: formData.isDefault
+    };
+
+    let updatedAddresses = [...userAddresses];
+    
+    // If setting as default, remove default from others
+    if (newAddress.isDefault) {
+      updatedAddresses = updatedAddresses.map(a => ({...a, isDefault: false}));
+    }
+
+    if (formData.id) {
+      // Update existing
+      updatedAddresses = updatedAddresses.map(a => a.id === formData.id ? newAddress : a);
+    } else {
+      // Add new
+      updatedAddresses.push(newAddress);
+    }
+
+    setUserAddresses(updatedAddresses);
+    setSelectedAddressId(newAddress.id);
+    setView("select");
   };
 
   const subtotal = getCartTotal();
@@ -214,11 +228,6 @@ const DeliveryDetailsPage = () => {
       ...formData,
       [field]: event.target.value,
     });
-
-    // Reset selected address if user manually edits fields
-    if (["address", "city", "district", "taluka", "village", "state", "pincode"].includes(field)) {
-      setSelectedAddressId(null);
-    }
 
     if (field === "state") {
       setFormData((prev) => ({ ...prev, state: event.target.value, district: "", taluka: "", village: "", city: "" }));
@@ -240,12 +249,11 @@ const DeliveryDetailsPage = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.fullName.trim()) newErrors.fullName = "Name is required";
-    if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
-    if (!formData.address.trim()) newErrors.address = "Address is required";
-    if (!formData.city.trim()) newErrors.city = "City is required";
-    if (!formData.state.trim()) newErrors.state = "State is required";
-    if (!formData.pincode.trim()) newErrors.pincode = "Pincode is required";
+    if (!formData.fullName?.trim()) newErrors.fullName = "Name is required";
+    if (!formData.phone?.trim()) newErrors.phone = "Phone number is required";
+    if (!formData.address?.trim()) newErrors.address = "Address is required";
+    if (!formData.state?.trim()) newErrors.state = "State is required";
+    if (!formData.pincode?.trim()) newErrors.pincode = "Pincode is required";
     if (formData.pincode && !/^\d{6}$/.test(formData.pincode)) {
       newErrors.pincode = "Pincode must be 6 digits";
     }
@@ -257,74 +265,41 @@ const DeliveryDetailsPage = () => {
   };
 
   const submitWithData = async (dataToSubmit) => {
-    setIsCapturingLocation(true);
-
-    // Function to get coordinates from city lookup as fallback
     const getCityCoordinates = () => {
       const cityInput = (dataToSubmit.city || "").trim().toLowerCase();
       const cityKey = Object.keys(cityCoordinates).find(
         (key) => key.toLowerCase() === cityInput
       );
       const coords = cityKey ? cityCoordinates[cityKey] : null;
-      
-      if (coords) {
-        return { longitude: coords[0], latitude: coords[1] };
-      }
-      // Default fallback if city not in lookup (use a central India location)
+      if (coords) return { longitude: coords[0], latitude: coords[1] };
       return { longitude: 78.9629, latitude: 20.5937 };
     };
 
-    // Try to get user's actual location — prefer Capacitor native GPS on mobile
     const getLocation = async () => {
-      // Try Capacitor Geolocation first (native GPS — much more accurate)
       try {
         const { Capacitor } = await import("@capacitor/core");
         if (Capacitor.isNativePlatform()) {
           const { Geolocation } = await import("@capacitor/geolocation");
-
-          // Request permission
           const perm = await Geolocation.checkPermissions();
           if (perm.location !== "granted") {
             await Geolocation.requestPermissions();
           }
-
           const position = await Geolocation.getCurrentPosition({
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0,
+            enableHighAccuracy: true, timeout: 10000, maximumAge: 0,
           });
-
-          console.log("📍 Got native GPS location:", position.coords);
-          return {
-            longitude: position.coords.longitude,
-            latitude: position.coords.latitude,
-          };
+          return { longitude: position.coords.longitude, latitude: position.coords.latitude };
         }
       } catch (e) {
         console.warn("Capacitor geolocation failed, trying browser:", e);
       }
-
-      // Fallback: browser navigator.geolocation
       return new Promise((resolve) => {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
-            (position) => {
-              resolve({
-                longitude: position.coords.longitude,
-                latitude: position.coords.latitude,
-              });
-            },
-            (error) => {
-              console.log(
-                "Geolocation error, using city coordinates:",
-                error.message,
-              );
-              resolve(getCityCoordinates());
-            },
+            (position) => resolve({ longitude: position.coords.longitude, latitude: position.coords.latitude }),
+            (error) => resolve(getCityCoordinates()),
             { timeout: 5000, enableHighAccuracy: true },
           );
         } else {
-          console.log("Geolocation not available, using city coordinates");
           resolve(getCityCoordinates());
         }
       });
@@ -332,673 +307,526 @@ const DeliveryDetailsPage = () => {
 
     try {
       const coords = await getLocation();
-      console.log("Captured coordinates for delivery:", coords);
-
-      // Save delivery details WITH coordinates
       const deliveryDetailsWithCoords = {
         ...dataToSubmit,
-        coordinates: {
-          type: "Point",
-          coordinates: [coords.longitude, coords.latitude],
-        },
+        coordinates: { type: "Point", coordinates: [coords.longitude, coords.latitude] },
       };
-
-      localStorage.setItem(
-        "deliveryDetails",
-        JSON.stringify(deliveryDetailsWithCoords),
-      );
-      setIsCapturingLocation(false);
+      localStorage.setItem("deliveryDetails", JSON.stringify(deliveryDetailsWithCoords));
       navigate("/payment");
     } catch (error) {
-      console.error("Error capturing location:", error);
-      // Still save with fallback coordinates
       const fallbackCoords = getCityCoordinates();
       const deliveryDetailsWithCoords = {
         ...dataToSubmit,
-        coordinates: {
-          type: "Point",
-          coordinates: [fallbackCoords.longitude, fallbackCoords.latitude],
-        },
+        coordinates: { type: "Point", coordinates: [fallbackCoords.longitude, fallbackCoords.latitude] },
       };
-      localStorage.setItem(
-        "deliveryDetails",
-        JSON.stringify(deliveryDetailsWithCoords),
-      );
-      setIsCapturingLocation(false);
+      localStorage.setItem("deliveryDetails", JSON.stringify(deliveryDetailsWithCoords));
       navigate("/payment");
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (validateForm()) {
-      submitWithData(formData);
+  const handleContinueToPayment = () => {
+    if (!selectedAddressId) {
+      alert("Please select an address");
+      return;
     }
+    const selectedAddress = userAddresses.find(a => a.id === selectedAddressId);
+    submitWithData(selectedAddress);
   };
 
   return (
-    <Box sx={{ bgcolor: "#f5f5f5", minHeight: "100vh", py: 4 }}>
-      <Container maxWidth="lg">
-        {/* Checkout Stepper */}
-        <Box sx={{ mb: 4, width: "100%", mt: 2 }}>
-          <Stepper activeStep={1} alternativeLabel>
-            {["Cart", "Delivery Details", "Payment"].map((label) => (
-              <Step key={label}>
-                <StepLabel
-                  StepIconProps={{
-                    sx: {
-                      "&.Mui-active": { color: "#2E7D32" },
-                      "&.Mui-completed": { color: "#2E7D32" },
-                    },
-                  }}
-                >
-                  {label}
-                </StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Box>
+    <Box sx={{ bgcolor: "#f5f5f5", minHeight: "100vh", pb: { xs: 20, md: 12 } }}>
+      {/* Stepper only in select view */}
+      {view === "select" && (
+        <Container maxWidth="lg" sx={{ pt: 4 }}>
+          <Box sx={{ mb: 4, width: "100%", mt: 2 }}>
+            <Stepper activeStep={1} alternativeLabel>
+              {["Cart", "Delivery Details", "Payment"].map((label) => (
+                <Step key={label}>
+                  <StepLabel
+                    StepIconProps={{
+                      sx: { "&.Mui-active": { color: "#2E7D32" }, "&.Mui-completed": { color: "#2E7D32" } },
+                    }}
+                  >
+                    {label}
+                  </StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
+          <Box sx={{ mb: 4, display: "flex", alignItems: "center", gap: 2 }}>
+            <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", "&:hover": { bgcolor: "#f5f5f5" } }}>
+              <ArrowBackIcon sx={{ color: "#2E7D32" }} />
+            </IconButton>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: "#1a1a1a", letterSpacing: "-0.5px" }}>
+              Delivery Details
+            </Typography>
+          </Box>
+        </Container>
+      )}
 
-        {/* Page Header */}
-        <Box sx={{ mb: 4, display: "flex", alignItems: "center", gap: 2 }}>
-          <IconButton
-            onClick={() => navigate(-1)}
-            sx={{
-              bgcolor: "white",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-              "&:hover": { bgcolor: "#f5f5f5" },
-            }}
-          >
-            <ArrowBackIcon sx={{ color: "#2E7D32" }} />
+      {/* Form View Header */}
+      {view === "form" && (
+        <Box sx={{ bgcolor: "white", p: 2, display: "flex", alignItems: "center", gap: 2, borderBottom: "1px solid #eee", position: "sticky", top: 0, zIndex: 10 }}>
+          <IconButton onClick={() => setView("select")}>
+            <ArrowBackIcon />
           </IconButton>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 800,
-              color: "#1a1a1a",
-              letterSpacing: "-0.5px",
-            }}
-          >
-            Delivery Details
+          <Typography variant="h6" fontWeight="700">
+            {formData.id ? "Edit address" : "Add new address"}
           </Typography>
         </Box>
+      )}
 
+      <Container maxWidth="lg" sx={{ pt: view === "form" ? 0 : 2 }}>
         <Grid container spacing={4}>
-          {/* Delivery Form */}
           <Grid item xs={12} md={8}>
-            {/* Saved Addresses Section */}
-            {savedAddresses.length > 0 && (
-              <Box sx={{ mb: 4 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 2,
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    fontWeight="700"
-                    sx={{ color: "#333" }}
-                  >
-                    Quick Select Address
+            
+            {/* VIEW: SELECT ADDRESS */}
+            {view === "select" && (
+              <Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                  <Typography variant="h6" fontWeight="700" sx={{ color: "#1a1a1a" }}>
+                    Choose an address
                   </Typography>
-                  <Button
-                    startIcon={<AddIcon />}
-                    size="small"
-                    onClick={() => {
-                      setSelectedAddressId(null);
-                      setFormData({
-                        fullName: "",
-                        phone: "",
-                        address: "",
-                        landmark: "",
-                        city: "",
-                        state: "",
-                        pincode: "",
-                        deliveryInstructions: "",
-                      });
-                    }}
-                    sx={{ color: "#2E7D32" }}
-                  >
-                    Add New
+                  <Button startIcon={<AddIcon />} sx={{ color: "#2E7D32", textTransform: "none", fontWeight: 700 }} onClick={handleAddNewAddress}>
+                    Add new
                   </Button>
                 </Box>
-                <Grid container spacing={2}>
-                  {savedAddresses.map((addr) => (
-                    <Grid item xs={12} sm={6} key={addr.id}>
-                      <Card
-                        variant="outlined"
-                        sx={{
-                          cursor: "pointer",
-                          borderColor:
-                            selectedAddressId === addr.id
-                              ? "#2E7D32"
-                              : "transparent",
-                          borderWidth: selectedAddressId === addr.id ? 2 : 1,
-                          bgcolor: "white",
-                          boxShadow:
-                            selectedAddressId === addr.id
-                              ? "0 4px 12px rgba(46, 125, 50, 0.15)"
-                              : "0 2px 8px rgba(0,0,0,0.04)",
-                          transition: "all 0.2s ease-in-out",
-                          position: "relative",
-                          overflow: "visible",
-                          "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 6px 16px rgba(0,0,0,0.08)",
-                          },
-                        }}
-                        onClick={() => handleUseSavedAddress(addr)}
-                      >
-                        {selectedAddressId === addr.id && (
-                          <Box
-                            sx={{
-                              position: "absolute",
-                              top: -10,
-                              right: -10,
-                              bgcolor: "#2E7D32",
-                              borderRadius: "50%",
-                              width: 24,
-                              height: 24,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: "white",
-                              zIndex: 1,
-                            }}
-                          >
-                            <CheckCircleIcon sx={{ fontSize: 16 }} />
+
+                <Stack spacing={2}>
+                  {userAddresses.map((addr) => (
+                    <Card
+                      key={addr.id}
+                      variant="outlined"
+                      sx={{
+                        borderColor: selectedAddressId === addr.id ? "#2E7D32" : "#e0e0e0",
+                        borderWidth: selectedAddressId === addr.id ? 2 : 1,
+                        bgcolor: selectedAddressId === addr.id ? "#f9fbe7" : "white",
+                        borderRadius: 3,
+                        transition: "all 0.2s",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => setSelectedAddressId(addr.id)}
+                    >
+                      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                          <Box sx={{ mt: 0.5 }}>
+                            {addr.type === "Home" ? <HomeIcon sx={{ color: "text.secondary" }} /> : 
+                             addr.type === "Farm" ? <PlaceIcon sx={{ color: "text.secondary" }} /> : 
+                             <BusinessIcon sx={{ color: "text.secondary" }} />}
                           </Box>
-                        )}
-                        <CardActionArea sx={{ p: 2 }}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "flex-start",
-                              mb: 1,
-                            }}
-                          >
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems="center"
-                            >
-                              <HomeIcon
-                                sx={{
-                                  color:
-                                    selectedAddressId === addr.id
-                                      ? "#2E7D32"
-                                      : "text.secondary",
-                                  fontSize: 20,
-                                }}
-                              />
-                              <Typography
-                                variant="subtitle1"
-                                fontWeight="700"
-                                color={
-                                  selectedAddressId === addr.id
-                                    ? "#2E7D32"
-                                    : "text.primary"
-                                }
-                              >
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                              <Typography variant="subtitle1" fontWeight="700">
                                 {addr.type}
                               </Typography>
-                            </Stack>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUseSavedAddress(addr);
-                              }}
-                              sx={{
-                                opacity: 0.6,
-                                "&:hover": {
-                                  opacity: 1,
-                                  color: "#2E7D32",
-                                  bgcolor: "#e8f5e9",
-                                },
-                              }}
-                            >
+                              {addr.isDefault && (
+                                <Box sx={{ bgcolor: "#e3f2fd", color: "#1976d2", px: 1, py: 0.2, borderRadius: 1, fontSize: "0.7rem", fontWeight: 600 }}>
+                                  Default
+                                </Box>
+                              )}
+                            </Box>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                              {addr.address}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {addr.city}, {addr.state} - {addr.pincode}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <Radio 
+                              checked={selectedAddressId === addr.id}
+                              sx={{ color: "#2E7D32", "&.Mui-checked": { color: "#2E7D32" }, p: 0.5 }}
+                            />
+                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleEditAddress(addr); }} sx={{ mt: 1 }}>
                               <EditIcon fontSize="small" />
                             </IconButton>
                           </Box>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ mb: 0.5, lineHeight: 1.6 }}
-                          >
-                            {addr.address}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            fontWeight="500"
-                          >
-                            {addr.city}, {addr.state} - {addr.pincode}
-                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      borderStyle: "dashed",
+                      borderColor: "#bdbdbd",
+                      borderRadius: 3,
+                      bgcolor: "transparent",
+                      cursor: "pointer",
+                      "&:hover": { borderColor: "#2E7D32", bgcolor: "rgba(46, 125, 50, 0.04)" }
+                    }}
+                    onClick={handleAddNewAddress}
+                  >
+                    <CardActionArea sx={{ p: 2, display: "flex", justifyContent: "center", alignItems: "center", gap: 1 }}>
+                      <AddIcon sx={{ color: "#2E7D32" }} />
+                      <Typography fontWeight="700" color="primary">Add new address</Typography>
+                    </CardActionArea>
+                  </Card>
+                </Stack>
+
+                {/* Delivery Slot */}
+                <Box sx={{ mt: 4 }}>
+                  <Typography variant="subtitle1" fontWeight="700" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                    <LocalShippingIcon fontSize="small" /> Delivery slot
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          borderColor: deliverySlot === "today" ? "#2E7D32" : "#e0e0e0",
+                          borderWidth: deliverySlot === "today" ? 2 : 1,
+                          bgcolor: deliverySlot === "today" ? "#f9fbe7" : "white",
+                          borderRadius: 2,
+                          cursor: "pointer",
+                        }}
+                        onClick={() => setDeliverySlot("today")}
+                      >
+                        <CardActionArea sx={{ p: 2, textAlign: "center" }}>
+                          <Typography fontWeight="700" color={deliverySlot === "today" ? "primary" : "text.primary"}>Today, 4-6 PM</Typography>
                         </CardActionArea>
                       </Card>
                     </Grid>
-                  ))}
-                  {/* Explicit Add New Card */}
-                  <Grid item xs={12} sm={6}>
-                    <Card
-                      variant="outlined"
-                      sx={{
-                        height: "100%",
-                        borderStyle: "dashed",
-                        borderColor: "#bdbdbd",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        "&:hover": {
-                          borderColor: "#2E7D32",
-                          bgcolor: "#f9fbe7",
-                        },
-                      }}
-                      onClick={() => {
-                        setSelectedAddressId(null);
-                        setFormData({
-                          fullName: "",
-                          phone: "",
-                          address: "",
-                          landmark: "",
-                          city: "",
-                          state: "",
-                          pincode: "",
-                          deliveryInstructions: "",
-                        });
-                      }}
-                    >
-                      <CardActionArea
+                    <Grid item xs={6}>
+                      <Card
+                        variant="outlined"
                         sx={{
-                          height: "100%",
-                          p: 3,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          gap: 1,
+                          borderColor: deliverySlot === "tomorrow" ? "#2E7D32" : "#e0e0e0",
+                          borderWidth: deliverySlot === "tomorrow" ? 2 : 1,
+                          bgcolor: deliverySlot === "tomorrow" ? "#f9fbe7" : "white",
+                          borderRadius: 2,
+                          cursor: "pointer",
                         }}
+                        onClick={() => setDeliverySlot("tomorrow")}
                       >
-                        <AddIcon
-                          sx={{ fontSize: 32, color: "#2E7D32", opacity: 0.8 }}
-                        />
-                        <Typography fontWeight="600" color="primary">
-                          Add New Address
-                        </Typography>
-                      </CardActionArea>
-                    </Card>
+                        <CardActionArea sx={{ p: 2, textAlign: "center" }}>
+                          <Typography fontWeight="700" color={deliverySlot === "tomorrow" ? "primary" : "text.primary"}>Tomorrow, 9-11 AM</Typography>
+                        </CardActionArea>
+                      </Card>
+                    </Grid>
                   </Grid>
-                </Grid>
+                </Box>
               </Box>
             )}
 
-            {/* Form Section */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: 4,
-                borderRadius: 3,
-                bgcolor: "white",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
-              }}
-            >
-              <Typography
-                variant="h6"
-                fontWeight="700"
-                mb={3}
-                pb={2}
-                borderBottom="1px solid #eee"
-                sx={{ display: "flex", alignItems: "center", gap: 1, color: "#1a1a1a" }}
-              >
-                <LocationIcon color="primary" /> Shipping Address
-              </Typography>
-              <form onSubmit={handleSubmit}>
+            {/* VIEW: FORM */}
+            {view === "form" && (
+              <Box>
+                {/* Map Placeholder */}
+                <Box sx={{ height: 200, bgcolor: "#e0e0e0", backgroundImage: "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)", backgroundSize: "20px 20px", backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px", position: "relative", mb: 3 }}>
+                  <Button variant="contained" startIcon={<MyLocationIcon />} sx={{ position: "absolute", bottom: 16, right: 16, bgcolor: "#333", "&:hover": { bgcolor: "#111" }, borderRadius: 8, textTransform: "none", px: 3 }}>
+                    Use current location
+                  </Button>
+                </Box>
+
                 <Stack spacing={3}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Full Name"
-                        value={formData.fullName}
-                        onChange={handleChange("fullName")}
-                        error={!!errors.fullName}
-                        helperText={errors.fullName}
-                        variant="filled"
-                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
-                        InputProps={{
-                          disableUnderline: true,
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <PersonIcon color="action" />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <TextField
-                        fullWidth
-                        label="Phone Number"
-                        value={formData.phone}
-                        onChange={handleChange("phone")}
-                        error={!!errors.phone}
-                        helperText={errors.phone}
-                        variant="filled"
-                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
-                        InputProps={{
-                          disableUnderline: true,
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <PhoneIcon color="action" />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-                  </Grid>
-
-                  <TextField
-                    fullWidth
-                    label="Address (House No, Building, Street)"
-                    value={formData.address}
-                    onChange={handleChange("address")}
-                    error={!!errors.address}
-                    helperText={errors.address}
-                    variant="filled"
-                    sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
-                    InputProps={{ disableUnderline: true }}
-                    multiline
-                    rows={3}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Landmark (Optional)"
-                    value={formData.landmark}
-                    onChange={handleChange("landmark")}
-                    placeholder="Near temple, school, etc."
-                    variant="filled"
-                    sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
-                    InputProps={{
-                      disableUnderline: true,
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <HomeIcon color="action" />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
+                  <Box>
+                    <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Search area, street or landmark</Typography>
+                    <TextField
+                      fullWidth
+                      placeholder="Search for a location"
+                      variant="outlined"
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                        sx: { borderRadius: 2, bgcolor: "white" }
+                      }}
+                    />
+                  </Box>
 
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>State</Typography>
                       <TextField
                         select
                         fullWidth
-                        label="State"
                         value={formData.state}
                         onChange={handleChange("state")}
                         error={!!errors.state}
-                        helperText={errors.state}
                         SelectProps={{ native: true }}
-                        variant="filled"
-                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                        variant="outlined"
+                        InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
                       >
                         <option value=""></option>
-                        {states.map((state) => (
-                          <option key={state} value={state}>
-                            {state}
-                          </option>
-                        ))}
+                        {states.map((state) => <option key={state} value={state}>{state}</option>)}
                       </TextField>
                     </Grid>
                     
                     <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>District</Typography>
                       <TextField
                         select
                         fullWidth
-                        label="District"
                         value={formData.district}
                         onChange={handleChange("district")}
                         disabled={!formData.state}
                         SelectProps={{ native: true }}
-                        variant="filled"
-                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                        variant="outlined"
+                        InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
                       >
                         <option value=""></option>
-                        {getDistricts(formData.state).map((district) => (
-                          <option key={district} value={district}>
-                            {district}
-                          </option>
-                        ))}
+                        {getDistricts(formData.state).map((district) => <option key={district} value={district}>{district}</option>)}
                       </TextField>
                     </Grid>
                     
                     <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Taluka</Typography>
                       <TextField
                         select
                         fullWidth
-                        label="Taluka"
                         value={formData.taluka}
                         onChange={handleChange("taluka")}
                         disabled={!formData.district}
                         SelectProps={{ native: true }}
-                        variant="filled"
-                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                        variant="outlined"
+                        InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
                       >
                         <option value=""></option>
-                        {getTalukas(formData.state, formData.district).map((taluka) => (
-                          <option key={taluka} value={taluka}>
-                            {taluka}
-                          </option>
-                        ))}
+                        {getTalukas(formData.state, formData.district).map((taluka) => <option key={taluka} value={taluka}>{taluka}</option>)}
                       </TextField>
                     </Grid>
 
                     <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Village / City</Typography>
                       <TextField
                         select
                         fullWidth
-                        label="Village / City"
                         value={formData.village}
                         onChange={handleChange("village")}
-                        error={!!errors.city}
-                        helperText={errors.city}
                         disabled={!formData.taluka}
                         SelectProps={{ native: true }}
-                        variant="filled"
-                        sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
+                        variant="outlined"
+                        InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
                       >
                         <option value=""></option>
-                        {getVillages(formData.state, formData.district, formData.taluka).map((village) => (
-                          <option key={village} value={village}>
-                            {village}
-                          </option>
-                        ))}
+                        {getVillages(formData.state, formData.district, formData.taluka).map((village) => <option key={village} value={village}>{village}</option>)}
                       </TextField>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Pincode</Typography>
+                      <TextField
+                        fullWidth
+                        value={formData.pincode}
+                        onChange={handleChange("pincode")}
+                        error={!!errors.pincode}
+                        variant="outlined"
+                        InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
+                      />
                     </Grid>
                   </Grid>
 
-                  <TextField
-                    fullWidth
-                    label="Pincode"
-                    value={formData.pincode}
-                    onChange={handleChange("pincode")}
-                    error={!!errors.pincode}
-                    variant="filled"
-                    sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
-                    InputProps={{ disableUnderline: true }}
+                  <Box>
+                    <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>House / flat / farm no.</Typography>
+                    <TextField
+                      fullWidth
+                      placeholder="e.g. Plot 12, Green Fields Farm"
+                      value={formData.address}
+                      onChange={handleChange("address")}
+                      error={!!errors.address}
+                      variant="outlined"
+                      InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
+                    />
+                  </Box>
+
+                  <Box>
+                    <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Landmark (optional)</Typography>
+                    <TextField
+                      fullWidth
+                      placeholder="Near the water tower"
+                      value={formData.landmark}
+                      onChange={handleChange("landmark")}
+                      variant="outlined"
+                      InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
+                    />
+                  </Box>
+
+                  <Box>
+                    <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Save address as</Typography>
+                    <Grid container spacing={2}>
+                      {["Home", "Farm", "Other"].map((type) => (
+                        <Grid item xs={4} key={type}>
+                          <Button
+                            fullWidth
+                            variant={formData.addressType === type ? "contained" : "outlined"}
+                            onClick={() => setFormData({...formData, addressType: type})}
+                            sx={{
+                              borderRadius: 2,
+                              color: formData.addressType === type ? "white" : "text.primary",
+                              borderColor: formData.addressType === type ? "primary.main" : "#e0e0e0",
+                              bgcolor: formData.addressType === type ? "#2E7D32" : "white",
+                              "&:hover": { bgcolor: formData.addressType === type ? "#1B5E20" : "#f5f5f5" },
+                              textTransform: "none",
+                              fontWeight: 700,
+                              py: 1
+                            }}
+                            startIcon={type === "Home" ? <HomeIcon /> : type === "Farm" ? <PlaceIcon /> : <BusinessIcon />}
+                          >
+                            {type}
+                          </Button>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Receiver's name</Typography>
+                    <TextField
+                      fullWidth
+                      placeholder="Full name"
+                      value={formData.fullName}
+                      onChange={handleChange("fullName")}
+                      error={!!errors.fullName}
+                      variant="outlined"
+                      InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
+                    />
+                  </Box>
+
+                  <Box>
+                    <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ mb: 1, display: "block" }}>Phone number</Typography>
+                    <TextField
+                      fullWidth
+                      placeholder="+91 98765 43210"
+                      value={formData.phone}
+                      onChange={handleChange("phone")}
+                      error={!!errors.phone}
+                      variant="outlined"
+                      InputProps={{ sx: { borderRadius: 2, bgcolor: "white" } }}
+                    />
+                  </Box>
+
+                  <FormControlLabel
+                    control={
+                      <Checkbox 
+                        checked={formData.isDefault}
+                        onChange={(e) => setFormData({...formData, isDefault: e.target.checked})}
+                        sx={{ color: "#2E7D32", "&.Mui-checked": { color: "#2E7D32" } }}
+                      />
+                    }
+                    label={<Typography fontWeight="600">Set as default delivery address</Typography>}
                   />
 
-                  <TextField
-                    fullWidth
-                    label="Delivery Instructions (Optional)"
-                    value={formData.deliveryInstructions}
-                    onChange={handleChange("deliveryInstructions")}
-                    variant="filled"
-                    sx={{ "& .MuiFilledInput-root": { borderRadius: 2, bgcolor: "#f9f9f9" } }}
-                    InputProps={{ disableUnderline: true }}
-                    multiline
-                    rows={2}
-                    placeholder="Any specific instructions for delivery"
-                  />
-
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    fullWidth
-                    size="large"
-                    sx={{
-                      py: 2,
-                      fontSize: "1.1rem",
-                      fontWeight: "bold",
-                      bgcolor: "#2E7D32",
-                      boxShadow: "0 8px 16px rgba(46, 125, 50, 0.2)",
-                      transition: "transform 0.2s",
-                      "&:hover": {
-                        bgcolor: "#1B5E20",
-                        transform: "translateY(-2px)",
-                      },
-                      mt: 2,
-                    }}
-                  >
-                    Proceed to Payment
-                  </Button>
                 </Stack>
-              </form>
-            </Paper>
+              </Box>
+            )}
+
           </Grid>
 
-          {/* Order Summary */}
-          <Grid item xs={12} md={4}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                position: "sticky",
-                top: 24,
-                bgcolor: "white",
-                borderRadius: 4,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-                border: "1px solid #f0f0f0",
-              }}
-            >
-              <Typography
-                variant="h6"
-                gutterBottom
-                fontWeight="700"
-                sx={{ color: "#1a1a1a", mb: 2 }}
+          {/* Order Summary (Only in select view to match usual checkout flow, or keep sticky) */}
+          {view === "select" && (
+            <Grid item xs={12} md={4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  position: "sticky",
+                  top: 24,
+                  bgcolor: "white",
+                  borderRadius: 4,
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                  border: "1px solid #f0f0f0",
+                }}
               >
-                Order Summary
-              </Typography>
-              <Stack spacing={2}>
-                {cart.map((item) => (
-                  <Box
-                    key={item.cartItemId}
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      py: 1,
-                    }}
-                  >
-                    <Box>
-                      <Typography
-                        variant="body2"
-                        fontWeight="500"
-                        color="text.primary"
-                      >
-                        {item.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Qty: {item.quantity}
-                      </Typography>
+                <Typography variant="h6" gutterBottom fontWeight="700" sx={{ color: "#1a1a1a", mb: 2 }}>
+                  Order Summary
+                </Typography>
+                <Stack spacing={2}>
+                  {cart.map((item) => (
+                    <Box key={item.cartItemId} sx={{ display: "flex", justifyContent: "space-between", py: 1 }}>
+                      <Box>
+                        <Typography variant="body2" fontWeight="500" color="text.primary">{item.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">Qty: {item.quantity}</Typography>
+                      </Box>
+                      <Typography variant="body2" fontWeight="600">₹{item.price * item.quantity}</Typography>
                     </Box>
-                    <Typography variant="body2" fontWeight="600">
-                      ₹{item.price * item.quantity}
+                  ))}
+                  <Divider sx={{ borderStyle: "dashed", borderColor: "#e0e0e0" }} />
+                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                    <Typography color="text.secondary">Subtotal</Typography>
+                    <Typography fontWeight="500">₹{subtotal}</Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                    <Typography color="text.secondary">Delivery</Typography>
+                    <Typography fontWeight="500" color={deliveryFee === 0 ? "success.main" : "inherit"}>
+                      {deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}
                     </Typography>
                   </Box>
-                ))}
-
-                <Divider
-                  sx={{ borderStyle: "dashed", borderColor: "#e0e0e0" }}
-                />
-
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography color="text.secondary">Subtotal</Typography>
-                  <Typography fontWeight="500">₹{subtotal}</Typography>
-                </Box>
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography color="text.secondary">Delivery</Typography>
-                  <Typography
-                    fontWeight="500"
-                    color={deliveryFee === 0 ? "success.main" : "inherit"}
-                  >
-                    {deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}
-                  </Typography>
-                </Box>
-
-                <Divider sx={{ borderColor: "#000" }} />
-
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Typography variant="h6" fontWeight="800" color="#1a1a1a">
-                    Total
-                  </Typography>
-                  <Typography variant="h5" fontWeight="800" color="#2E7D32">
-                    ₹{total}
-                  </Typography>
-                </Box>
-
-                {deliveryFee > 0 && (
-                  <Alert
-                    severity="info"
-                    icon={<LocalShippingIcon fontSize="inherit" />}
-                    sx={{
-                      borderRadius: 2,
-                      bgcolor: "#e3f2fd",
-                      "& .MuiAlert-icon": { color: "#1976d2" },
-                    }}
-                  >
-                    Add{" "}
-                    <Box component="span" fontWeight="bold">
-                      ₹{5000 - subtotal}
-                    </Box>{" "}
-                    more for free delivery!
-                  </Alert>
-                )}
-
-                <Box
-                  sx={{
-                    mt: 2,
-                    bgcolor: "#f9f9f9",
-                    p: 1.5,
-                    borderRadius: 2,
-                    display: "flex",
-                    gap: 1,
-                    alignItems: "center",
-                  }}
-                >
-                  <SecurityIcon
-                    sx={{ fontSize: 16, color: "text.secondary" }}
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    Safe & Secure Payment
-                  </Typography>
-                </Box>
-              </Stack>
-            </Paper>
-          </Grid>
+                  <Divider sx={{ borderColor: "#000" }} />
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography variant="h6" fontWeight="800" color="#1a1a1a">Total</Typography>
+                    <Typography variant="h5" fontWeight="800" color="#2E7D32">₹{total}</Typography>
+                  </Box>
+                  {deliveryFee > 0 && (
+                    <Alert severity="info" icon={<LocalShippingIcon fontSize="inherit" />} sx={{ borderRadius: 2, bgcolor: "#e3f2fd", "& .MuiAlert-icon": { color: "#1976d2" } }}>
+                      Add <Box component="span" fontWeight="bold">₹{5000 - subtotal}</Box> more for free delivery!
+                    </Alert>
+                  )}
+                  <Box sx={{ mt: 2, bgcolor: "#f9f9f9", p: 1.5, borderRadius: 2, display: "flex", gap: 1, alignItems: "center" }}>
+                    <SecurityIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                    <Typography variant="caption" color="text.secondary">Safe & Secure Payment</Typography>
+                  </Box>
+                </Stack>
+              </Paper>
+            </Grid>
+          )}
         </Grid>
       </Container>
+
+      {/* Sticky Bottom Actions */}
+      <Paper 
+        elevation={8} 
+        sx={{ 
+          position: "fixed", 
+          bottom: { xs: 56, md: 0 }, 
+          left: 0, 
+          right: 0, 
+          p: 2, 
+          bgcolor: "white", 
+          zIndex: 1000,
+          borderTop: "1px solid #e0e0e0"
+        }}
+      >
+        <Container maxWidth="lg">
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            {view === "select" ? (
+              <Button
+                variant="contained"
+                onClick={handleContinueToPayment}
+                disabled={!selectedAddressId}
+                sx={{
+                  py: 1.5,
+                  px: 4,
+                  fontSize: "1.1rem",
+                  fontWeight: "bold",
+                  bgcolor: "#2E7D32",
+                  borderRadius: 2,
+                  textTransform: "none",
+                  "&:hover": { bgcolor: "#1B5E20" }
+                }}
+              >
+                Continue to payment →
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={handleSaveAddress}
+                fullWidth
+                sx={{
+                  py: 1.5,
+                  fontSize: "1.1rem",
+                  fontWeight: "bold",
+                  bgcolor: "#2E7D32",
+                  borderRadius: 2,
+                  textTransform: "none",
+                  "&:hover": { bgcolor: "#1B5E20" }
+                }}
+              >
+                Save address
+              </Button>
+            )}
+          </Box>
+        </Container>
+      </Paper>
     </Box>
   );
 };
