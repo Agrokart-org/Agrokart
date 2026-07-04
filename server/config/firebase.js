@@ -15,7 +15,8 @@ try {
     } else {
       console.log("🔥 Using local serviceAccountKey.json for Firebase Admin configuration.");
       firebaseConfig = {
-        credential: admin.credential.cert(serviceAccount)
+        credential: admin.credential.cert(serviceAccount),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "fertilizer-89e57.firebasestorage.app"
       };
     }
   } 
@@ -31,7 +32,8 @@ try {
           projectId: process.env.FIREBASE_PROJECT_ID,
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-        })
+        }),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "fertilizer-89e57.firebasestorage.app"
       };
     }
   }
@@ -49,6 +51,7 @@ if (!firebaseConfig) {
 
 try {
   admin.initializeApp(firebaseConfig);
+  admin.firestore().settings({ preferRest: true });
 } catch (error) {
   console.error("Firebase Initialization Error:", error);
 }
