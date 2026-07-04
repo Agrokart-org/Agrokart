@@ -199,7 +199,7 @@ const DeliveryLogin = () => {
       setIsAuthenticated(true);
 
       // Step 5: Store authentication data
-      const authToken = backendResponse?.token || firebaseIdToken || "";
+      const authToken = firebaseIdToken || backendResponse?.token || "";
       localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("userRole", "delivery_partner");
       localStorage.setItem("authToken", authToken);
