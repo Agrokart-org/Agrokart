@@ -9,6 +9,10 @@ Agrokart is a complete three-sided marketplace that revolutionizes agricultural 
 - **Vendors/Suppliers** - Sell fertilizers, seeds, and farming equipment
 - **Delivery Partners** - Earn by delivering orders to farmers
 
+  ## Live Demo
+
+[View Live Application](https://fertilizer-89e57.firebaseapp.com)
+
 ## 📱 Platform Features
 
 ### 🛒 Customer Side (Farmers)
