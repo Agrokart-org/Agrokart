@@ -9,588 +9,479 @@ import {
   Avatar,
   Stack,
   Chip,
-  Fade,
-  Slide,
   useTheme,
-  alpha,
-  Divider,
   Button,
   Menu,
   MenuItem,
-  Badge,
   InputAdornment,
+  Tooltip,
+  Badge,
+  Drawer,
+  Card,
+  CardContent,
+  CardMedia,
 } from "@mui/material";
 import {
-  Chat as ChatIcon,
   Close as CloseIcon,
   Send as SendIcon,
-  SmartToy as BotIcon,
   Person as PersonIcon,
   Language as LanguageIcon,
   Refresh as RefreshIcon,
-  ShoppingCart,
-  Call as CallIcon,
-  Mic as MicIcon,
-  Navigation as NavigationIcon,
+  MenuBook as MenuBookIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  Agriculture as AgricultureIcon,
+  ShoppingCart as CartIcon,
+  OpenInNew as OpenInNewIcon,
+  Psychology as AIIcon,
+  ContentCopy as CopyIcon,
+  Check as CheckIcon,
 } from "@mui/icons-material";
 import { useLanguage } from "../context/LanguageContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
+import { useCart } from "../context/CartContext";
 
-// Predefined responses in multiple languages
-const chatResponses = {
-  en: {
-    greeting: "Kisan Mitra Bot here! 🌾 How can I help you today?",
-    quickReplies: [
-      "Product Info",
-      "Track Order",
-      "Go to Profile",
-      "Expert Advice",
-    ],
-    responses: {
-      "product info":
-        "🌱 We offer premium fertilizers:\n• Urea (₹850)\n• DAP (₹1200)\n• NPK 20:20:20 (₹1100)\nCheck our Products page for more!",
-      delivery:
-        "🚚 Fast & Reliable Delivery across India. Free delivery on orders above ₹1000.",
-      pricing: "💰 Competitive Pricing with Great Offers!",
-      support: "👨‍🌾 Expert Agricultural Support available 24/7.",
-      default:
-        "🤔 I can help with products, delivery, and navigation. Try saying 'Go to Orders'.",
-    },
-    navigation: {
-      products: "Navigating to Products page... 🛍️",
-      orders: "Taking you to your Orders... 📦",
-      profile: "Opening your Profile... 👤",
-      cart: "Going to Cart... 🛒",
-      dashboard: "Back to Dashboard... 🏠",
-    },
-  },
-  hi: {
-    greeting: "किसान मित्र बॉट! 🌾 मैं आपकी किस प्रकार सहायता कर सकता हूं?",
-    quickReplies: [
-      "उत्पाद जानकारी",
-      "ऑर्डर ट्रैक करें",
-      "प्रोफाइल पर जाएं",
-      "विशेषज्ञ सलाह",
-    ],
-    responses: {
-      "उत्पाद जानकारी":
-        "🌱 हमारे पास बेहतरीन उर्वरक हैं:\n• यूरिया (₹850)\n• डीएपी (₹1200)\nअधिक जानकारी के लिए उत्पाद पेज देखें!",
-      delivery: "🚚 पूरे भारत में तेज़ डिलीवरी। ₹1000 से ऊपर मुफ्त।",
-      default:
-        "🤔 मैं उत्पादों और नेविगेशन में मदद कर सकता हूं। कहें 'ऑर्डर पर जाएं'।",
-    },
-    navigation: {
-      products: "उत्पाद पेज पर ले जा रहा हूं... 🛍️",
-      orders: "आपके ऑर्डर दिखा रहा हूं... 📦",
-      profile: "प्रोफाइल खोल रहा हूं... 👤",
-      cart: "कार्ट पर ले जा रहा हूं... 🛒",
-      dashboard: "डैशबोर्ड पर वापस... 🏠",
-    },
-  },
-  mr: {
-    greeting: "शेतकरी मित्र बॉट! 🌾 मी तुम्हाला कशी मदत करू शकतो?",
-    quickReplies: [
-      "उत्पादन माहिती",
-      "ऑर्डर ट्रॅक करा",
-      "प्रोफाईल वर जा",
-      "तज्ञ सल्ला",
-    ],
-    responses: {
-      "उत्पादन माहिती":
-        "🌱 आमची प्रीमियम खते:\n• युरिया (₹८५०)\n• डीएपी (₹१२००)\nअधिक माहितीसाठी उत्पादन पेज पहा!",
-      default:
-        "🤔 मी उत्पादने आणि नेव्हिगेशनमध्ये मदत करू शकतो. 'ऑर्डर वर जा' असे म्हणा.",
-    },
-    navigation: {
-      products: "उत्पादन पेजवर नेत आहे... 🛍️",
-      orders: "तुमच्या ऑर्डर दाखवत आहे... 📦",
-      profile: "प्रोफाईल उघडत आहे... 👤",
-      cart: "कार्टवर नेत आहे... 🛒",
-      dashboard: "डॅशबोर्डवर परत... 🏠",
-    },
-  },
+// ── Quick Prompt Chips ──────────────────────────────────────────────────────────
+const QUICK_PROMPTS = [
+  { label: "🌾 Wheat Fertilizer", msg: "How much urea and DAP should I apply for 1 acre of wheat crop?" },
+  { label: "🧪 Soil pH Fix", msg: "My soil pH is 5.2. How to treat acidic soil for farming?" },
+  { label: "🌱 Crop Nutrition", msg: "What is the recommended NPK dosage for paddy rice?" },
+  { label: "💧 Irrigation Guide", msg: "What are the critical irrigation stages for wheat crop?" },
+  { label: "🪲 Pest Diagnosis", msg: "My paddy leaves are showing yellow patches and hoppers. What is the cure?" },
+  { label: "📦 Product Search", msg: "Recommend top fertilizers available on AgroKart" },
+];
+
+const GREETING_TEXT = `👋 **Namaskar, Kisan!**
+
+I am **Dr. Agro**, your AI Agricultural Assistant powered by the **ICAR (Indian Council of Agricultural Research)** knowledge base.
+
+Ask me about:
+• 🌱 **Fertilizer Dosages** (Urea, DAP, MOP per acre/hectare)
+• 🧪 **Soil pH Treatment** (Lime for acidic soil, Gypsum for sodic soil)
+• 🌾 **Crop Nutrition Schedules** (Wheat, Rice, Cotton, Sugarcane)
+• 💧 **Critical Irrigation Stages**
+• 🪲 **Pest & Disease Control**
+
+*Select a quick prompt below or type your question!*`;
+
+// ── Markdown Text Renderer ─────────────────────────────────────────────────────
+const RenderMarkdown = ({ text }) => {
+  if (!text) return null;
+
+  const lines = text.split("\n");
+  const elements = [];
+
+  lines.forEach((line, index) => {
+    // Headers
+    if (line.startsWith("## ")) {
+      elements.push(
+        <Typography key={index} variant="subtitle1" fontWeight={800} sx={{ color: "#1B5E20", mt: 1.5, mb: 0.5, borderBottom: "1px solid #C8E6C9", pb: 0.3 }}>
+          {line.replace("## ", "")}
+        </Typography>
+      );
+    } else if (line.startsWith("### ")) {
+      elements.push(
+        <Typography key={index} variant="body2" fontWeight={700} sx={{ color: "#2E7D32", mt: 1, mb: 0.3 }}>
+          {line.replace("### ", "")}
+        </Typography>
+      );
+    }
+    // Blockquote / Notes
+    else if (line.startsWith("> ")) {
+      elements.push(
+        <Box key={index} sx={{ borderLeft: "3px solid #66BB6A", pl: 1.5, my: 1, bgcolor: "#E8F5E9", py: 0.8, borderRadius: "0 6px 6px 0" }}>
+          <Typography variant="body2" sx={{ color: "#1B5E20", fontStyle: "italic", fontSize: "0.82rem" }}
+            dangerouslySetInnerHTML={{ __html: line.replace("> ", "").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") }}
+          />
+        </Box>
+      );
+    }
+    // Bullet points
+    else if (line.trim().startsWith("•") || line.trim().startsWith("-")) {
+      const formatted = line.trim().replace(/^([•\-]\s*)/, "");
+      elements.push(
+        <Box key={index} sx={{ display: "flex", gap: 1, ml: 0.5, my: 0.3 }}>
+          <Typography sx={{ color: "#2E7D32", fontWeight: 700, fontSize: "0.85rem", lineHeight: 1.5 }}>•</Typography>
+          <Typography variant="body2" sx={{ fontSize: "0.84rem", lineHeight: 1.55 }}
+            dangerouslySetInnerHTML={{ __html: formatted.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>") }}
+          />
+        </Box>
+      );
+    }
+    // Numbered list
+    else if (line.match(/^\d+\.\s/)) {
+      elements.push(
+        <Typography key={index} variant="body2" sx={{ ml: 1, my: 0.3, fontSize: "0.84rem" }}
+          dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") }}
+        />
+      );
+    }
+    // Regular paragraph
+    else if (line.trim() !== "") {
+      elements.push(
+        <Typography key={index} variant="body2" sx={{ my: 0.4, fontSize: "0.85rem", lineHeight: 1.6 }}
+          dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>") }}
+        />
+      );
+    }
+  });
+
+  return <Box>{elements}</Box>;
 };
 
+// ── Main Component ─────────────────────────────────────────────────────────────
 const AIChatbot = () => {
-  const theme = useTheme();
-  const { language } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const { addToCart } = useCart();
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [chatLanguage, setChatLanguage] = useState(language || "en");
-  const [langMenuAnchor, setLangMenuAnchor] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [ragStatus, setRagStatus] = useState("unknown"); // "ready", "offline"
+  const [copiedId, setCopiedId] = useState(null);
+
   const messagesEndRef = useRef(null);
-
-  // Drag Controls
-  const dragControls = useDragControls();
-
-  // Helper to get current language data safely
-  const getCurrentLanguageData = useCallback(() => {
-    return chatResponses[chatLanguage] || chatResponses["en"];
-  }, [chatLanguage]);
+  const inputRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping]);
+  useEffect(() => { scrollToBottom(); }, [messages, isTyping]);
 
+  // Health-check RAG service on mount
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await axios.get("http://localhost:8000/health", { timeout: 3000 });
+        if (res.data?.status === "OK") setRagStatus("ready");
+        else setRagStatus("offline");
+      } catch {
+        setRagStatus("offline");
+      }
+    };
+    checkHealth();
+  }, []);
+
+  // Initialize conversation
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      const languageData = getCurrentLanguageData();
-      setMessages([
-        {
-          id: Date.now(),
-          text: languageData.greeting,
-          sender: "bot",
-          timestamp: new Date(),
-        },
-      ]);
+      setMessages([{
+        id: "greeting",
+        sender: "bot",
+        text: GREETING_TEXT,
+        timestamp: new Date(),
+        sources: ["ICAR Agricultural Knowledge Base"],
+        engine: "AgroKart RAG Engine",
+      }]);
     }
-  }, [isOpen, chatLanguage, messages.length, getCurrentLanguageData]);
+  }, [isOpen, messages.length]);
 
-  const detectNavigation = (text) => {
-    const lowerText = text.toLowerCase();
-    const navKeywords = {
-      products: [
-        "product",
-        "shop",
-        "buy",
-        "store",
-        "market",
-        "उत्पाद",
-        "उत्पादन",
-        "खरेदी",
-      ],
-      orders: ["order", "track", "history", "ऑर्डर", "मागा"],
-      profile: ["profile", "account", "user", "प्रोफाइल", "प्रोफाईल", "खाते"],
-      cart: ["cart", "basket", "bag", "कार्ट", "पिशवी"],
-      dashboard: ["home", "main", "dashboard", "घर", "मुख्य"],
-    };
+  const handleSendMessage = useCallback(async (msgText = inputValue) => {
+    if (!msgText.trim()) return;
 
-    const actionKeywords = [
-      "go to",
-      "navigate",
-      "open",
-      "show",
-      "take me",
-      "जाएं",
-      "जा",
-      "दाखवा",
-      "खोल",
-    ];
-
-    // Check if it's a navigation intent
-    const isNavigation =
-      actionKeywords.some((keyword) => lowerText.includes(keyword)) ||
-      lowerText.length < 20; // Short phrases might be nav commands like "Products"
-
-    if (isNavigation) {
-      if (navKeywords.products.some((k) => lowerText.includes(k)))
-        return { path: "/products", type: "products" };
-      if (navKeywords.orders.some((k) => lowerText.includes(k)))
-        return { path: "/orders", type: "orders" }; // Assuming generic orders path
-      if (navKeywords.profile.some((k) => lowerText.includes(k)))
-        return { path: "/profile", type: "profile" };
-      if (navKeywords.cart.some((k) => lowerText.includes(k)))
-        return { path: "/cart", type: "cart" };
-      if (navKeywords.dashboard.some((k) => lowerText.includes(k)))
-        return { path: "/dashboard", type: "dashboard" };
-    }
-    return null;
-  };
-
-  const handleSendMessage = async (messageText = inputValue) => {
-    if (!messageText.trim()) return;
-
-    const userMessage = {
-      id: Date.now(),
-      text: messageText,
+    const userMsg = {
+      id: Date.now().toString(),
       sender: "user",
+      text: msgText,
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMsg]);
     setInputValue("");
     setIsTyping(true);
 
-    // Analyze intent
-    const navIntent = detectNavigation(messageText);
+    try {
+      // Call Express proxy endpoint (which forwards to Python RAG)
+      const res = await axios.post("/api/dr-agro/chat", {
+        message: msgText,
+        session_id: sessionId,
+      }, { timeout: 15000 });
 
-    setTimeout(() => {
-      let botResponseText = "";
-      const languageData = getCurrentLanguageData();
+      if (res.data?.success) {
+        if (res.data.session_id) setSessionId(res.data.session_id);
 
-      if (navIntent) {
-        // Navigation Response
-        botResponseText =
-          languageData.navigation?.[navIntent.type] ||
-          `Navigating to ${navIntent.type}...`;
+        const botMsg = {
+          id: (Date.now() + 1).toString(),
+          sender: "bot",
+          text: res.data.answer,
+          sources: res.data.sources || ["ICAR Handbook"],
+          engine: res.data.engine || "RAG AI Engine",
+          timestamp: new Date(),
+        };
 
-        // Execute Navigation
-        setTimeout(() => {
-          navigate(navIntent.path);
-          setIsOpen(false); // Close chat on navigation
-        }, 1500);
+        setMessages((prev) => [...prev, botMsg]);
       } else {
-        // Standard Response Logic
-        const responses = languageData.responses || {};
-        const lowerInput = messageText.toLowerCase();
-
-        // Simple matching
-        const match = Object.keys(responses).find(
-          (key) => lowerInput.includes(key) && key !== "default",
-        );
-        botResponseText = match ? responses[match] : responses.default;
+        throw new Error(res.data?.message || "Failed to get answer");
       }
-
-      const botMessage = {
-        id: Date.now() + 1,
-        text: botResponseText,
+    } catch (err) {
+      console.warn("RAG chat error:", err.message);
+      setMessages((prev) => [...prev, {
+        id: (Date.now() + 1).toString(),
         sender: "bot",
+        text: "I couldn't retrieve verified information for that right now. Please check if the RAG service is running or contact the **Kisan Call Center: 1800-180-1551**.",
+        sources: ["System Warning"],
+        engine: "Offline Error",
         timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, botMessage]);
+        isError: true,
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
+  }, [inputValue, sessionId]);
+
+  const handleClearChat = async () => {
+    if (sessionId) {
+      try { await axios.delete(`http://localhost:8000/session/${sessionId}`); } catch {}
+    }
+    setSessionId(null);
+    setMessages([]);
   };
 
-  // Hide chatbot on auth pages
-  const authPaths = [
-    "/login",
-    "/register",
-    "/otp",
-    "/auth",
-    "/vendor/login",
-    "/delivery/login",
-    "/admin",
-  ];
-  if (authPaths.some((path) => location.pathname.startsWith(path))) {
-    return null;
-  }
+  const copyToClipboard = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
-  // Define MotionBox for draggable container
-  const MotionBox = motion(Box);
+  // Hide on auth pages
+  const hidePaths = ["/login", "/register", "/admin"];
+  if (hidePaths.some((p) => location.pathname.startsWith(p))) return null;
 
   return (
     <>
-      <MotionBox
-        drag
-        dragListener={false} // Only drag via controls
-        dragControls={dragControls}
-        dragMomentum={false}
-        initial={{ x: 0, y: 0 }}
-        sx={{
-          position: "fixed",
-          bottom: { xs: 80, sm: 90 }, // Lowering slightly for better mobile reach
-          right: { xs: 16, sm: 24 },
-          zIndex: 1300,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-          touchAction: "none", // Important for drag on mobile
+      {/* Slide-in Right Drawer Chat Panel (Does not cover screen awkwardly) */}
+      <Drawer
+        anchor="right"
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100vw", sm: 440, md: 480 },
+            display: "flex",
+            flexDirection: "column",
+            bgcolor: "#FAFBF9",
+            borderLeft: "1px solid rgba(46,125,50,0.15)",
+          },
         }}
       >
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              style={{ transformOrigin: "bottom right", marginBottom: 16 }}
-            >
-              <Paper
-                elevation={12}
-                sx={{
-                  width: { xs: "85vw", sm: 360 }, // Slightly narrower on mobile
-                  height: { xs: "60vh", sm: 500 },
-                  borderRadius: "24px",
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                  background: "rgba(255, 255, 255, 0.95)",
-                  backdropFilter: "blur(20px)",
-                  border: "1px solid rgba(255,255,255,0.5)",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-                }}
-              >
-                {/* Header - DRAGGABLE HANDLE */}
-                <Box
-                  onPointerDown={(e) => dragControls.start(e)}
-                  sx={{
-                    background:
-                      "linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)",
-                    p: 2,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    color: "white",
-                    cursor: "move", // Visual cue for dragging
-                    userSelect: "none", // Prevent text selection
-                    touchAction: "none",
-                  }}
-                >
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Avatar
-                      sx={{
-                        bgcolor: "white",
-                        color: "#2E7D32",
-                        width: 36,
-                        height: 36,
-                      }}
-                    >
-                      <BotIcon />
-                    </Avatar>
-                    <Box>
-                      <Typography
-                        variant="subtitle1"
-                        fontWeight="700"
-                        lineHeight={1.2}
-                      >
-                        Kisan Mitra
-                      </Typography>
-                      <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                        Online • AI Assistant
-                      </Typography>
-                    </Box>
-                  </Stack>
-                  <Stack direction="row">
-                    <IconButton
-                      size="small"
-                      onClick={(e) => setLangMenuAnchor(e.currentTarget)}
-                      sx={{ color: "white" }}
-                    >
-                      <LanguageIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => setIsOpen(false)}
-                      sx={{ color: "white" }}
-                    >
-                      <CloseIcon />
-                    </IconButton>
-                  </Stack>
-                </Box>
-
-                {/* Messages */}
-                <Box
-                  sx={{ flex: 1, overflowY: "auto", p: 2, bgcolor: "#f5f7f6" }}
-                >
-                  {messages.map((msg) => (
-                    <Box
-                      key={msg.id}
-                      sx={{
-                        display: "flex",
-                        justifyContent:
-                          msg.sender === "user" ? "flex-end" : "flex-start",
-                        mb: 2,
-                      }}
-                    >
-                      {msg.sender === "bot" && (
-                        <Avatar
-                          sx={{
-                            width: 28,
-                            height: 28,
-                            bgcolor: "#2E7D32",
-                            mr: 1,
-                            mt: 0.5,
-                          }}
-                        >
-                          <BotIcon sx={{ fontSize: 18 }} />
-                        </Avatar>
-                      )}
-                      <Paper
-                        sx={{
-                          p: 1.5,
-                          px: 2,
-                          borderRadius: "18px",
-                          borderTopLeftRadius:
-                            msg.sender === "bot" ? "4px" : "18px",
-                          borderTopRightRadius:
-                            msg.sender === "user" ? "4px" : "18px",
-                          maxWidth: "75%",
-                          bgcolor: msg.sender === "user" ? "#2E7D32" : "white",
-                          color:
-                            msg.sender === "user" ? "white" : "text.primary",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          sx={{ whiteSpace: "pre-line" }}
-                        >
-                          {msg.text}
-                        </Typography>
-                      </Paper>
-                    </Box>
-                  ))}
-                  {isTyping && (
-                    <Box sx={{ display: "flex", ml: 1, mb: 2 }}>
-                      <Avatar
-                        sx={{
-                          width: 28,
-                          height: 28,
-                          bgcolor: "#2E7D32",
-                          mr: 1,
-                        }}
-                      >
-                        <BotIcon sx={{ fontSize: 18 }} />
-                      </Avatar>
-                      <Paper
-                        sx={{
-                          p: 1.5,
-                          borderRadius: "18px",
-                          borderTopLeftRadius: "4px",
-                          bgcolor: "white",
-                        }}
-                      >
-                        <motion.div
-                          animate={{ opacity: [0.4, 1, 0.4] }}
-                          transition={{ repeat: Infinity, duration: 1.5 }}
-                        >
-                          <Typography variant="caption">typing...</Typography>
-                        </motion.div>
-                      </Paper>
-                    </Box>
-                  )}
-                  <div ref={messagesEndRef} />
-                </Box>
-
-                {/* Quick Replies (Only if empty or just greeting) */}
-                {messages.length <= 1 && (
-                  <Box
-                    sx={{
-                      px: 2,
-                      pb: 1,
-                      display: "flex",
-                      gap: 1,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {getCurrentLanguageData().quickReplies?.map((reply, i) => (
-                      <Chip
-                        key={i}
-                        label={reply}
-                        size="small"
-                        onClick={() => handleSendMessage(reply)}
-                        sx={{
-                          bgcolor: "#e8f5e9",
-                          color: "#2e7d32",
-                          borderColor: "#c8e6c9",
-                        }}
-                        variant="outlined"
-                      />
-                    ))}
-                  </Box>
-                )}
-
-                {/* Input */}
-                <Box
-                  sx={{
-                    p: 2,
-                    bgcolor: "white",
-                    borderTop: "1px solid rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Type a message..."
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                    InputProps={{
-                      sx: { borderRadius: "24px", bgcolor: "#f5f5f5" },
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            color="primary"
-                            onClick={() => handleSendMessage()}
-                            disabled={!inputValue.trim()}
-                          >
-                            <SendIcon />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Box>
-              </Paper>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* FAB - Also a drag handle */}
-        <motion.div
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onPointerDown={(e) => dragControls.start(e)}
-          style={{ touchAction: "none", cursor: "move" }}
+        {/* Header */}
+        <Box
+          sx={{
+            p: "14px 20px",
+            background: "linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)",
+            color: "white",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.15)",
+          }}
         >
-          {!isOpen && (
-            <Fab
-              onClick={() => setIsOpen(true)}
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Avatar sx={{ bgcolor: "rgba(255,255,255,0.2)", width: 40, height: 40 }}>
+              <AgricultureIcon sx={{ color: "#A5D6A7" }} />
+            </Avatar>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={800} lineHeight={1.1}>
+                Dr. Agro AI
+              </Typography>
+              <Stack direction="row" spacing={0.8} alignItems="center">
+                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: ragStatus === "ready" ? "#69F0AE" : "#FFA726" }} />
+                <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.85)", fontSize: "0.7rem", fontWeight: 600 }}>
+                  {ragStatus === "ready" ? "RAG + ICAR Knowledge Base Active" : "Local Knowledge Active"}
+                </Typography>
+              </Stack>
+            </Box>
+          </Stack>
+
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Clear Conversation">
+              <IconButton size="small" onClick={handleClearChat} sx={{ color: "white" }}>
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <IconButton size="small" onClick={() => setIsOpen(false)} sx={{ color: "white" }}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+        </Box>
+
+        {/* Message List */}
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: "auto",
+            p: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.8,
+            bgcolor: "#F4F7F4",
+          }}
+        >
+          {messages.map((msg) => (
+            <Box
+              key={msg.id}
               sx={{
-                bgcolor: "#2E7D32",
-                color: "white",
-                width: 64,
-                height: 64,
-                boxShadow: "0 8px 24px rgba(46, 125, 50, 0.4)",
-                "&:hover": { bgcolor: "#1B5E20" },
+                display: "flex",
+                justifyContent: msg.sender === "user" ? "flex-end" : "flex-start",
+                gap: 1,
               }}
             >
-              <ChatIcon fontSize="large" />
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-              </span>
-            </Fab>
-          )}
-        </motion.div>
+              {msg.sender === "bot" && (
+                <Avatar sx={{ width: 32, height: 32, bgcolor: "#1B5E20", mt: 0.5 }}>
+                  <AgricultureIcon sx={{ fontSize: 16, color: "white" }} />
+                </Avatar>
+              )}
 
-        {/* Language Menu */}
-        <Menu
-          anchorEl={langMenuAnchor}
-          open={Boolean(langMenuAnchor)}
-          onClose={() => setLangMenuAnchor(null)}
-          PaperProps={{ sx: { borderRadius: 3, mb: 1 } }}
-          anchorOrigin={{ vertical: "top", horizontal: "left" }}
-          transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+              <Box sx={{ maxWidth: "84%" }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: "12px 16px",
+                    borderRadius: msg.sender === "user" ? "18px 18px 4px 18px" : "4px 18px 18px 18px",
+                    bgcolor: msg.sender === "user" ? "#1B5E20" : "white",
+                    color: msg.sender === "user" ? "white" : "#1A2027",
+                    border: msg.sender === "user" ? "none" : "1px solid #E2EFE2",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  {msg.sender === "user" ? (
+                    <Typography variant="body2" sx={{ color: "white", fontSize: "0.88rem" }}>
+                      {msg.text}
+                    </Typography>
+                  ) : (
+                    <>
+                      <RenderMarkdown text={msg.text} />
+                      <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 0.5 }}>
+                        <IconButton size="small" onClick={() => copyToClipboard(msg.text, msg.id)} sx={{ opacity: 0.6, "&:hover": { opacity: 1 } }}>
+                          {copiedId === msg.id ? <CheckIcon fontSize="small" color="success" /> : <CopyIcon fontSize="small" />}
+                        </IconButton>
+                      </Box>
+                    </>
+                  )}
+                </Paper>
+
+                {/* Sources & Citations */}
+                {msg.sender === "bot" && msg.sources?.length > 0 && (
+                  <Stack direction="row" spacing={0.6} mt={0.8} flexWrap="wrap" gap={0.4}>
+                    {msg.sources.map((src, i) => (
+                      <Chip
+                        key={i}
+                        icon={<MenuBookIcon sx={{ fontSize: "12px !important" }} />}
+                        label={src}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          bgcolor: "#E8F5E9",
+                          color: "#1B5E20",
+                          border: "1px solid #C8E6C9",
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            </Box>
+          ))}
+
+          {/* Typing Indicator */}
+          {isTyping && (
+            <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+              <Avatar sx={{ width: 32, height: 32, bgcolor: "#1B5E20" }}>
+                <AgricultureIcon sx={{ fontSize: 16 }} />
+              </Avatar>
+              <Paper elevation={0} sx={{ p: "10px 14px", borderRadius: "4px 18px 18px 18px", bgcolor: "white", border: "1px solid #E2EFE2" }}>
+                <Typography variant="caption" sx={{ color: "#2E7D32", fontWeight: 700 }}>
+                  Dr. Agro is analyzing ICAR documents...
+                </Typography>
+              </Paper>
+            </Box>
+          )}
+          <div ref={messagesEndRef} />
+        </Box>
+
+        {/* Quick Prompts Bar */}
+        <Box sx={{ px: 2, py: 1, bgcolor: "white", borderTop: "1px solid #E2EFE2", display: "flex", gap: 0.8, overflowX: "auto" }}>
+          {QUICK_PROMPTS.map((qp, i) => (
+            <Chip
+              key={i}
+              label={qp.label}
+              size="small"
+              onClick={() => handleSendMessage(qp.msg)}
+              clickable
+              sx={{
+                bgcolor: "#F1F8E9",
+                color: "#1B5E20",
+                border: "1px solid #C8E6C9",
+                fontWeight: 600,
+                fontSize: "0.72rem",
+                whiteSpace: "nowrap",
+                "&:hover": { bgcolor: "#DCEDC8" },
+              }}
+            />
+          ))}
+        </Box>
+
+        {/* Input Bar */}
+        <Box sx={{ p: 2, bgcolor: "white", borderTop: "1px solid #E2EFE2" }}>
+          <TextField
+            inputRef={inputRef}
+            fullWidth
+            size="small"
+            multiline
+            maxRows={3}
+            placeholder="Ask about fertilizer dose, soil pH, crop diseases..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            InputProps={{
+              sx: { borderRadius: 3, bgcolor: "#F8FBF8", fontSize: "0.88rem" },
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => handleSendMessage()}
+                    disabled={!inputValue.trim() || isTyping}
+                    sx={{ bgcolor: "#1B5E20", color: "white", "&:hover": { bgcolor: "#14532D" }, "&.Mui-disabled": { bgcolor: "#E0E0E0" } }}
+                  >
+                    <SendIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+      </Drawer>
+
+      {/* Floating Action Button */}
+      {!isOpen && (
+        <Fab
+          onClick={() => setIsOpen(true)}
+          sx={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            bgcolor: "#1B5E20",
+            color: "white",
+            boxShadow: "0 6px 20px rgba(27,94,32,0.4)",
+            "&:hover": { bgcolor: "#14532D" },
+            zIndex: 1200,
+          }}
         >
-          <MenuItem
-            onClick={() => {
-              setChatLanguage("en");
-              setLangMenuAnchor(null);
-            }}
-          >
-            🇺🇸 English
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setChatLanguage("hi");
-              setLangMenuAnchor(null);
-            }}
-          >
-            🇮🇳 हिंदी
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setChatLanguage("mr");
-              setLangMenuAnchor(null);
-            }}
-          >
-            🇮🇳 मराठी
-          </MenuItem>
-        </Menu>
-      </MotionBox>
+          <AgricultureIcon sx={{ fontSize: 28 }} />
+        </Fab>
+      )}
     </>
   );
 };

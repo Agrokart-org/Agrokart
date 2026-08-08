@@ -43,4 +43,12 @@ router.post(
  */
 router.post("/analyze-manual", drAgroController.analyzeManual);
 
+/**
+ * @route   POST /api/dr-agro/chat
+ * @desc    Conversational RAG Chatbot Endpoint
+ * @access  Public
+ */
+router.post("/chat", drAgroController.chatWithRAG);
+
 module.exports = router;
+

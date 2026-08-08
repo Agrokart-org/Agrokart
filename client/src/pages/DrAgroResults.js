@@ -8,6 +8,7 @@ import {
   Card,
   CardContent,
   Chip,
+  Paper,
   Button,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -154,6 +155,57 @@ const DrAgroResults = () => {
               ))}
             </Box>
 
+            {/* RAG Chat Action Callout */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2.5,
+                mt: 3,
+                bgcolor: "#E8F5E9",
+                border: "1px solid #A5D6A7",
+                borderRadius: 3,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 2
+              }}
+            >
+              <Box>
+                <Typography variant="subtitle1" fontWeight="700" color="#2E7D32">
+                  Have questions about this recommendation? 🌿
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Ask Dr. Agro AI Assistant for step-by-step guidance backed by agricultural literature.
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() =>
+                  navigate("/customer/dr-agro", {
+                    state: {
+                      activeTab: 2,
+                      mlRecommendation: analysisResult.recommendations
+                        ?.map((r) => `${r.product || r.name}: ${r.dosage || r.dose}`)
+                        .join(", ")
+                    }
+                  })
+                }
+                sx={{
+                  bgcolor: "#2E7D32",
+                  color: "white",
+                  fontWeight: 700,
+                  borderRadius: 2,
+                  px: 2.5,
+                  py: 1,
+                  textTransform: "none",
+                  "&:hover": { bgcolor: "#1B5E20" }
+                }}
+              >
+                Ask AI Assistant
+              </Button>
+            </Paper>
+
             <Alert
               severity="warning"
               variant="outlined"
@@ -166,6 +218,7 @@ const DrAgroResults = () => {
                 {t("drAgro.disclaimerText")}
               </Typography>
             </Alert>
+
           </Grid>
         </Grid>
       </Box>

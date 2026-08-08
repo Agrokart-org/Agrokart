@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   AppBar,
@@ -11,7 +11,6 @@ import {
   Typography,
   InputBase,
   alpha,
-  Container,
   Button,
   Menu,
   MenuItem,
@@ -30,17 +29,15 @@ import {
   Check,
   Home as HomeIcon,
   Receipt as OrdersIcon,
-  Store as MarketplaceIcon,
   Person as ProfileIcon,
   MedicalServices as DrAgroIcon,
+  Agriculture as AgricultureIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationProvider";
 import CustomerSidebar from "./CustomerSidebar";
-import LogoImage from "../../assets/logo_green_no_bg.png";
-
 import Footer from "./Footer";
 import { BottomNavigation, BottomNavigationAction, Paper } from "@mui/material";
 
@@ -53,7 +50,8 @@ const CustomerLayout = ({ children }) => {
   const { user } = useAuth();
   const { getUnreadCount } = useNotifications();
   const { t, i18n } = useTranslation();
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -61,6 +59,10 @@ const CustomerLayout = ({ children }) => {
   const [anchorElLang, setAnchorElLang] = useState(null);
   const [location, setLocation] = useState("Mumbai 400001");
   const [language, setLanguage] = useState("EN");
+
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   const handleOpenLoc = (event) => setAnchorElLoc(event.currentTarget);
   const handleCloseLoc = () => setAnchorElLoc(null);
@@ -91,87 +93,64 @@ const CustomerLayout = ({ children }) => {
       sx={{
         display: "flex",
         minHeight: "100vh",
-        bgcolor: "background.default",
+        bgcolor: "#F9FAFB",
+        width: "100%",
+        maxWidth: "100vw",
+        overflowX: "hidden",
       }}
     >
-      {/* Horizontal Navigation Bar */}
+      {/* Full-width Fixed Header */}
       <AppBar
         position="fixed"
-        elevation={4}
+        elevation={0}
         sx={{
-          background:
-            "linear-gradient(90deg, rgba(55, 71, 79, 0.95) 0%, rgba(46, 125, 50, 0.95) 100%) !important", // Semi-transparent gradient
-          backdropFilter: "blur(10px)",
+          bgcolor: "#1B5E20 !important",
           color: "white",
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          borderBottom: "none",
-          paddingTop: "env(safe-area-inset-top)",
-          minHeight: 70,
+          borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
+          height: 72,
           justifyContent: "center",
-          "& .MuiToolbar-root": {
-            minHeight: 70,
-          },
-          borderRadius: 0,
+          width: "100%",
+          left: 0,
+          right: 0,
         }}
       >
-        <Container maxWidth="lg">
-          <Toolbar sx={{ px: { xs: 0 }, minHeight: 70 }}>
-            {/* Mobile Menu Button */}
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={() => setMobileSidebarOpen(true)}
-              sx={{ mr: 2, display: { md: "none" } }}
-            >
-              <MenuIcon />
-            </IconButton>
+        <Box sx={{ width: "100%", px: { xs: 2, sm: 3, md: 4 }, boxSizing: "border-box" }}>
+          <Toolbar disableGutters sx={{ minHeight: 72, display: "flex", gap: 2, width: "100%" }}>
+            {/* Mobile Drawer Button */}
+            {isMobile && (
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={() => setMobileSidebarOpen(true)}
+                sx={{ mr: 0.5 }}
+              >
+                <MenuIcon />
+              </IconButton>
+            )}
 
-            {/* Logo/Title */}
+            {/* Agrokart Brand Logo */}
             <Box
               sx={{
-                display: { xs: "none", sm: "flex" },
+                display: "flex",
                 alignItems: "center",
-                mr: 4,
                 cursor: "pointer",
-                gap: 2,
+                gap: 1.2,
+                mr: 2,
               }}
               onClick={() => navigate("/customer/dashboard")}
             >
-              {/* Logo Icon */}
-              <Box
-                component="img"
-                src={LogoImage}
-                alt="Agrokart Logo"
-                sx={{
-                  width: 44,
-                  height: 44,
-                  objectFit: "contain",
-                  filter: "drop-shadow(0 4px 4px rgba(0,0,0,0.3))",
-                }}
-              />
-              {/* Logo Text */}
+              <Avatar sx={{ bgcolor: "#2E7D32", width: 38, height: 38, border: "1px solid rgba(255,255,255,0.3)" }}>
+                <AgricultureIcon sx={{ color: "#A5D6A7", fontSize: 24 }} />
+              </Avatar>
               <Typography
-                variant="h5"
+                variant="h6"
                 component="div"
-                sx={{ fontWeight: 900, letterSpacing: 0.5, lineHeight: 1 }}
+                sx={{ fontWeight: 800, letterSpacing: -0.5, lineHeight: 1, display: { xs: "none", sm: "block" } }}
               >
-                <span
-                  style={{
-                    color: "#C084FC",
-                    textShadow: "0px 2px 2px rgba(0,0,0,0.3)",
-                  }}
-                >
-                  Agro
-                </span>
-                <span
-                  style={{
-                    color: "#FB923C",
-                    textShadow: "0px 2px 2px rgba(0,0,0,0.3)",
-                  }}
-                >
-                  kart
-                </span>
+                <span style={{ color: "white" }}>Agro</span>
+                <span style={{ color: "#FFB300" }}>kart</span>
               </Typography>
             </Box>
 
@@ -181,22 +160,20 @@ const CustomerLayout = ({ children }) => {
               onSubmit={handleSearchSubmit}
               sx={{
                 position: "relative",
-                borderRadius: 30, // More rounded/modern
-                backgroundColor: alpha(theme.palette.common.white, 0.15),
+                borderRadius: "8px",
+                backgroundColor: alpha(theme.palette.common.white, 0.14),
                 "&:hover": {
-                  backgroundColor: alpha(theme.palette.common.white, 0.25),
+                  backgroundColor: alpha(theme.palette.common.white, 0.22),
                 },
-                marginRight: 2,
-                marginLeft: 0,
-                width: { xs: "100%", sm: "auto" },
-                flexGrow: { sm: 1 },
-                maxWidth: { sm: 600 },
-                boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                flex: 1,
+                maxWidth: { xs: "100%", sm: 480, md: 640 },
+                mx: "auto",
+                transition: "all 0.2s ease",
               }}
             >
               <Box
                 sx={{
-                  padding: theme.spacing(0, 3),
+                  padding: theme.spacing(0, 2),
                   height: "100%",
                   position: "absolute",
                   pointerEvents: "none",
@@ -205,89 +182,66 @@ const CustomerLayout = ({ children }) => {
                   justifyContent: "center",
                 }}
               >
-                <SearchIcon />
+                <SearchIcon sx={{ color: "rgba(255,255,255,0.7)" }} />
               </Box>
               <InputBase
-                placeholder={t("app.search")}
+                placeholder={t("app.search") || "Search fertilizers, seeds, pesticides..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 sx={{
                   color: "inherit",
                   width: "100%",
                   "& .MuiInputBase-input": {
-                    padding: theme.spacing(1.5, 1.5, 1.5, 0),
-                    paddingLeft: `calc(1em + ${theme.spacing(5)})`,
-                    transition: theme.transitions.create("width"),
-                    width: "100%",
+                    padding: theme.spacing(1, 1, 1, 0),
+                    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+                    fontSize: "0.9rem",
+                    fontWeight: 500,
                   },
                 }}
               />
             </Box>
 
-            {/* Location Button */}
+            {/* Delivery Location Selector */}
             <Button
-              startIcon={<LocationOn />}
+              startIcon={<LocationOn sx={{ color: "#FFB300" }} />}
               endIcon={<KeyboardArrowDown />}
               onClick={handleOpenLoc}
               sx={{
-                ml: 2,
                 color: "white",
-                display: { xs: "none", md: "flex" },
+                display: { xs: "none", lg: "flex" },
                 textTransform: "none",
-                minWidth: "auto",
-                bgcolor: alpha("#fff", 0.1),
-                borderRadius: 20,
-                px: 2,
-                "&:hover": { bgcolor: alpha("#fff", 0.2) },
+                bgcolor: alpha("#fff", 0.08),
+                borderRadius: "8px",
+                px: 1.8,
+                py: 0.5,
+                "&:hover": { bgcolor: alpha("#fff", 0.16) },
               }}
             >
-              <Box sx={{ textAlign: "left", lineHeight: 1 }}>
-                <Typography
-                  variant="caption"
-                  sx={{ display: "block", opacity: 0.8, fontSize: "0.65rem" }}
-                >
-                  {t("app.deliveryLoc")}
+              <Box sx={{ textAlign: "left", lineHeight: 1.1 }}>
+                <Typography variant="caption" sx={{ display: "block", opacity: 0.75, fontSize: "0.64rem" }}>
+                  Deliver to
                 </Typography>
-                <Typography variant="body2" fontWeight="700">
-                  Mumbai 400001
+                <Typography variant="body2" fontWeight="700" sx={{ fontSize: "0.82rem" }}>
+                  {location}
                 </Typography>
               </Box>
             </Button>
+
             <Menu
               anchorEl={anchorElLoc}
               open={Boolean(anchorElLoc)}
               onClose={handleCloseLoc}
-              PaperProps={{
-                sx: { mt: 1.5, borderRadius: 2, minWidth: 200 },
-              }}
+              PaperProps={{ sx: { mt: 1.5, borderRadius: 2, minWidth: 200 } }}
             >
-              <MenuItem
-                onClick={() => handleSelectLoc("Mumbai 400001")}
-                selected={location === "Mumbai 400001"}
-              >
-                <ListItemIcon>
-                  <LocationOn fontSize="small" />
-                </ListItemIcon>
+              <MenuItem onClick={() => handleSelectLoc("Mumbai 400001")} selected={location === "Mumbai 400001"}>
+                <ListItemIcon><LocationOn fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Mumbai 400001" secondary="Default" />
               </MenuItem>
-              <MenuItem
-                onClick={() => handleSelectLoc("Pune 411001")}
-                selected={location === "Pune 411001"}
-              >
-                <ListItemIcon>
-                  <LocationOn fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary="Pune 411001" secondary="Home" />
-              </MenuItem>
-              <MenuItem onClick={handleCloseLoc}>
-                <ListItemIcon>
-                  <SearchIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary="Add New Address" />
+              <MenuItem onClick={() => handleSelectLoc("Pune 411001")} selected={location === "Pune 411001"}>
+                <ListItemIcon><LocationOn fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Pune 411001" secondary="Farm Location" />
               </MenuItem>
             </Menu>
-
-            <Box sx={{ flexGrow: 1 }} />
 
             {/* Language Selector */}
             <Button
@@ -295,96 +249,66 @@ const CustomerLayout = ({ children }) => {
               endIcon={<KeyboardArrowDown />}
               onClick={handleOpenLang}
               sx={{
-                mr: 2,
                 color: "white",
                 display: { xs: "none", md: "flex" },
                 textTransform: "none",
-                bgcolor: alpha("#fff", 0.1),
-                borderRadius: 20,
-                px: 2,
-                "&:hover": { bgcolor: alpha("#fff", 0.2) },
+                bgcolor: alpha("#fff", 0.08),
+                borderRadius: "8px",
+                px: 1.8,
+                py: 0.5,
+                "&:hover": { bgcolor: alpha("#fff", 0.16) },
               }}
             >
               {language}
             </Button>
+
             <Menu
               anchorEl={anchorElLang}
               open={Boolean(anchorElLang)}
               onClose={handleCloseLang}
-              PaperProps={{
-                sx: { mt: 1.5, borderRadius: 2, minWidth: 150 },
-              }}
+              PaperProps={{ sx: { mt: 1.5, borderRadius: 2, minWidth: 140 } }}
             >
               {["EN", "HI", "MR"].map((lang) => (
-                <MenuItem
-                  key={lang}
-                  onClick={() => handleSelectLang(lang)}
-                  selected={language === lang}
-                >
-                  <ListItemText
-                    primary={
-                      lang === "EN"
-                        ? "English"
-                        : lang === "HI"
-                          ? "Hindi"
-                          : "Marathi"
-                    }
-                  />
-                  {language === lang && (
-                    <Check fontSize="small" sx={{ ml: 1 }} />
-                  )}
+                <MenuItem key={lang} onClick={() => handleSelectLang(lang)} selected={language === lang}>
+                  <ListItemText primary={lang === "EN" ? "English" : lang === "HI" ? "हिंदी" : "मराठी"} />
+                  {language === lang && <Check fontSize="small" sx={{ ml: 1 }} />}
                 </MenuItem>
               ))}
             </Menu>
 
-            {/* Right Side Icons */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              {/* Notifications */}
+            {/* Right Action Icons */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.8, sm: 1.2 } }}>
               <IconButton
-                sx={{
-                  color: "white",
-                  bgcolor: alpha("#fff", 0.1),
-                  "&:hover": { bgcolor: alpha("#fff", 0.2) },
-                }}
+                sx={{ color: "white", bgcolor: alpha("#fff", 0.08), "&:hover": { bgcolor: alpha("#fff", 0.16) } }}
                 onClick={() => navigate("/notifications")}
               >
                 <Badge badgeContent={getUnreadCount()} color="warning">
-                  <NotificationsIcon />
+                  <NotificationsIcon sx={{ fontSize: 20 }} />
                 </Badge>
               </IconButton>
 
-              {/* Cart */}
               <IconButton
-                sx={{
-                  color: "white",
-                  bgcolor: alpha("#fff", 0.1),
-                  "&:hover": { bgcolor: alpha("#fff", 0.2) },
-                }}
+                sx={{ color: "white", bgcolor: alpha("#fff", 0.08), "&:hover": { bgcolor: alpha("#fff", 0.16) } }}
                 onClick={() => navigate("/cart")}
               >
                 <Badge badgeContent={cartCount} color="warning">
-                  <CartIcon />
+                  <CartIcon sx={{ fontSize: 20 }} />
                 </Badge>
               </IconButton>
 
-              {/* Profile Avatar */}
               <IconButton
                 onClick={() => navigate("/profile")}
-                sx={{
-                  p: 0,
-                  ml: 1,
-                  border: "2px solid rgba(255,255,255,0.5)",
-                  borderRadius: "50%",
-                }}
+                sx={{ p: 0, border: "2px solid rgba(255,255,255,0.4)", borderRadius: "50%" }}
               >
                 <Avatar
                   src={user?.avatar}
                   sx={{
-                    width: 45,
-                    height: 45,
+                    width: 36,
+                    height: 36,
                     bgcolor: "white",
-                    color: theme.palette.primary.main,
+                    color: "#1B5E20",
                     fontWeight: 700,
+                    fontSize: "0.9rem",
                   }}
                 >
                   {user?.name?.charAt(0)?.toUpperCase() || "U"}
@@ -392,41 +316,37 @@ const CustomerLayout = ({ children }) => {
               </IconButton>
             </Box>
           </Toolbar>
-        </Container>
+        </Box>
       </AppBar>
 
-      {/* Sidebar */}
+      {/* Persistent Desktop Sidebar (Flex Item 1: 250px) */}
       <CustomerSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        onOpen={() => setSidebarOpen(true)}
         mobileOpen={mobileSidebarOpen}
         onMobileClose={() => setMobileSidebarOpen(false)}
       />
 
-      {/* Main Content Area */}
+      {/* Main Content Area (Flex Item 2: flexGrow 1, starts IMMEDIATELY next to sidebar) */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: { md: 3 },
-          pt: { xs: "90px", md: 3 },
-          pb: { xs: "85px", md: 3 },
-          px: { xs: 0, md: 3 },
-          bgcolor: "background.default",
+          minWidth: 0,
+          pt: "72px", // Fixed height of AppBar
+          pb: { xs: "85px", md: 0 },
+          bgcolor: "#F9FAFB",
           minHeight: "100vh",
-          width: { sm: `calc(100% - ${sidebarOpen ? 280 : 80}px)` },
           display: "flex",
           flexDirection: "column",
-          overflowX: "hidden",
+          boxSizing: "border-box",
         }}
       >
-        {/* Spacer for Fixed AppBar */}
-        <Box sx={{ flex: 1 }}>{children}</Box>
+        <Box sx={{ flex: 1, width: "100%", boxSizing: "border-box" }}>{children}</Box>
+        {!isMobile && <Footer />}
       </Box>
-      {!isMobile && <Footer />}
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation (< 1024px) */}
       {isMobile && (
         <Paper
           sx={{
@@ -435,7 +355,7 @@ const CustomerLayout = ({ children }) => {
             left: 0,
             right: 0,
             zIndex: theme.zIndex.drawer + 2,
-            borderTop: "1px solid #e0e0e0",
+            borderTop: "1px solid #E5E7EB",
             paddingBottom: "env(safe-area-inset-bottom)",
           }}
           elevation={3}
@@ -456,26 +376,15 @@ const CustomerLayout = ({ children }) => {
             }
             onChange={(event, newValue) => {
               switch (newValue) {
-                case 0:
-                  navigate("/customer/dashboard");
-                  break;
-                case 1:
-                  navigate("/my-orders");
-                  break;
-                case 2:
-                  navigate("/customer/dr-agro");
-                  break; // Dr. Agro
-                case 3:
-                  navigate("/cart");
-                  break;
-                case 4:
-                  navigate("/profile");
-                  break;
-                default:
-                  navigate("/customer/dashboard");
+                case 0: navigate("/customer/dashboard"); break;
+                case 1: navigate("/my-orders"); break;
+                case 2: navigate("/customer/dr-agro"); break;
+                case 3: navigate("/cart"); break;
+                case 4: navigate("/profile"); break;
+                default: navigate("/customer/dashboard");
               }
             }}
-            sx={{ height: 65 }}
+            sx={{ height: 60 }}
           >
             <BottomNavigationAction label="Home" icon={<HomeIcon />} />
             <BottomNavigationAction label="Orders" icon={<OrdersIcon />} />

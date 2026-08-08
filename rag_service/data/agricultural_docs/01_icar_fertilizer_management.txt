@@ -1,0 +1,204 @@
+# ICAR Agricultural Fertilizer Management Handbook
+# Source: Indian Council of Agricultural Research (ICAR), 2023
+# Topic: Nitrogen, Phosphorus, Potassium — Fertilizer Use Efficiency
+
+---
+
+## CHAPTER 1: NITROGEN MANAGEMENT
+
+### 1.1 Urea — Composition and Properties
+Urea is a white, crystalline nitrogenous fertilizer containing 46% elemental Nitrogen (N) by weight. It is the most concentrated solid nitrogen source commercially available. Chemical formula: CO(NH2)2.
+
+When applied to soil, urea undergoes hydrolysis by the enzyme urease:
+CO(NH2)2 + H2O → 2NH3 + CO2
+
+Ammonia (NH3) produced is subsequently nitrified to nitrate (NO3-) under aerobic conditions.
+
+### 1.2 Recommended Urea Dosages by Crop
+
+Wheat (Triticum aestivum):
+- Nitrogen requirement: 120 kg N per hectare (kg N/ha)
+- Urea required: 120 ÷ 0.46 = 260.9 kg Urea per hectare (kg/ha)
+- Per acre conversion: 260.9 ÷ 2.47105 = 105.6 kg Urea per acre (kg/acre)
+- Application schedule: 50% basal at sowing + 25% at Crown Root Initiation (21 DAS) + 25% at late tillering (45 DAS)
+
+Rice/Paddy (Oryza sativa):
+- Nitrogen requirement: 100-140 kg N/ha
+- Urea required: 217 to 304 kg/ha (88 to 123 kg/acre)
+- Application: 3-4 splits. Avoid broadcast in standing water — use deep placement or neem-coated urea.
+
+Cotton (Gossypium hirsutum):
+- Nitrogen requirement: 100 kg N/ha
+- Urea required: 217 kg/ha (88 kg/acre)
+- Application: 30% basal + 40% at square formation + 30% at boll development
+
+Sugarcane (Saccharum officinarum):
+- Nitrogen requirement: 250 kg N/ha
+- Urea required: 543 kg/ha (220 kg/acre)
+- Application: 4-5 splits over the crop season
+
+Maize (Zea mays):
+- Nitrogen requirement: 120 kg N/ha
+- Urea required: 260 kg/ha (105 kg/acre)
+- Application: 1/3 basal + 1/3 at knee height + 1/3 at tasselling
+
+Tomato (Solanum lycopersicum):
+- Nitrogen requirement: 150 kg N/ha
+- Urea required: 326 kg/ha (132 kg/acre)
+
+### 1.3 Unit Conversion Reference
+1 hectare (ha) = 2.47105 acres
+1 acre = 0.40469 hectares
+
+To convert kg/ha to kg/acre: DIVIDE by 2.47105
+To convert kg/acre to kg/ha: MULTIPLY by 2.47105
+
+Example: 260 kg Urea/ha ÷ 2.47105 = 105.2 kg Urea/acre
+
+### 1.4 Split Application Rationale — Sandy Soils
+Sandy and light-textured soils have:
+- Low cation exchange capacity (CEC): 2-8 meq/100g
+- High hydraulic conductivity: water and dissolved nutrients move rapidly downward
+- Low water-holding capacity
+
+Consequence: Nitrogen applied as a single large dose leaches below the root zone (30-60 cm depth) as nitrate (NO3-), which is not retained by soil particles. Studies show 40-60% nitrogen loss from single-dose application on sandy soils (ICAR Bulletin 2018).
+
+Recommendation: 3-4 split doses with Neem-Coated Urea (NCU). NCU slows nitrification by 10-15 days, improving Nitrogen Use Efficiency (NUE) by 5-15%.
+
+### 1.5 Signs of Nitrogen Deficiency
+- Yellowing of older (lower) leaves starting from tip (chlorosis)
+- Stunted growth, reduced tillering in cereals
+- Pale green to yellow crop canopy overall
+- Premature maturity and reduced grain filling
+
+### 1.6 Signs of Nitrogen Toxicity/Excess
+- Excessive vegetative growth, dark green foliage
+- Delayed maturity, lodging susceptibility
+- Increased pest/disease susceptibility
+- Environmental: nitrate contamination of groundwater
+
+---
+
+## CHAPTER 2: PHOSPHORUS MANAGEMENT
+
+### 2.1 DAP — Composition
+Di-Ammonium Phosphate (DAP) contains:
+- 18% Nitrogen (N)
+- 46% Phosphorus (P2O5)
+
+DAP is the most widely used phosphatic fertilizer in India.
+
+### 2.2 Phosphorus — Soil Mobility
+Phosphorus is IMMOBILE in soil. Once applied, phosphorus ions (H2PO4-, HPO42-) are quickly adsorbed onto soil particles and do not move with water flow. This means:
+- Deep-banded placement near root zone is essential
+- Surface broadcasting wastes 30-50% of phosphorus through fixation
+- Always apply DAP basal at sowing time, placed 5-7 cm below seed
+
+### 2.3 DAP Dosages by Crop
+
+Wheat:
+- P2O5 requirement: 60 kg/ha
+- DAP required: 60 ÷ 0.46 = 130.4 kg DAP/ha (52.8 kg/acre)
+
+Rice/Paddy:
+- P2O5 requirement: 40-60 kg/ha
+- DAP required: 87-130 kg/ha (35-53 kg/acre)
+
+Cotton:
+- P2O5 requirement: 50 kg/ha
+- DAP required: 108.7 kg/ha (44 kg/acre)
+
+Sugarcane:
+- P2O5 requirement: 115 kg/ha
+- DAP required: 250 kg/ha (101 kg/acre)
+
+Maize:
+- P2O5 requirement: 60 kg/ha
+- DAP required: 130 kg/ha (53 kg/acre)
+
+Tomato:
+- P2O5 requirement: 100 kg/ha
+- DAP required: 217 kg/ha (88 kg/acre)
+
+### 2.4 Phosphorus Fixation in Acidic Soils (pH < 6.0)
+In acidic soils, phosphorus reacts with aluminum (Al3+) and iron (Fe3+) ions to form insoluble compounds (AlPO4, FePO4), which are unavailable to plants.
+
+Correction: Apply Agricultural Lime (CaCO3) at 200-300 kg/acre, 3-4 weeks before sowing. Lime raises soil pH, reducing Al3+ and Fe3+ activity, and releasing fixed phosphorus.
+
+Target pH for phosphorus availability: 6.0-7.0
+
+### 2.5 Phosphorus Fixation in Alkaline Soils (pH > 7.5)
+In alkaline/calcareous soils, phosphorus precipitates with calcium (Ca2+) as CaHPO4 (dicalcium phosphate) — a slightly available form, or Ca3(PO4)2 — unavailable.
+
+Recommendation: Use Single Super Phosphate (SSP — 16% P2O5) instead of DAP in strongly alkaline soils. SSP contains sulfur which mildly acidifies the rhizosphere, improving phosphorus availability.
+
+---
+
+## CHAPTER 3: POTASSIUM MANAGEMENT
+
+### 3.1 MOP — Composition
+Muriate of Potash (MOP), also known as Potassium Chloride (KCl), contains 60% Potassium (K2O).
+
+### 3.2 Functions of Potassium in Plants
+- Enzyme activation: activates 80+ enzymes involved in photosynthesis and protein synthesis
+- Water use efficiency: regulates stomatal opening, reducing transpiration
+- Stem strength: thickens cell walls, reduces lodging risk in cereals
+- Disease resistance: strengthens physical and chemical plant defenses
+- Grain quality: improves grain size, weight, and starch content
+
+### 3.3 MOP Dosages by Crop
+
+Wheat:
+- K2O requirement: 40 kg/ha
+- MOP required: 40 ÷ 0.60 = 66.7 kg MOP/ha (27 kg/acre)
+
+Rice:
+- K2O requirement: 40-60 kg/ha
+- MOP required: 67-100 kg/ha (27-40 kg/acre)
+
+Cotton:
+- K2O requirement: 50 kg/ha
+- MOP required: 83 kg/ha (34 kg/acre)
+
+Sugarcane:
+- K2O requirement: 115 kg/ha
+- MOP required: 192 kg/ha (78 kg/acre)
+
+### 3.4 Potassium Deficiency Symptoms
+- Marginal chlorosis: yellowing and browning at leaf tips and margins, starting from older leaves
+- Reduced grain weight and filling
+- Increased susceptibility to fungal diseases
+- Increased drought stress symptoms
+
+### 3.5 Potassium and Alkaline/Sodic Soils
+In alkaline (pH > 7.5) and sodic soils, excess sodium (Na+) competes with potassium for root uptake. High sodium also degrades soil structure (clay dispersion, surface sealing).
+
+Gypsum (CaSO4) application: 500 kg/acre replaces exchangeable sodium with calcium, improving:
+- Soil structure and aeration
+- Root penetration depth
+- Potassium and micronutrient uptake
+
+---
+
+## CHAPTER 4: INTEGRATED NUTRIENT MANAGEMENT (INM)
+
+### 4.1 NPK Ratios
+India's recommended N:P2O5:K2O ratio varies by region:
+- Target: 4:2:1 (was over-skewed to 8:3:1 in 2010s due to urea subsidies)
+- Balanced nutrition reduces crop disease, improves quality, and improves soil health long-term.
+
+### 4.2 Soil Test-Based Fertilizer Application
+Steps:
+1. Collect soil samples (0-15 cm and 15-30 cm depth)
+2. Test for: pH, EC, Organic Carbon, N, P, K, Micronutrients
+3. Apply fertilizers based on soil test report from KVK or accredited lab
+4. Kisan Call Center: 1800-180-1551 (free, toll-free)
+
+Target soil parameters for wheat production:
+- pH: 6.5-7.5
+- Organic Carbon: >0.5%
+- Available N: >280 kg/ha (Medium class)
+- Available P: >12.4 kg/ha (Medium class)
+- Available K: >280 kg/ha (Medium class)
+
+Source: ICAR-IARI Soil Health & Fertilizer Use Handbook, 2023 Edition
