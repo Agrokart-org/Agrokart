@@ -12,9 +12,9 @@ import {
 } from "@mui/material";
 import {
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../config/firebase";
+import { useAuth } from "../context/AuthContext";
 
 const EmailLoginPage = () => {
   const [email, setEmail] = useState("");
@@ -23,6 +23,7 @@ const EmailLoginPage = () => {
   const [error, setError] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,53 +47,16 @@ const EmailLoginPage = () => {
         localStorage.setItem("userName", user.email.split("@")[0]);
         localStorage.setItem("isLoggedIn", "true");
       } else {
-        // Sign in
-        console.log("Signing in existing user...");
-        const userCredential = await signInWithEmailAndPassword(
-          auth,
-          email,
-          password,
-        );
-        console.log("User signed in successfully:", userCredential.user);
-        const user = userCredential.user;
-        localStorage.setItem("userEmail", user.email);
-        localStorage.setItem("userName", user.email.split("@")[0]);
-        localStorage.setItem("isLoggedIn", "true");
+        // Sign in via backend POST /api/auth/login
+        console.log("Signing in existing user via backend...");
+        const result = await authLogin(email, password, "customer");
+        console.log("User signed in successfully:", result.user);
       }
       // Redirect customers to their dashboard
       navigate("/customer/dashboard");
     } catch (err) {
       console.error("Authentication error:", err);
-      console.error("Error code:", err.code);
-      console.error("Error message:", err.message);
-
-      switch (err.code) {
-        case "auth/email-already-in-use":
-          setError("Email is already registered. Please sign in instead.");
-          break;
-        case "auth/invalid-email":
-          setError("Please enter a valid email address.");
-          break;
-        case "auth/weak-password":
-          setError("Password should be at least 6 characters long.");
-          break;
-        case "auth/user-not-found":
-          setError("No account found with this email. Please sign up instead.");
-          break;
-        case "auth/wrong-password":
-          setError("Incorrect password. Please try again.");
-          break;
-        case "auth/invalid-credential":
-          setError(
-            "Invalid email or password. Please check your credentials and try again.",
-          );
-          break;
-        case "auth/too-many-requests":
-          setError("Too many failed attempts. Please try again later.");
-          break;
-        default:
-          setError(`Authentication error: ${err.message}`);
-      }
+      setError(err.message || "Authentication error. Please try again.");
     } finally {
       setLoading(false);
     }

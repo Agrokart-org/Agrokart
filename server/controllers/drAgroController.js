@@ -13,7 +13,10 @@ exports.analyzeReport = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
-    const { crop, language } = req.body;
+    if (req.file.buffer && req.file.buffer.length === 0) {
+      return res.status(400).json({ success: false, message: "Uploaded file is empty (0 bytes)." });
+    }
+    const { crop, language, region, season, soil_type, conditions } = req.body || {};
     let imageBuffer;
     if (req.file.buffer) {
       imageBuffer = req.file.buffer;
@@ -21,7 +24,8 @@ exports.analyzeReport = async (req, res) => {
       imageBuffer = fs.readFileSync(req.file.path);
       try { fs.unlinkSync(req.file.path); } catch (e) {}
     }
-    const result = await recommendationEngine.processReport(imageBuffer, crop || "wheat", language || "en");
+    const contextData = { region, season, soil_type, conditions };
+    const result = await recommendationEngine.processReport(imageBuffer, crop || "wheat", language || "en", contextData);
     if (!result.success) return res.status(200).json(result);
     res.json({ success: true, data: result.data });
   } catch (error) {
@@ -45,6 +49,64 @@ exports.analyzeManual = async (req, res) => {
   }
 };
 
+function classifyConversationalIntent(query) {
+  if (!query || typeof query !== "string") return null;
+  const cleanQ = query.trim().toLowerCase();
+  const cleanText = cleanQ.replace(/[^\w\s]/g, "").trim();
+  const normalized = cleanText.replace(/(.)\1{2,}/g, "$1");
+
+  const greetings = new Set([
+    "hi", "hii", "hiii", "hello", "helo", "hey", "heyy",
+    "namaskar", "namaste", "namaskaar", "namasthe",
+    "good morning", "good afternoon", "good evening", "good day", "goodnight", "good night",
+    "suprabhat", "shubh prabhat", "greetings"
+  ]);
+
+  if (
+    greetings.has(normalized) ||
+    greetings.has(cleanText) ||
+    /^(hi+|hello+|hey+|helo+|namaskar|namaste|good\s+(morning|afternoon|evening|day))\s*$/i.test(cleanText)
+  ) {
+    return {
+      answer: "Hello! 👋 I’m Agro AI. I can help you with crop nutrition, fertilizers, soil health, irrigation, crop diseases, and other farming questions. What would you like to know?",
+      sources: [],
+      engine: "Conversational Assistant"
+    };
+  }
+
+  const thanks = new Set([
+    "thanks", "thank you", "thank u", "thx", "thankyou",
+    "dhanyawad", "dhanyavaad", "many thanks", "thanks a lot", "thank you so much"
+  ]);
+  if (thanks.has(cleanText) || /^(thanks?|thank\s+you|thx|dhanyawad)\s*$/i.test(cleanText)) {
+    return {
+      answer: "You're welcome! 🌱 Let me know if you need help with your crop, soil, fertilizer, or farming practices.",
+      sources: [],
+      engine: "Conversational Assistant"
+    };
+  }
+
+  const okSet = new Set(["ok", "okay", "kk", "got it", "k", "alright", "sure", "thik hai", "theek hai"]);
+  if (okSet.has(cleanText) || /^(ok+|okay|got\s+it|thik\s+hai)\s*$/i.test(cleanText)) {
+    return {
+      answer: "Great! Let me know whenever you have any farming or crop questions. 🌾",
+      sources: [],
+      engine: "Conversational Assistant"
+    };
+  }
+
+  const byeSet = new Set(["bye", "goodbye", "good bye", "see you", "take care", "tc", "alvida", "phir milenge"]);
+  if (byeSet.has(cleanText) || /^(bye|good\s*bye|take\s+care|see\s+you)\s*$/i.test(cleanText)) {
+    return {
+      answer: "Goodbye, Kisan! 🌱 Wishing you a healthy and productive crop.",
+      sources: [],
+      engine: "Conversational Assistant"
+    };
+  }
+
+  return null;
+}
+
 /**
  * RAG Chatbot — proxies to Python RAG service with session support
  */
@@ -54,6 +116,17 @@ exports.chatWithRAG = async (req, res) => {
 
     if (!message || !message.trim()) {
       return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    const convIntent = classifyConversationalIntent(message);
+    if (convIntent) {
+      return res.json({
+        success: true,
+        answer: convIntent.answer,
+        sources: [],
+        engine: convIntent.engine,
+        session_id: session_id || "conv-" + Date.now(),
+      });
     }
 
     try {

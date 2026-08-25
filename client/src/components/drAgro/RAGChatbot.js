@@ -15,25 +15,94 @@ const RAGChatbot = ({ mlRecommendation = null, initialQuery = "" }) => {
   const [messages, setMessages] = useState([
     {
       sender: "bot",
-      text: "Namaste! I am Dr. Agro's AI Assistant. Ask me any questions about fertilizer dosages, crop requirements, or soil health management.",
-      sources: ["ICAR Soil Health Guide"],
+      text: "Namaskar, Kisan! 👋\n\nI'm Agro AI, your agricultural knowledge assistant.\n\nI can help you with:\n• Crop nutrition and fertilizer recommendations\n• Soil health and soil pH\n• Crop diseases and pest management\n• Irrigation guidance\n• Fertilizer properties and usage\n• General farming practices\n\nWhat would you like help with?",
+      sources: [],
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     }
   ]);
   const [input, setInput] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
-  const chatEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const inputRef = useRef(null);
+  const isUserNearBottom = useRef(true);
 
-  const suggestedQuestions = [
-    "Why split Urea application into multiple doses?",
-    "How to manage phosphorus in acidic soils?",
-    "What is the role of Gypsum in alkaline soil?",
-    "When should DAP be applied for wheat?"
-  ];
+  const handleScroll = () => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      isUserNearBottom.current = scrollHeight - scrollTop - clientHeight < 150;
+    }
+  };
+
+  const scrollToBottom = (force = false) => {
+    if (messagesContainerRef.current && (force || isUserNearBottom.current)) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
+  };
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    scrollToBottom();
+  }, [messages, loading]);
+
+  const classifyConversationalIntent = (query) => {
+    if (!query || typeof query !== "string") return null;
+    const cleanQ = query.trim().toLowerCase();
+    const cleanText = cleanQ.replace(/[^\w\s]/g, "").trim();
+    const normalized = cleanText.replace(/(.)\1{2,}/g, "$1");
+
+    const greetings = new Set([
+      "hi", "hii", "hiii", "hello", "helo", "hey", "heyy",
+      "namaskar", "namaste", "namaskaar", "namasthe",
+      "good morning", "good afternoon", "good evening", "good day", "goodnight", "good night",
+      "suprabhat", "shubh prabhat", "greetings"
+    ]);
+
+    if (
+      greetings.has(normalized) ||
+      greetings.has(cleanText) ||
+      /^(hi+|hello+|hey+|helo+|namaskar|namaste|good\s+(morning|afternoon|evening|day))\s*$/i.test(cleanText)
+    ) {
+      return {
+        answer: "Hello! 👋 I’m Agro AI. I can help you with crop nutrition, fertilizers, soil health, irrigation, crop diseases, and other farming questions. What would you like to know?",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    const thanks = new Set([
+      "thanks", "thank you", "thank u", "thx", "thankyou",
+      "dhanyawad", "dhanyavaad", "many thanks", "thanks a lot", "thank you so much"
+    ]);
+    if (thanks.has(cleanText) || /^(thanks?|thank\s+you|thx|dhanyawad)\s*$/i.test(cleanText)) {
+      return {
+        answer: "You're welcome! 🌱 Let me know if you need help with your crop, soil, fertilizer, or farming practices.",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    const okSet = new Set(["ok", "okay", "kk", "got it", "k", "alright", "sure", "thik hai", "theek hai"]);
+    if (okSet.has(cleanText) || /^(ok+|okay|got\s+it|thik\s+hai)\s*$/i.test(cleanText)) {
+      return {
+        answer: "Great! Let me know whenever you have any farming or crop questions. 🌾",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    const byeSet = new Set(["bye", "goodbye", "good bye", "see you", "take care", "tc", "alvida", "phir milenge"]);
+    if (byeSet.has(cleanText) || /^(bye|good\s*bye|take\s+care|see\s+you)\s*$/i.test(cleanText)) {
+      return {
+        answer: "Goodbye, Kisan! 🌱 Wishing you a healthy and productive crop.",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    return null;
+  };
 
   const handleSend = async (queryToSend = null) => {
     const query = queryToSend || input;
@@ -44,6 +113,22 @@ const RAGChatbot = ({ mlRecommendation = null, initialQuery = "" }) => {
 
     setMessages((prev) => [...prev, userMessage]);
     if (!queryToSend) setInput("");
+    setTimeout(() => scrollToBottom(true), 50);
+
+    // Client-side intent check for greetings and conversational phrases
+    const convIntent = classifyConversationalIntent(query);
+    if (convIntent) {
+      const botMessage = {
+        sender: "bot",
+        text: convIntent.answer,
+        sources: [],
+        engine: convIntent.engine,
+        time: userTime
+      };
+      setMessages((prev) => [...prev, botMessage]);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -56,7 +141,7 @@ const RAGChatbot = ({ mlRecommendation = null, initialQuery = "" }) => {
       const botMessage = {
         sender: "bot",
         text: response.data.answer || "No response received.",
-        sources: response.data.sources || ["ICAR Handbook"],
+        sources: Array.isArray(response.data.sources) ? response.data.sources : [],
         engine: response.data.engine || "RAG Engine",
         time: botTime
       };
@@ -138,7 +223,11 @@ const RAGChatbot = ({ mlRecommendation = null, initialQuery = "" }) => {
       )}
 
       {/* Messages Area */}
-      <Box sx={{ flexGrow: 1, overflowY: "auto", p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+      <Box
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        sx={{ flexGrow: 1, overflowY: "auto", p: 2, display: "flex", flexDirection: "column", gap: 2 }}
+      >
         {messages.map((msg, index) => (
           <Box
             key={index}

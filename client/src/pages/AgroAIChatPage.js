@@ -51,10 +51,28 @@ const AgroAIChatPage = () => {
   const [isListening, setIsListening] = useState(false);
   const [sessionId, setSessionId] = useState(null);
 
-  const chatEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const inputRef = useRef(null);
+  const isUserNearBottom = useRef(true);
+
+  const handleScroll = () => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      isUserNearBottom.current = scrollHeight - scrollTop - clientHeight < 150;
+    }
+  };
+
+  const scrollToBottom = (force = false) => {
+    if (messagesContainerRef.current && (force || isUserNearBottom.current)) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
+  };
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom();
   }, [messages, loading]);
 
   // Voice Input Toggle
@@ -90,6 +108,64 @@ const AgroAIChatPage = () => {
     }
   };
 
+  const classifyConversationalIntent = (query) => {
+    if (!query || typeof query !== "string") return null;
+    const cleanQ = query.trim().toLowerCase();
+    const cleanText = cleanQ.replace(/[^\w\s]/g, "").trim();
+    const normalized = cleanText.replace(/(.)\1{2,}/g, "$1");
+
+    const greetings = new Set([
+      "hi", "hii", "hiii", "hello", "helo", "hey", "heyy",
+      "namaskar", "namaste", "namaskaar", "namasthe",
+      "good morning", "good afternoon", "good evening", "good day", "goodnight", "good night",
+      "suprabhat", "shubh prabhat", "greetings"
+    ]);
+
+    if (
+      greetings.has(normalized) ||
+      greetings.has(cleanText) ||
+      /^(hi+|hello+|hey+|helo+|namaskar|namaste|good\s+(morning|afternoon|evening|day))\s*$/i.test(cleanText)
+    ) {
+      return {
+        answer: "Hello! 👋 I’m Agro AI. I can help you with crop nutrition, fertilizers, soil health, irrigation, crop diseases, and other farming questions. What would you like to know?",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    const thanks = new Set([
+      "thanks", "thank you", "thank u", "thx", "thankyou",
+      "dhanyawad", "dhanyavaad", "many thanks", "thanks a lot", "thank you so much"
+    ]);
+    if (thanks.has(cleanText) || /^(thanks?|thank\s+you|thx|dhanyawad)\s*$/i.test(cleanText)) {
+      return {
+        answer: "You're welcome! 🌱 Let me know if you need help with your crop, soil, fertilizer, or farming practices.",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    const okSet = new Set(["ok", "okay", "kk", "got it", "k", "alright", "sure", "thik hai", "theek hai"]);
+    if (okSet.has(cleanText) || /^(ok+|okay|got\s+it|thik\s+hai)\s*$/i.test(cleanText)) {
+      return {
+        answer: "Great! Let me know whenever you have any farming or crop questions. 🌾",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    const byeSet = new Set(["bye", "goodbye", "good bye", "see you", "take care", "tc", "alvida", "phir milenge"]);
+    if (byeSet.has(cleanText) || /^(bye|good\s*bye|take\s+care|see\s+you)\s*$/i.test(cleanText)) {
+      return {
+        answer: "Goodbye, Kisan! 🌱 Wishing you a healthy and productive crop.",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    return null;
+  };
+
   const handleSend = async (queryToSend = null) => {
     const query = queryToSend || input;
     if (!query.trim() || loading) return;
@@ -99,6 +175,23 @@ const AgroAIChatPage = () => {
 
     setMessages((prev) => [...prev, userMessage]);
     if (!queryToSend) setInput("");
+    setTimeout(() => scrollToBottom(true), 50);
+
+    // Client-side intent check for greetings and conversational phrases
+    const convIntent = classifyConversationalIntent(query);
+    if (convIntent) {
+      const botMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: "bot",
+        text: convIntent.answer,
+        sources: [],
+        engine: convIntent.engine,
+        time: userTime
+      };
+      setMessages((prev) => [...prev, botMessage]);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -114,7 +207,7 @@ const AgroAIChatPage = () => {
         id: (Date.now() + 1).toString(),
         sender: "bot",
         text: response.data.answer || "No response received.",
-        sources: response.data.sources || ["ICAR Handbook"],
+        sources: Array.isArray(response.data.sources) ? response.data.sources : [],
         engine: response.data.engine || "RAG AI Engine",
         time: botTime
       };
@@ -123,26 +216,14 @@ const AgroAIChatPage = () => {
     } catch {
       const botTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       
-      // Contextual RAG Knowledge Fallback
-      let fallbackText = "Based on ICAR agricultural documentation:";
-      if (query.toLowerCase().includes("yellow")) {
-        fallbackText = "Yellowing in wheat leaves (chlorosis) is primarily caused by **Nitrogen deficiency** or waterlogging. Apply **Neem Coated Urea** at 25-30 kg/acre with adequate field drainage.";
-      } else if (query.toLowerCase().includes("dap") || query.toLowerCase().includes("urea")) {
-        fallbackText = "**Urea (46% N)** provides pure Nitrogen for vegetative growth. **DAP (18-46-0)** provides both Nitrogen and Phosphorus, essential for root growth at sowing.";
-      } else if (query.toLowerCase().includes("irrigation")) {
-        fallbackText = "Wheat requires critical irrigations at: 1. Crown Root Initiation (21 days), 2. Tillering stage (45 days), 3. Flowering stage (65 days), and 4. Grain filling (85 days).";
-      } else {
-        fallbackText = "For optimal crop yields, balance N-P-K nutrients according to your soil test report and maintain optimal soil moisture.";
-      }
-
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           sender: "bot",
-          text: fallbackText,
-          sources: ["ICAR Agricultural Knowledge Base"],
-          engine: "RAG Engine",
+          text: "I am having trouble connecting to the AI knowledge base right now. Please try again shortly.",
+          sources: [],
+          engine: "Offline Error",
           time: botTime
         }
       ]);
@@ -209,7 +290,11 @@ const AgroAIChatPage = () => {
             mb: 3
           }}
         >
-          <Box sx={{ flex: 1, overflowY: "auto", p: 3, display: "flex", flexDirection: "column", gap: 2.5, bgcolor: "#FAFAFA" }}>
+          <Box
+            ref={messagesContainerRef}
+            onScroll={handleScroll}
+            sx={{ flex: 1, overflowY: "auto", p: 3, display: "flex", flexDirection: "column", gap: 2.5, bgcolor: "#FAFAFA" }}
+          >
             {messages.map((msg) => (
               <Box
                 key={msg.id}
@@ -278,8 +363,7 @@ const AgroAIChatPage = () => {
                 </Paper>
               </Box>
             )}
-            <div ref={chatEndRef} />
-          </Box>
+            </Box>
 
           {/* Quick Prompts Bar */}
           <Box sx={{ px: 2, py: 1, bgcolor: "#F8FAFC", borderTop: "1px solid #E2E8F0", display: "flex", gap: 1, overflowX: "auto" }}>

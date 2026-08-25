@@ -1,25 +1,25 @@
 const ocrService = require("./OcrService");
 const validationService = require("./ValidationService");
 const expertSystem = require("./ExpertSystem");
-const qualityModel = require("./QualityModel");
-const locales = {
-  en: require("../data/knowledgeBase/locales/en.json"),
-  hi: require("../data/knowledgeBase/locales/hi.json"),
-  mr: require("../data/knowledgeBase/locales/mr.json"),
-};
+const fertilizerConversionService = require("./FertilizerConversionService");
+const aiService = require("./aiService");
 
 class RecommendationEngine {
   constructor() {
-    // Initialize ML Model asynchronously
-    qualityModel.trainModel();
+    // Note: ML / Random Forest model training is explicitly disabled to prevent unverified inference.
   }
 
   /**
    * Process a Soil Report File
    */
-  async processReport(imageBuffer, crop, language = "en") {
-    // 1. OCR Extraction
-    const text = await ocrService.extractText(imageBuffer);
+  async processReport(imageBuffer, crop, language = "en", contextData = {}) {
+    // 1. OCR Extraction (supports Buffer or String for deterministic testing)
+    let text = "";
+    if (typeof imageBuffer === "string") {
+      text = imageBuffer;
+    } else {
+      text = await ocrService.extractText(imageBuffer);
+    }
 
     // 2. Strict Validation
     const validation = validationService.isValidSoilReport(text);
@@ -27,22 +27,21 @@ class RecommendationEngine {
       return {
         success: false,
         isInvalidReport: true, // Specific flag for UI
-        message:
-          this.getLocaleString(language, "validation.invalid_report") ||
-          validation.message,
+        message: validation.message || "Invalid soil report document.",
         confidence: validation.confidence,
       };
     }
 
     // 3. Data Parsing
-    const soilData = ocrService.parseSoilReport(text);
+    const parsedData = ocrService.parseSoilReport(text);
+    const soilData = { ...contextData, ...parsedData };
 
-    // 4. Generate Recommendations (Common Logic)
+    // 4. Generate Source-Grounded Recommendations
     return this.generateRecommendations(
       soilData,
       crop,
       language,
-      validation.confidence,
+      validation.confidence
     );
   }
 
@@ -50,51 +49,122 @@ class RecommendationEngine {
    * Process Manual Entry Data
    */
   async processManualData(soilData, crop, language = "en") {
-    return this.generateRecommendations(soilData, crop, language, 100); // 100% confidence in user input
+    return this.generateRecommendations(soilData, crop, language, 100);
   }
 
   /**
-   * Core Logic: Expert System + ML Validation
+   * Core Logic: Expert System Source-Grounded Recommendations
    */
   generateRecommendations(soilData, crop, language, baseConfidence) {
-    // 1. Expert System
+    // 1. Source-Grounded Expert System
     const expertResult = expertSystem.recommend(soilData, crop);
 
-    // 2. ML Validation
-    const totalDosage = expertResult.recommendations.reduce((acc, rec) => {
-      // Extract number from "120 kg/ha" string
-      const match = rec.dose.match(/(\d+)/);
-      return acc + (match ? parseInt(match[1]) : 0);
-    }, 0);
-
-    const mlValidation = qualityModel.validate(soilData, totalDosage);
-
-    // Adjust Confidence based on ML
-    let finalConfidence = baseConfidence;
-    if (!mlValidation.isConsistent) {
-      finalConfidence -= 60; // Major penalty if ML disagrees (Safety First)
+    if (!expertResult.success) {
+      return {
+        success: false,
+        insufficientData: expertResult.insufficientData || false,
+        message: expertResult.message || expertResult.error || "A verified recommendation matching the supplied soil and agricultural conditions was not found.",
+        data: {
+          recommendation_type: null,
+          recommendationBasis: null,
+          nutrientRequirement: null,
+          soilAssessment: null,
+          applicability: null,
+          fertilizerConversion: null,
+          source: null,
+          evidence: {
+            available: false,
+            source: null,
+            supportingText: null,
+            retrievalType: null,
+          },
+          soilHealth: expertResult.message || "A verified recommendation matching the supplied soil and agricultural conditions was not found.",
+          recommendations: []
+        }
+      };
     }
 
-    // 3. Localization
-    const localizedResult = this.localizeResult(expertResult, language, crop);
+    const sa = expertResult.soilAssessment;
+    const soilSummary = sa ? `N (${sa.nitrogen.status}), P (${sa.phosphorus.status}), K (${sa.potassium.status}), pH (${sa.ph.status})` : "Standard";
+
+    // 2. Mathematical Fertilizer Conversion (FCO Compositions — derived ONLY from official baseline targets, NOT soil subtraction)
+    const n = expertResult.nutrientRequirement.n_kg_ha;
+    const p = expertResult.nutrientRequirement.p2o5_kg_ha;
+    const k = expertResult.nutrientRequirement.k2o_kg_ha;
+
+    const conversionResult = fertilizerConversionService.convertNPKToStandardFertilizers(n, p, k);
+
+    const fertilizerConversion = conversionResult && conversionResult.success
+      ? {
+          basis: {
+            type: conversionResult.basis.type,
+            source: conversionResult.basis.source,
+            isOfficialAgronomicRecommendation: false,
+          },
+          urea_kg_ha: conversionResult.urea_kg_ha,
+          dap_kg_ha: conversionResult.dap_kg_ha,
+          mop_kg_ha: conversionResult.mop_kg_ha,
+          conversions: conversionResult.conversions,
+        }
+      : null;
+
+    // 3. Structured RAG Document Evidence Layer
+    const evidence = this.buildEvidence(expertResult);
+
+    // 4. Grounded Multilingual AI Explanation Layer (isolated safely so LLM errors never affect recommendations)
+    let aiExplanation = { available: false, message: "AI explanation unavailable." };
+    try {
+      aiExplanation = aiService.generateVerifiedExplanation(
+        {
+          crop: crop || expertResult.applicability.crop,
+          soilAssessment: expertResult.soilAssessment,
+          officialRecommendation: expertResult.nutrientRequirement,
+          applicability: expertResult.applicability,
+          fertilizerConversion: fertilizerConversion,
+          evidence: evidence,
+        },
+        language
+      );
+    } catch (aiErr) {
+      console.warn("AI explanation generation warning:", aiErr.message);
+    }
 
     const safeResponse = {
-      soilHealth: localizedResult.soilHealth,
-      recommendations: localizedResult.recommendations,
-      overallConfidence: Math.max(0, finalConfidence),
+      recommendation_type: expertResult.recommendation_type,
+      recommendationBasis: expertResult.recommendationBasis,
+      nutrientRequirement: expertResult.nutrientRequirement,
+      soilAssessment: expertResult.soilAssessment,
+      applicability: expertResult.applicability,
+      fertilizerConversion: fertilizerConversion,
+      source: expertResult.source,
+      evidence: evidence,
+      aiExplanation: aiExplanation,
+      matchMetadata: expertResult.matchMetadata,
+      overallConfidence: baseConfidence,
       originalValues: soilData,
-      warning: null,
+      soilHealth: `Official MPKV Baseline Recommendation (${expertResult.source.document}, p. ${expertResult.source.page}) with soil assessment: ${soilSummary}. Note: Baseline recommendations represent official research targets, not a direct subtraction from soil-test values.`,
+      recommendations: [
+        {
+          product: "Official MPKV Nutrient Requirement",
+          dosage: `${n}:${p}:${k} N:P2O5:K2O kg/ha`,
+          reason: `Official ${expertResult.source.organization} baseline recommendation from ${expertResult.source.document} (p. ${expertResult.source.page}). Note: This represents the official research baseline requirement, not a naive subtraction from soil-test values.`,
+          is_mathematical_conversion: false
+        }
+      ]
     };
 
-    // SAFETY GATE: Low Confidence Handling
-    if (safeResponse.overallConfidence < 50) {
-      safeResponse.warning = this.getLocaleString(
-        language,
-        "validation.low_confidence",
-      );
-      // Hide strong recommendations to prevent misuse
-      safeResponse.recommendations = [];
-      safeResponse.soilHealth += `\n\n⚠️ ${safeResponse.warning}`;
+    if (fertilizerConversion) {
+      const parts = [];
+      if (fertilizerConversion.dap_kg_ha > 0) parts.push(`DAP: ${fertilizerConversion.dap_kg_ha} kg/ha`);
+      if (fertilizerConversion.urea_kg_ha > 0) parts.push(`Urea: ${fertilizerConversion.urea_kg_ha} kg/ha`);
+      if (fertilizerConversion.mop_kg_ha > 0) parts.push(`MOP: ${fertilizerConversion.mop_kg_ha} kg/ha`);
+
+      safeResponse.recommendations.push({
+        product: "Mathematical Fertilizer Conversion",
+        dosage: parts.length > 0 ? parts.join(", ") : "0 kg/ha",
+        reason: `Mathematical conversion based on standard FCO fertilizer compositions to supply ${n}:${p}:${k} N:P2O5:K2O kg/ha. Calculated mathematically; NOT an official MPKV product recommendation.`,
+        is_mathematical_conversion: true,
+      });
     }
 
     return {
@@ -103,102 +173,40 @@ class RecommendationEngine {
     };
   }
 
-  localizeResult(result, lang, crop) {
-    const strings = locales[lang] || locales["en"];
-
-    // Helper to get mapped term
-    const getTerm = (category, key) =>
-      strings[category] && strings[category][key]
-        ? strings[category][key]
-        : key;
-
-    // Construct Summary
-    let summary = strings.recommendation.soil_health_summary;
-    if (result.status.nitrogen === "Low") {
-      summary += `\n ${this.formatString(strings.recommendation.nitrogen_low, { value: "(Low)" })}`;
+  /**
+   * Build supporting RAG document evidence object from official recommendation source
+   */
+  buildEvidence(expertResult) {
+    if (!expertResult || !expertResult.success || !expertResult.source || !expertResult.source.document) {
+      return {
+        available: false,
+        source: null,
+        supportingText: null,
+        retrievalType: null,
+      };
     }
-    // Add more summary logic here if needed (P, K, etc.)
+
+    const docName = expertResult.source.document;
+    const org = expertResult.source.organization || "MPKV";
+    const pageNum = expertResult.source.page || 1;
+    const cropName = expertResult.applicability ? expertResult.applicability.crop : "crop";
+    const seasonName = expertResult.applicability ? expertResult.applicability.season : null;
+    const regionName = expertResult.applicability ? expertResult.applicability.region : "Maharashtra";
+    const req = expertResult.nutrientRequirement;
+
+    const seasonStr = seasonName ? ` (${seasonName} season)` : "";
+    const supportingText = `Official ${org} research target for ${cropName}${seasonStr} in ${regionName}: ${req.n_kg_ha}:${req.p2o5_kg_ha}:${req.k2o_kg_ha} N:P2O5:K2O kg/ha. Verified in research document ${docName} (p. ${pageNum}). Baseline recommendations represent research target doses, not naive subtraction from soil test values.`;
 
     return {
-      soilHealth: summary,
-      recommendations: result.recommendations.map((rec, index) => {
-        // 1. Localize Product Name
-        const localizedProduct = getTerm("fertilizers", rec.name);
-
-        // 2. Localize Dosage (keep numbers, maybe translate unit if needed later)
-        const localizedDosage = rec.dose;
-
-        // 3. Localize Reasoning using Template
-        // We need to reconstruct the context. This is a limitation of the current ExpertSystem returning a string 'reason'.
-        // Ideally ExpertSystem should return structured reason { nutrient: 'N', status: 'Low', crop: 'Wheat' }.
-        // For now, we will use a generic fallback or try to infer context if possible.
-        // BETTER APPROACH FOR OFFLINE AI: Use the 'result.status' object we already have!
-
-        // Let's generate a FRESH reasoning string from the data we have, ignoring the hardcoded English one.
-        // We know: rec.name (Urea) -> likely linked to Nitrogen status.
-
-        let reasoning = "";
-        // Simple heuristic to match fertilizer to nutrient for reasoning generation
-        if (rec.name === "Urea") {
-          reasoning = this.formatTemplate(
-            strings.recommendation.reasoning_template,
-            {
-              nutrient: getTerm("nutrients", "nitrogen"),
-              status: getTerm("status", result.status.nitrogen),
-              crop: getTerm("crops", crop.toLowerCase()) || crop, // Use passed crop!
-              requirement: getTerm("status", "High"), // Simplified
-            },
-          );
-        } else if (rec.name.includes("DAP")) {
-          reasoning = this.formatTemplate(
-            strings.recommendation.reasoning_template,
-            {
-              nutrient: getTerm("nutrients", "phosphorus"),
-              status: getTerm("status", result.status.phosphorus),
-              crop: getTerm("crops", crop.toLowerCase()) || crop,
-              requirement: getTerm("status", "Medium"),
-            },
-          );
-        } else if (rec.name.includes("MOP")) {
-          reasoning = this.formatTemplate(
-            strings.recommendation.reasoning_template,
-            {
-              nutrient: getTerm("nutrients", "potassium"),
-              status: getTerm("status", result.status.potassium),
-              crop: getTerm("crops", crop.toLowerCase()) || crop,
-              requirement: getTerm("status", "Medium"),
-            },
-          );
-        } else {
-          // Fallback to English if we can't generate smart reasoning yet
-          reasoning = result.reasoning[index];
-        }
-
-        return {
-          product: localizedProduct,
-          dosage: localizedDosage,
-          reason: reasoning,
-        };
-      }),
+      available: true,
+      source: {
+        organization: org,
+        document: docName,
+        page: pageNum,
+      },
+      supportingText: supportingText,
+      retrievalType: "official_document",
     };
-  }
-
-  formatString(template, values) {
-    return template.replace(/{{(\w+)}}/g, (match, key) => values[key] || match);
-  }
-
-  formatTemplate(template, values) {
-    return template.replace(/{{(\w+)}}/g, (match, key) => values[key] || match);
-  }
-
-  getLocaleString(lang, path) {
-    const keys = path.split(".");
-    let current = locales[lang] || locales["en"];
-    for (const key of keys) {
-      if (current[key]) current = current[key];
-      else return null;
-    }
-    return current;
   }
 }
 

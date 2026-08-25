@@ -1,0 +1,110 @@
+[
+  {
+    "crop": "wheat",
+    "region": "Maharashtra",
+    "soil_condition": "medium deep black soils",
+    "season": "rabi",
+    "recommended_n_kg_ha": 120,
+    "recommended_p2o5_kg_ha": 60,
+    "recommended_k2o_kg_ha": 40,
+    "recommendation_type": "nutrient_requirement",
+    "conditions": "timely sown irrigated condition",
+    "application_stage": "basal dose and split application",
+    "source": {
+      "organization": "MPKV",
+      "document": "MPKV_Wheat.pdf",
+      "page": 2,
+      "year": 2015
+    }
+  },
+  {
+    "crop": "paddy",
+    "region": "Maharashtra",
+    "soil_condition": "puddled soils",
+    "season": "kharif",
+    "recommended_n_kg_ha": 100,
+    "recommended_p2o5_kg_ha": 50,
+    "recommended_k2o_kg_ha": 50,
+    "recommendation_type": "nutrient_requirement",
+    "conditions": "irrigated condition",
+    "application_stage": "split application at planting, tillering and panicle initiation",
+    "source": {
+      "organization": "MPKV",
+      "document": "MPKV_Paddy.pdf",
+      "page": 1,
+      "year": 2025
+    }
+  },
+  {
+    "crop": "sugarcane",
+    "region": "Maharashtra",
+    "soil_condition": "medium deep black soils",
+    "season": "suru",
+    "recommended_n_kg_ha": 250,
+    "recommended_p2o5_kg_ha": 115,
+    "recommended_k2o_kg_ha": 115,
+    "recommendation_type": "nutrient_requirement",
+    "conditions": "suru sugarcane planting",
+    "application_stage": "4 split doses at planting, 6, 12, and 16 weeks",
+    "source": {
+      "organization": "MPKV",
+      "document": "MPKV_Sugarcane.pdf",
+      "page": 6,
+      "year": 2025
+    }
+  },
+  {
+    "crop": "sugarcane",
+    "region": "Maharashtra",
+    "soil_condition": "medium deep black soils",
+    "season": "preseasonal",
+    "recommended_n_kg_ha": 300,
+    "recommended_p2o5_kg_ha": 125,
+    "recommended_k2o_kg_ha": 125,
+    "recommendation_type": "nutrient_requirement",
+    "conditions": "preseasonal sugarcane planting",
+    "application_stage": "4 split doses at planting, 6, 12, and 16 weeks",
+    "source": {
+      "organization": "MPKV",
+      "document": "MPKV_Sugarcane.pdf",
+      "page": 7,
+      "year": 2025
+    }
+  },
+  {
+    "crop": "cotton",
+    "region": "Maharashtra",
+    "soil_condition": "medium deep soils",
+    "season": "kharif",
+    "recommended_n_kg_ha": 90,
+    "recommended_p2o5_kg_ha": 45,
+    "recommended_k2o_kg_ha": 30,
+    "recommendation_type": "nutrient_requirement",
+    "conditions": "western Maharashtra",
+    "application_stage": "at planting and 30 DAS",
+    "source": {
+      "organization": "MPKV",
+      "document": "MPKV_Cotton.pdf",
+      "page": 3,
+      "year": 2025
+    }
+  },
+  {
+    "crop": "maize",
+    "region": "Maharashtra",
+    "soil_condition": "medium deep soils",
+    "season": "kharif",
+    "recommended_n_kg_ha": 120,
+    "recommended_p2o5_kg_ha": 60,
+    "recommended_k2o_kg_ha": 40,
+    "recommendation_type": "nutrient_requirement",
+    "conditions": "western Maharashtra",
+    "application_stage": "at sowing and 30 DAS",
+    "source": {
+      "organization": "MPKV",
+      "document": "MPKV_Maize.pdf",
+      "page": 2,
+      "year": 2025
+    }
+  }
+]

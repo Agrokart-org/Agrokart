@@ -389,6 +389,138 @@ class AIService {
     if (val > high) return "High";
     return "Medium";
   }
+
+  /**
+   * Generates a verified, grounded Dr. Agro AI explanation for structured recommendations.
+   * Grounded in official MPKV recommendation targets, FCO compositions, and retrieved RAG document evidence.
+   * Supports: 'en' (English), 'hi' (Hindi), 'mr' (Marathi).
+   * @param {Object} context { crop, soilAssessment, officialRecommendation, applicability, fertilizerConversion, evidence }
+   * @param {string} language 'en', 'hi', or 'mr'
+   * @returns {Object} Structured explanation object
+   */
+  generateVerifiedExplanation(context, language = "en") {
+    try {
+      if (!context || typeof context !== "object") {
+        return {
+          available: false,
+          message: "No context provided for AI explanation.",
+        };
+      }
+
+      const lang = (language || "en").toLowerCase().trim();
+      const crop = (context.crop || "crop").toLowerCase();
+      const sa = context.soilAssessment || {};
+      const rec = context.officialRecommendation || {};
+      const fc = context.fertilizerConversion || {};
+      const ev = context.evidence || {};
+      const app = context.applicability || {};
+
+      const nTarget = rec.n_kg_ha !== undefined ? rec.n_kg_ha : 0;
+      const pTarget = rec.p2o5_kg_ha !== undefined ? rec.p2o5_kg_ha : 0;
+      const kTarget = rec.k2o_kg_ha !== undefined ? rec.k2o_kg_ha : 0;
+      const npkStr = `${nTarget}:${pTarget}:${kTarget} N:P2O5:K2O kg/ha`;
+
+      const region = app.region || "Maharashtra";
+      const season = app.season ? `${app.season} season` : "";
+
+      // 1. Soil Status Summaries
+      const soilStatus = [];
+      if (sa.nitrogen) {
+        soilStatus.push(`Nitrogen (N): ${sa.nitrogen.status}${sa.nitrogen.value !== null ? ` (${sa.nitrogen.value} kg/ha)` : ""}`);
+      }
+      if (sa.phosphorus) {
+        soilStatus.push(`Phosphorus (P): ${sa.phosphorus.status}${sa.phosphorus.value !== null ? ` (${sa.phosphorus.value} kg/ha)` : ""}`);
+      }
+      if (sa.potassium) {
+        soilStatus.push(`Potassium (K): ${sa.potassium.status}${sa.potassium.value !== null ? ` (${sa.potassium.value} kg/ha)` : ""}`);
+      }
+      if (sa.ph) {
+        soilStatus.push(`pH: ${sa.ph.status}${sa.ph.value !== null ? ` (${sa.ph.value})` : ""}`);
+      }
+
+      // 2. Fertilizer conversion details
+      const fertParts = [];
+      if (fc.dap_kg_ha > 0) fertParts.push(`DAP: ${fc.dap_kg_ha} kg/ha`);
+      if (fc.urea_kg_ha > 0) fertParts.push(`Urea: ${fc.urea_kg_ha} kg/ha`);
+      if (fc.mop_kg_ha > 0) fertParts.push(`MOP: ${fc.mop_kg_ha} kg/ha`);
+      const fertListStr = fertParts.length > 0 ? fertParts.join(", ") : "0 kg/ha";
+
+      // 3. Evidence provenance
+      const sources = [];
+      let docName = null;
+      let pageNum = null;
+      if (ev.available && ev.source && ev.source.document) {
+        docName = ev.source.document;
+        pageNum = ev.source.page || 1;
+        sources.push(`${ev.source.organization || "MPKV"} — ${docName} (p. ${pageNum})`);
+      }
+
+      // Multilingual Content Generation
+      if (lang === "hi" || lang === "hindi") {
+        return {
+          available: true,
+          language: "hi",
+          summary: `महाराष्ट्र में ${crop}${season ? ` (${season})` : ""} के लिए आधिकारिक MPKV baseline सिफारिश।`,
+          soilStatus: soilStatus.map(s =>
+            s.replace("Nitrogen", "नाइट्रोजन").replace("Phosphorus", "फास्फोरस").replace("Potassium", "पोटेशियम").replace("Low", "कम").replace("High", "उच्च").replace("Medium", "मध्यम").replace("Neutral", "न्यूट्रल").replace("Acidic", "अम्लीय").replace("Alkaline", "क्षारीय").replace("Unknown", "अज्ञात")
+          ),
+          officialRecommendation: `MPKV आधिकारिक baseline लक्ष्य: ${npkStr}।`,
+          fertilizerExplanation: `मानक FCO संरचना के आधार पर गणितीय उर्वरक गणना: ${fertListStr}। यह एक गणितीय रूपांतरण है, प्रत्यक्ष MPKV नुस्खा नहीं।`,
+          applicationGuidance: `बुवाई के समय DAP और MOP की पूरी खुराक डालें। Urea को विभाजित खुराकों में दें।`,
+          evidenceExplanation: docName
+            ? `आधिकारिक शोध दस्तावेज ${docName} (पृष्ठ ${pageNum}) में सत्यापित।`
+            : "अतिरिक्त दस्तावेज साक्ष्य अनुपलब्ध है।",
+          warnings: [
+            "Baseline सिफारिशें आधिकारिक शोध लक्ष्यात्मक सिफारिशें हैं, मृदा परीक्षण मानों से सीधा घटाव नहीं।"
+          ],
+          sources: sources
+        };
+      } else if (lang === "mr" || lang === "marathi") {
+        return {
+          available: true,
+          language: "mr",
+          summary: `महाराष्ट्रातील ${crop}${season ? ` (${season})` : ""} साठी अधिकृत MPKV baseline शिफारस.`,
+          soilStatus: soilStatus.map(s =>
+            s.replace("Nitrogen", "नायट्रोजन").replace("Phosphorus", "फॉस्फरस").replace("Potassium", "पोटॅशियम").replace("Low", "कमी").replace("High", "जास्त").replace("Medium", "मध्यम").replace("Neutral", "न्यूट्रल").replace("Acidic", "आम्लीय").replace("Alkaline", "अल्कधर्मी").replace("Unknown", "अज्ञात")
+          ),
+          officialRecommendation: `MPKV अधिकृत baseline लक्ष्य: ${npkStr}.`,
+          fertilizerExplanation: `प्रमाणित FCO रचनेवर आधारित गणितीय खत गणना: ${fertListStr}. हे गणितीय रूपांतरण आहे, थेट MPKV शिफारस नाही.`,
+          applicationGuidance: `पेरणीच्या वेळी DAP आणि MOP ची पूर्ण मात्रा द्या. Urea टप्प्याटप्प्याने द्या.`,
+          evidenceExplanation: docName
+            ? `अधिकृत संशोधन दस्तऐवज ${docName} (पृष्ठ ${pageNum}) मध्ये सत्यापित.`
+            : "अतिरिक्त दस्तऐवज पुरावा उपलब्ध नाही.",
+          warnings: [
+            "Baseline शिफारसी अधिकृत संशोधन लक्ष्यांचे प्रतिनिधित्व करतात, माती चाचणी मूल्यांमधून थेट वजाबाकी नाही."
+          ],
+          sources: sources
+        };
+      } else {
+        // Default English
+        return {
+          available: true,
+          language: "en",
+          summary: `Official MPKV baseline recommendation for ${crop}${season ? ` (${season})` : ""} in ${region}.`,
+          soilStatus: soilStatus,
+          officialRecommendation: `MPKV official baseline target: ${npkStr}.`,
+          fertilizerExplanation: `Calculated fertilizer conversion: ${fertListStr} based on standard FCO composition. These quantities are mathematical conversions and not direct MPKV prescriptions.`,
+          applicationGuidance: `Apply full DAP and MOP dose at sowing. Apply Urea in split doses as recommended by MPKV guidelines.`,
+          evidenceExplanation: docName
+            ? `Verified in official research document ${docName} (page ${pageNum}).`
+            : "No additional document evidence retrieved.",
+          warnings: [
+            "Baseline recommendations represent official research targets, not a direct subtraction from soil-test values."
+          ],
+          sources: sources
+        };
+      }
+    } catch (err) {
+      console.error("AIService generateVerifiedExplanation Error:", err);
+      return {
+        available: false,
+        message: "AI explanation generation failed.",
+      };
+    }
+  }
 }
 
 module.exports = new AIService();

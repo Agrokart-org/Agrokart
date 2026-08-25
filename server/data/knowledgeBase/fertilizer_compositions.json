@@ -1,0 +1,58 @@
+{
+  "urea": {
+    "name": "Urea",
+    "n_percentage": 46.0,
+    "p2o5_percentage": 0.0,
+    "k2o_percentage": 0.0,
+    "n_fraction": 0.46,
+    "p2o5_fraction": 0.0,
+    "k2o_fraction": 0.0,
+    "source": "FCO (Fertilizer Control Order) Standard Composition"
+  },
+  "dap": {
+    "name": "Di-Ammonium Phosphate (DAP)",
+    "n_percentage": 18.0,
+    "p2o5_percentage": 46.0,
+    "k2o_percentage": 0.0,
+    "n_fraction": 0.18,
+    "p2o5_fraction": 0.46,
+    "k2o_fraction": 0.0,
+    "source": "FCO (Fertilizer Control Order) Standard Composition"
+  },
+  "mop": {
+    "name": "Muriate of Potash (MOP)",
+    "n_percentage": 0.0,
+    "p2o5_percentage": 0.0,
+    "k2o_percentage": 60.0,
+    "n_fraction": 0.0,
+    "p2o5_fraction": 0.0,
+    "k2o_fraction": 0.60,
+    "source": "FCO (Fertilizer Control Order) Standard Composition"
+  },
+  "ssp": {
+    "name": "Single Super Phosphate (SSP)",
+    "n_percentage": 0.0,
+    "p2o5_percentage": 16.0,
+    "k2o_percentage": 0.0,
+    "n_fraction": 0.0,
+    "p2o5_fraction": 0.16,
+    "k2o_fraction": 0.0,
+    "source": "FCO (Fertilizer Control Order) Standard Composition"
+  },
+  "ammonium_sulphate": {
+    "name": "Ammonium Sulphate",
+    "n_percentage": 20.6,
+    "p2o5_percentage": 0.0,
+    "k2o_percentage": 0.0,
+    "n_fraction": 0.206,
+    "p2o5_fraction": 0.0,
+    "k2o_fraction": 0.0,
+    "source": "FCO (Fertilizer Control Order) Standard Composition"
+  },
+  "zinc_sulphate": {
+    "name": "Zinc Sulphate (Heptahydrate)",
+    "zn_percentage": 21.0,
+    "zn_fraction": 0.21,
+    "source": "FCO (Fertilizer Control Order) Standard Composition"
+  }
+}

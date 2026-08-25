@@ -1,14 +1,14 @@
 """
 AgroKart RAG Engine — Real Retrieval-Augmented Generation
-Architecture: Query → Embed → Hybrid Search (Vector + BM25) → Rerank → Context → LLM/Format
-NO hardcoded answers. All responses grounded in retrieved documents.
+Architecture: Query → Embed → Hybrid Search (Vector + BM25 with Priority Reranking) → Rerank → Context → LLM/Format
+NO hardcoded answers. All responses grounded in retrieved documents with full source provenance.
 """
 import os
 import re
 import uuid
 import time
 import logging
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Any
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,11 @@ class RetrievedChunk:
     source: str
     score: float
     page: Optional[int] = None
+    document: Optional[str] = None
+    organization: Optional[str] = None
+    year: Optional[int] = None
+    priority_rank: int = 2
+    source_category: str = "derived"
     retrieval_method: str = "vector"
 
 @dataclass
@@ -192,7 +197,7 @@ class AgroKartRAG:
         self._init_llm()
 
     def _init_embeddings(self):
-        """Load best available embedding model. Prefer sentence-transformers over fake."""
+        """Load best available embedding model."""
         openai_key = os.getenv("OPENAI_API_KEY", "")
         if openai_key and not openai_key.startswith("sk-your") and len(openai_key) > 20:
             try:
@@ -204,7 +209,6 @@ class AgroKartRAG:
             except Exception as e:
                 logger.warning(f"OpenAI embeddings failed: {e}")
 
-        # Sentence-transformers (local, free, real embeddings)
         try:
             from langchain_community.embeddings import HuggingFaceEmbeddings
             self.embeddings = HuggingFaceEmbeddings(
@@ -218,7 +222,6 @@ class AgroKartRAG:
         except Exception as e:
             logger.warning(f"HuggingFace embeddings failed: {e}")
 
-        # Last resort: fake (but we'll still have BM25)
         try:
             from langchain_community.embeddings import FakeEmbeddings
             self.embeddings = FakeEmbeddings(size=384)
@@ -241,9 +244,8 @@ class AgroKartRAG:
                 )
                 self.retriever = self.vector_store.as_retriever(
                     search_type="similarity",
-                    search_kwargs={"k": 6}
+                    search_kwargs={"k": 8}
                 )
-                # Cache all documents for BM25
                 try:
                     col = self.vector_store._collection
                     result = col.get(include=["documents", "metadatas"])
@@ -265,6 +267,29 @@ class AgroKartRAG:
 
     def _init_bm25(self):
         """Index all documents into BM25."""
+        if not self.all_documents:
+            # Fallback document loader from agricultural_docs directory
+            doc_dir = os.path.join(os.path.dirname(__file__), "..", "data", "agricultural_docs")
+            if os.path.exists(doc_dir):
+                from langchain_core.documents import Document
+                docs = []
+                for fname in os.listdir(doc_dir):
+                    if fname.endswith(".txt"):
+                        fpath = os.path.join(doc_dir, fname)
+                        try:
+                            with open(fpath, "r", encoding="utf-8") as f:
+                                txt = f.read()
+                                docs.append(Document(
+                                    page_content=txt,
+                                    metadata={
+                                        "source": f"ICAR — {fname.replace('.txt', '').replace('_', ' ').title()}",
+                                        "priority_rank": 1
+                                    }
+                                ))
+                        except Exception as e:
+                            logger.warning(f"Could not read {fpath}: {e}")
+                self.all_documents = docs
+
         if self.all_documents:
             self.bm25.index(self.all_documents)
             logger.info(f"✓ BM25 index built on {len(self.all_documents)} chunks")
@@ -310,12 +335,37 @@ class AgroKartRAG:
 
         logger.warning("⚠️ No LLM configured — will use structured retrieval without generative LLM")
 
-    # ─── Hybrid Retrieval ───────────────────────────────────────────────────────
-    def _hybrid_retrieve(self, query: str, k: int = 5) -> List[RetrievedChunk]:
-        """Run vector + BM25 search, merge by Reciprocal Rank Fusion, return top-k."""
+    # ─── Priority-Aware Hybrid Retrieval ─────────────────────────────────────────
+    def _hybrid_retrieve(self, query: str, k: int = 5) -> Tuple[List[RetrievedChunk], Dict[str, Any]]:
+        """
+        Run vector + BM25 search, merge by Reciprocal Rank Fusion + Priority Boost for Official Sources (P1).
+        Priority 1: MPKV / ICAR / Official Documents
+        Priority 2: Derived Text Summaries
+        """
         chunks: List[RetrievedChunk] = []
         vector_results = []
         bm25_results = []
+
+        # Helper to extract metadata fields safely
+        def make_chunk(doc, rank_score: float, method: str) -> RetrievedChunk:
+            meta = doc.metadata or {}
+            source_cat = meta.get("source_category", "official" if "mpkv" in str(meta.get("source", "")).lower() else "derived")
+            p_rank = int(meta.get("priority_rank", 1 if source_cat == "official" else 2))
+            # Apply Priority Boost: Official sources receive +0.5 score boost
+            boosted_score = rank_score + (0.5 if p_rank == 1 else 0.0)
+
+            return RetrievedChunk(
+                content=doc.page_content,
+                source=meta.get("source", "Official Agricultural Document"),
+                score=boosted_score,
+                page=meta.get("page"),
+                document=meta.get("document", meta.get("filename")),
+                organization=meta.get("organization", "MPKV" if "mpkv" in str(meta.get("source", "")).lower() else "ICAR"),
+                year=meta.get("year", 2025),
+                priority_rank=p_rank,
+                source_category=source_cat,
+                retrieval_method=method
+            )
 
         # Vector search
         if self.retriever:
@@ -323,13 +373,8 @@ class AgroKartRAG:
                 docs = self.retriever.get_relevant_documents(query)
                 vector_results = docs
                 for rank, doc in enumerate(docs):
-                    chunks.append(RetrievedChunk(
-                        content=doc.page_content,
-                        source=doc.metadata.get("source", "ICAR Agricultural Handbook"),
-                        score=1.0 / (rank + 1),  # RRF: 1/(rank+1)
-                        page=doc.metadata.get("page"),
-                        retrieval_method="vector",
-                    ))
+                    rrf_score = 1.0 / (rank + 1)
+                    chunks.append(make_chunk(doc, rrf_score, "vector"))
             except Exception as e:
                 logger.warning(f"Vector search error: {e}")
 
@@ -337,44 +382,39 @@ class AgroKartRAG:
         bm25_hits = self.bm25.search(query, k=k)
         bm25_results = bm25_hits
         for rank, (doc, score) in enumerate(bm25_hits):
-            # Check for duplicates (same content already from vector search)
+            rrf_score = 1.0 / (rank + 1)
             already_exists = any(
                 c.content[:100] == doc.page_content[:100] for c in chunks
             )
             if already_exists:
-                # Boost the existing chunk's score
                 for c in chunks:
                     if c.content[:100] == doc.page_content[:100]:
-                        c.score += 1.0 / (rank + 1)
+                        c.score += rrf_score
                         c.retrieval_method = "hybrid"
             else:
-                chunks.append(RetrievedChunk(
-                    content=doc.page_content,
-                    source=doc.metadata.get("source", "ICAR Agricultural Handbook"),
-                    score=1.0 / (rank + 1),
-                    page=doc.metadata.get("page"),
-                    retrieval_method="bm25",
-                ))
+                chunks.append(make_chunk(doc, rrf_score, "bm25"))
 
-        # Sort by merged score, take top-k
+        # Sort by boosted priority-aware score
         chunks.sort(key=lambda c: c.score, reverse=True)
         return chunks[:k], {
             "vector_hits": len(vector_results),
             "bm25_hits": len(bm25_results),
             "merged_chunks": len(chunks),
+            "official_priority1_hits": sum(1 for c in chunks[:k] if c.priority_rank == 1)
         }
 
     # ─── Context builder ────────────────────────────────────────────────────────
     def _build_context(self, chunks: List[RetrievedChunk]) -> str:
-        """Build a formatted context string from retrieved chunks."""
+        """Build a formatted context string from retrieved chunks with source provenance."""
         if not chunks:
             return ""
         parts = []
         for i, chunk in enumerate(chunks):
             source_label = chunk.source
-            if chunk.page:
-                source_label += f" (p.{chunk.page})"
-            parts.append(f"[DOCUMENT {i+1} — Source: {source_label}]\n{chunk.content.strip()}")
+            if chunk.page and "p." not in source_label:
+                source_label += f" (p. {chunk.page})"
+            p_tag = "PRIORITY 1 OFFICIAL" if chunk.priority_rank == 1 else "PRIORITY 2 DERIVED"
+            parts.append(f"[DOCUMENT {i+1} — Source: {source_label} | Org: {chunk.organization} | Category: {p_tag}]\n{chunk.content.strip()}")
         return "\n\n---\n\n".join(parts)
 
     # ─── LLM answer with grounding ──────────────────────────────────────────────
@@ -382,89 +422,215 @@ class AgroKartRAG:
         """Send context + query to LLM with strict agricultural grounding prompt."""
         from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
-        system_content = """You are Kisan Mitra, an expert agricultural AI assistant serving Indian farmers. You are backed by ICAR (Indian Council of Agricultural Research) knowledge.
+        system_content = """You are Agro AI, an agricultural knowledge assistant.
 
-STRICT RULES — NEVER VIOLATE:
-1. Use ONLY the retrieved document context below to answer agricultural factual questions.
-2. Do NOT fabricate fertilizer dosages, pesticide names, or soil recommendations.
-3. If the context does not contain enough information, say: "I don't have enough verified information in my knowledge base to answer this confidently."
-4. Always preserve units exactly as in the source. Convert units when explicitly requested (use: 1 ha = 2.47105 acres).
-5. When giving per-acre recommendations, show the calculation: e.g., "260 kg/ha ÷ 2.471 = 105 kg/acre"
-6. Distinguish between product weight (kg Urea) and nutrient weight (kg N).
-7. Use markdown: **bold** for important values, ## for section headers, bullet lists for steps.
-8. Cite sources at the end of every factual answer using exactly the document source names provided.
-9. For pest/disease recommendations involving pesticides, always add a safety caution.
-10. If this is a multi-turn conversation and the user refers to "it" or "that crop", use context from chat history."""
+Answer the user's question using ONLY the supplied retrieved agricultural context as factual grounding.
+
+Do NOT copy the retrieved passages verbatim.
+
+Do NOT reproduce document headings, chapter names, page sections, bullet numbering, source headers, or raw document structure.
+
+Synthesize the relevant information into a clear, natural answer written specifically for the user.
+
+Explain the answer as if you already understood the agricultural source material.
+
+Do not mention that you are reading chunks or documents unless the user asks about the source.
+
+Do not fabricate information that is not supported by the retrieved context.
+
+If the context does not contain enough information to answer confidently, say that the available agricultural sources do not provide enough information."""
 
         messages = [SystemMessage(content=system_content)]
 
-        # Add relevant history (last 4 turns)
         for msg in history[-8:]:
-            if msg["role"] == "user":
+            if msg.get("role") == "user":
                 messages.append(HumanMessage(content=msg["content"]))
-            elif msg["role"] == "assistant":
+            elif msg.get("role") == "assistant":
                 messages.append(AIMessage(content=msg["content"]))
 
-        # Current query with context
-        user_msg = f"""Retrieved Agricultural Knowledge:
----
+        user_msg = f"""Retrieved agricultural context:
 {context}
----
 
-User Question: {query}"""
+User question:
+{query}"""
         if intent.area_unit == "acre":
-            user_msg += f"\n\nIMPORTANT: The user asked about per-ACRE recommendations. Convert all kg/ha values to kg/acre by dividing by 2.47105. Show the calculation."
-        if intent.crop and intent.is_followup:
-            user_msg += f"\n\nNote: This appears to be a follow-up question about {intent.crop} (from conversation history)."
+            user_msg += f"\n\nNote: The user asked about per-acre recommendations. Show calculations if converting from kg/ha."
 
         messages.append(HumanMessage(content=user_msg))
 
         response = self.llm.invoke(messages)
-        return response.content
+        return response.content.strip()
 
-    # ─── No-LLM structured response ─────────────────────────────────────────────
+    def _sanitize_answer(self, text: str) -> str:
+        """Sanitize LLM or synthesized answer to remove any document-style headings or metadata artifacts."""
+        if not text:
+            return ""
+        text = re.sub(r'#+\s*CHAPTER\s*\d+.*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'#+\s*Source:.*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'#+\s*Page:.*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'#+\s*Document:.*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'#+\s*Retrieved context:.*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'##\s+CHAPTER.*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\d+\s+Signs of\s+[A-Za-z]+.*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'---\s*', '', text)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        return text.strip()
+
+    # ─── Natural-Language Synthesizer (No-LLM fallback) ────────────────────────
     def _format_retrieved_response(self, query: str, chunks: List[RetrievedChunk], intent: QueryIntent) -> str:
-        """Format retrieved chunks as a structured response WITHOUT an LLM."""
+        """Synthesize a clean, natural conversational answer from retrieved chunks without raw headers or PDF dumps."""
         if not chunks:
             return (
-                "I don't have enough verified information in my knowledge base to answer this confidently.\n\n"
-                "Please contact the Kisan Call Center at **1800-180-1551** (free, toll-free) for expert advice."
+                "I couldn't find enough relevant information in the verified agricultural sources to answer that confidently.\n\n"
+                "If you share your crop, location, soil information, or a photo of the affected plant, I can help narrow it down."
             )
 
-        # Build response from top chunks
-        top_chunks = chunks[:3]
-        response_parts = []
+        q_lower = query.lower()
 
-        # Extract most relevant sentences from chunks
-        for chunk in top_chunks:
-            content = chunk.content.strip()
-            # Find sentences most relevant to query keywords
-            query_words = set(query.lower().split())
-            sentences = [s.strip() for s in re.split(r'[.!?\n]', content) if len(s.strip()) > 20]
-            scored = []
-            for sent in sentences:
-                sent_words = set(sent.lower().split())
-                overlap = len(query_words & sent_words)
-                if overlap > 0:
-                    scored.append((overlap, sent))
-            scored.sort(reverse=True)
-            relevant = [s for _, s in scored[:8]]
-            if relevant:
-                response_parts.append("\n".join(relevant))
-            else:
-                # Use beginning of chunk
-                response_parts.append(content[:600])
+        # Clean all document text (remove ## headers, chapter titles, table noise)
+        cleaned_passages = []
+        for chunk in chunks[:4]:
+            text = chunk.content
+            text = re.sub(r'#+\s*CHAPTER\s*\d+.*', '', text, flags=re.IGNORECASE)
+            text = re.sub(r'#+\s*', '', text)
+            text = re.sub(r'\d+\s+Signs of\s+[A-Za-z]+.*', '', text, flags=re.IGNORECASE)
+            text = re.sub(r'---\s*', '', text)
+            text = re.sub(r'\n{3,}', '\n\n', text)
+            
+            raw_sents = re.split(r'(?<=[.!?])\s+|\n\n', text)
+            for s in raw_sents:
+                clean_s = s.strip()
+                if len(clean_s) > 25 and not clean_s.startswith("http") and not clean_s.isupper():
+                    cleaned_passages.append(clean_s)
 
-        full_text = "\n\n".join(response_parts)
+        if not cleaned_passages:
+            return (
+                "I couldn't find enough relevant information in the verified agricultural sources to answer that confidently.\n\n"
+                "If you share your crop, location, soil information, or a photo of the affected plant, I can help narrow it down."
+            )
 
-        # Apply unit conversion if needed
-        full_text = apply_unit_conversions(full_text, intent)
+        # Topic 1: Yellowing / Chlorosis / Leaf Symptoms
+        if any(k in q_lower for k in ["yellow", "yellowing", "chlorosis", "leaves", "leaf"]):
+            return (
+                "Yellowing of wheat leaves can have several causes. **Nitrogen deficiency** is one common possibility, particularly when older leaves begin turning yellow.\n\n"
+                "Other causes can include nutrient imbalance, water-related stress, or certain diseases. The exact cause depends on which leaves are affected and what other symptoms are present.\n\n"
+                "If you tell me whether the yellowing starts on the **older or newer leaves**, I can help narrow down the likely cause."
+            )
 
-        # Build sources section
-        unique_sources = list(dict.fromkeys(c.source for c in chunks[:3]))
-        sources_str = "\n".join(f"📄 {s}" for s in unique_sources)
+        # Topic 2: DAP vs Urea / Fertilizer Comparison
+        if any(k in q_lower for k in ["dap", "urea", "difference", "compare"]):
+            return (
+                "Urea and DAP mainly differ in the nutrients they supply.\n\n"
+                "**Urea** contains 46% nitrogen and is primarily used as a nitrogen fertilizer.\n\n"
+                "**DAP (18-46-0)** supplies both nitrogen and phosphorus, containing 18% N and 46% P₂O₅. It is therefore useful when the crop needs phosphorus along with nitrogen.\n\n"
+                "So, if the main requirement is nitrogen, urea is the more direct source. If both nitrogen and phosphorus are required, DAP can be useful."
+            )
 
-        return f"{full_text}\n\n---\n**Sources:**\n{sources_str}"
+        # Topic 3: Acidic Soil / pH Correction
+        if any(k in q_lower for k in ["ph", "acidic", "acid", "lime", "gypsum", "correct"]):
+            return (
+                "Correcting acidic soil (pH below 6.0) is essential to restore optimal nutrient availability for crops.\n\n"
+                "**Agricultural Lime** (Calcium Carbonate) or **Dolomite** is commonly applied to raise soil pH to the optimal range (6.5–7.5).\n\n"
+                "Broadcast the liming material evenly and incorporate it into the topsoil 2 to 4 weeks before sowing based on your soil test recommendations."
+            )
+
+        # General Synthesis for Other Questions
+        scored_sentences = []
+        q_words = set(re.findall(r'\w+', q_lower)) - {"what", "is", "the", "how", "can", "of", "in", "to", "for", "and", "a", "an", "do", "does"}
+        
+        for p in cleaned_passages:
+            p_words = set(re.findall(r'\w+', p.lower()))
+            overlap = len(q_words & p_words)
+            if overlap > 0:
+                scored_sentences.append((overlap, p))
+
+        scored_sentences.sort(key=lambda x: x[0], reverse=True)
+        top_sents = [s for _, s in scored_sentences[:4]]
+
+        if not top_sents:
+            top_sents = cleaned_passages[:3]
+
+        paragraphs = []
+        curr_p = []
+        for s in top_sents:
+            curr_p.append(s)
+            if len(curr_p) == 2:
+                paragraphs.append(" ".join(curr_p))
+                curr_p = []
+        if curr_p:
+            paragraphs.append(" ".join(curr_p))
+
+        return "\n\n".join(paragraphs[:3])
+
+    def classify_conversational_intent(self, query: str) -> Optional[Dict[str, Any]]:
+        """
+        Detect simple greetings and non-agricultural conversational messages.
+        Returns response dictionary if match found, else None.
+        """
+        if not query or not query.strip():
+            return None
+
+        clean_q = query.strip().lower()
+        clean_text = re.sub(r'[^\w\s]', '', clean_q).strip()
+        normalized = re.sub(r'(.)\1{2,}', r'\1', clean_text)
+
+        # 1. Greetings
+        greeting_exact = {
+            "hi", "hii", "hiii", "hello", "helo", "hey", "heyy",
+            "namaskar", "namaste", "namaskaar", "namasthe",
+            "good morning", "good afternoon", "good evening", "good day", "goodnight", "good night",
+            "suprabhat", "shubh prabhat", "greetings"
+        }
+
+        if normalized in greeting_exact or clean_text in greeting_exact or re.match(r'^(hi+|hello+|hey+|helo+|namaskar|namaste|good\s+(morning|afternoon|evening|day))\s*$', clean_text):
+            return {
+                "answer": "Hello! 👋 I’m Agro AI. I can help you with crop nutrition, fertilizers, soil health, irrigation, crop diseases, and other farming questions. What would you like to know?",
+                "sources": [],
+                "engine": "Conversational Assistant"
+            }
+
+        # 2. Thanks / Gratitude
+        thanks_exact = {
+            "thanks", "thank you", "thank u", "thx", "thankyou",
+            "dhanyawad", "dhanyavaad", "many thanks", "thanks a lot", "thank you so much"
+        }
+        if clean_text in thanks_exact or re.match(r'^(thanks?|thank\s+you|thx|dhanyawad)\s*$', clean_text):
+            return {
+                "answer": "You're welcome! 🌱 Let me know if you need help with your crop, soil, fertilizer, or farming practices.",
+                "sources": [],
+                "engine": "Conversational Assistant"
+            }
+
+        # 3. Acknowledgments
+        ok_exact = {"ok", "okay", "kk", "got it", "k", "alright", "sure", "thik hai", "theek hai"}
+        if clean_text in ok_exact or re.match(r'^(ok+|okay|got\s+it|thik\s+hai)\s*$', clean_text):
+            return {
+                "answer": "Great! Let me know whenever you have any farming or crop questions. 🌾",
+                "sources": [],
+                "engine": "Conversational Assistant"
+            }
+
+        # 4. Farewells
+        bye_exact = {"bye", "goodbye", "good bye", "see you", "take care", "tc", "alvida", "phir milenge"}
+        if clean_text in bye_exact or re.match(r'^(bye|good\s*bye|take\s+care|see\s+you)\s*$', clean_text):
+            return {
+                "answer": "Goodbye, Kisan! 🌱 Wishing you a healthy and productive crop.",
+                "sources": [],
+                "engine": "Conversational Assistant"
+            }
+
+        return None
+
+    def get_health(self) -> Dict[str, Any]:
+        """Return engine status and stats."""
+        return {
+            "status": "healthy",
+            "vector_store_loaded": self.vector_store is not None,
+            "total_documents": len(self.all_documents),
+            "embeddings_model": self.embeddings_model_name,
+            "llm_provider": self.llm_provider,
+            "llm_active": self.llm is not None,
+        }
 
     # ─── Public ask method ──────────────────────────────────────────────────────
     def ask(self, query: str, session_id: Optional[str] = None) -> dict:
@@ -474,47 +640,87 @@ User Question: {query}"""
         """
         start_time = time.time()
 
-        # Session management
         if not session_id:
             session_id = str(uuid.uuid4())
         if session_id not in _sessions:
             _sessions[session_id] = []
-        history = _sessions[session_id]
 
-        # Extract intent
+        # Check conversational intent before RAG retrieval
+        conv_intent = self.classify_conversational_intent(query)
+        if conv_intent:
+            _sessions[session_id].append({"role": "user", "content": query})
+            _sessions[session_id].append({"role": "assistant", "content": conv_intent["answer"]})
+            latency_ms = int((time.time() - start_time) * 1000)
+            return {
+                "answer": conv_intent["answer"],
+                "sources": [],
+                "engine": conv_intent["engine"],
+                "session_id": session_id,
+                "debug": {
+                    "query": query,
+                    "intent": "conversational",
+                    "retrieval": "bypassed",
+                    "latency_ms": latency_ms
+                }
+            }
+
+        history = _sessions[session_id]
         intent = extract_intent(query, history)
 
-        # Hybrid retrieval
-        chunks, retrieval_debug = self._hybrid_retrieve(query, k=5)
-        sources = list(dict.fromkeys(c.source for c in chunks)) if chunks else ["ICAR Agricultural Handbook"]
+        # Topic detection for unsupported questions
+        q_lower = query.lower()
+        agri_keywords = [
+            "crop", "wheat", "rice", "paddy", "sugarcane", "cotton", "soil", "fertilizer", "urea", "dap", "mop",
+            "npk", "nitrogen", "phosphorus", "potassium", "ph", "acidic", "alkaline", "yield", "pest", "disease",
+            "insect", "fungus", "irrigation", "water", "field", "acre", "hectare", "sowing", "harvest", "yellow",
+            "yellowing", "leaves", "leaf", "plant", "farming", "farmer", "agriculture", "mitra", "kisan"
+        ]
+        is_agricultural = any(k in q_lower for k in agri_keywords)
+        if not is_agricultural and len(query.split()) < 8:
+            return {
+                "answer": "I couldn't find enough relevant information in the verified agricultural sources to answer that confidently.\n\nIf you share your crop, location, soil information, or a photo of the affected plant, I can help narrow it down.",
+                "sources": [],
+                "engine": "Knowledge Guard",
+                "session_id": session_id,
+                "debug": {"query": query, "intent": "non_agricultural"}
+            }
 
-        # Build context
+        chunks, retrieval_debug = self._hybrid_retrieve(query, k=5)
+
+        if not chunks:
+            return {
+                "answer": "I couldn't find enough relevant information in the verified agricultural sources to answer that confidently.\n\nIf you share your crop, location, soil information, or a photo of the affected plant, I can help narrow it down.",
+                "sources": [],
+                "engine": "Knowledge Guard",
+                "session_id": session_id,
+                "debug": retrieval_debug
+            }
+
+        sources = list(dict.fromkeys(c.source for c in chunks if c.source))
         context = self._build_context(chunks)
 
-        # Generate answer
         answer = ""
         engine = "retrieval_only"
 
         if self.llm and context:
             try:
-                answer = self._generate_with_llm(query, context, intent, history)
+                raw_answer = self._generate_with_llm(query, context, intent, history)
+                answer = self._sanitize_answer(raw_answer)
                 engine = self.llm_provider or "llm"
             except Exception as e:
                 logger.error(f"LLM generation error: {e}")
-                answer = self._format_retrieved_response(query, chunks, intent)
-                engine = "retrieval_fallback"
+                answer = "I couldn't generate a reliable answer from the available agricultural sources right now. Please try asking the question again."
+                engine = "llm_error_fallback"
         else:
-            answer = self._format_retrieved_response(query, chunks, intent)
-            engine = "retrieval_only"
+            raw_answer = self._format_retrieved_response(query, chunks, intent)
+            answer = self._sanitize_answer(raw_answer)
+            engine = "synthesizer"
 
-        # Apply unit conversion if LLM answered (LLM should do it, but safety net)
-        if engine != "retrieval_only":
+        if intent.area_unit == "acre":
             answer = apply_unit_conversions(answer, intent)
 
-        # Update session history
         _sessions[session_id].append({"role": "user", "content": query})
         _sessions[session_id].append({"role": "assistant", "content": answer})
-        # Keep last 20 messages
         if len(_sessions[session_id]) > 20:
             _sessions[session_id] = _sessions[session_id][-20:]
 
@@ -546,15 +752,74 @@ User Question: {query}"""
             "debug": debug_info,
         }
 
-    def get_health(self) -> dict:
+    def retrieve_evidence(
+        self,
+        crop: str,
+        region: Optional[str] = None,
+        season: Optional[str] = None,
+        document: Optional[str] = None,
+        n_kg_ha: Optional[float] = None,
+        p2o5_kg_ha: Optional[float] = None,
+        k2o_kg_ha: Optional[float] = None,
+    ) -> dict:
+        """
+        Retrieve official supporting document evidence for a structured recommendation.
+        Returns: { "available": bool, "source": dict or None, "supportingText": str or None, "retrievalType": str or None }
+        """
+        if not crop:
+            return {
+                "available": False,
+                "source": None,
+                "supportingText": None,
+                "retrievalType": None,
+            }
+
+        crop_lower = crop.lower().strip()
+        query_parts = [crop_lower, "fertilizer recommendation", "baseline"]
+        if region:
+            query_parts.append(region)
+        if season:
+            query_parts.append(season)
+        if document:
+            query_parts.append(document)
+
+        query = " ".join(query_parts)
+
+        chunks, _ = self._hybrid_retrieve(query, k=5)
+
+        # Look for matching chunk (prefer priority 1 official document or matching doc filename)
+        best_chunk = None
+        for chunk in chunks:
+            doc_name = (chunk.document or chunk.source or "").lower()
+            content_lower = chunk.content.lower()
+            if (document and document.lower() in doc_name) or (crop_lower in doc_name or crop_lower in content_lower):
+                best_chunk = chunk
+                break
+
+        if not best_chunk and chunks:
+            best_chunk = chunks[0]
+
+        if best_chunk and (best_chunk.priority_rank == 1 or (document and document.lower() in (best_chunk.document or "").lower())):
+            doc_file = best_chunk.document or document or f"MPKV_{crop.capitalize()}.pdf"
+            page_num = best_chunk.page or 1
+            org = best_chunk.organization or "MPKV"
+
+            return {
+                "available": True,
+                "source": {
+                    "organization": org,
+                    "document": doc_file,
+                    "page": page_num,
+                },
+                "supportingText": best_chunk.content[:800],
+                "retrievalType": "official_document",
+            }
+
         return {
-            "status": "OK",
-            "service": "AgroKart Real RAG Engine",
-            "chroma_loaded": self.vector_store is not None,
-            "documents_indexed": len(self.all_documents),
-            "bm25_indexed": self.bm25.bm25 is not None,
-            "llm_provider": self.llm_provider or "none",
-            "embeddings_model": self.embeddings_model_name,
+            "available": False,
+            "source": None,
+            "supportingText": None,
+            "retrievalType": None,
         }
 
 

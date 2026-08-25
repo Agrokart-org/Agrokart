@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const bcrypt = require("bcryptjs");
 const { db } = require("../config/firebase");
 const admin = require("firebase-admin");
 const fs = require("fs");
@@ -205,7 +206,22 @@ router.post("/login", async (req, res) => {
         });
     }
 
-    // Validate user role if expectedRole is specified
+    // Check if account has a password
+    if (!user.password) {
+      return res.status(401).json({
+        message: "This account uses Firebase authentication. Please sign in with Firebase.",
+      });
+    }
+
+    // Verify password against stored bcrypt hash
+    const passwordValid = await bcrypt.compare(password || "", user.password);
+    if (!passwordValid) {
+      return res.status(401).json({
+        message: "Invalid email or password.",
+      });
+    }
+
+    // Validate user role if expectedRole is specified (runs only after successful password verification)
     if (expectedRole && user.role !== expectedRole) {
       console.log(
         "❌ Role mismatch - Expected:",

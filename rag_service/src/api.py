@@ -53,6 +53,19 @@ class SessionClearResponse(BaseModel):
     success: bool
     message: str
 
+class EvidenceRequest(BaseModel):
+    crop: str
+    region: Optional[str] = None
+    season: Optional[str] = None
+    document: Optional[str] = None
+    n_kg_ha: Optional[float] = None
+    p2o5_kg_ha: Optional[float] = None
+    k2o_kg_ha: Optional[float] = None
+
+class EvidenceResponse(BaseModel):
+    success: bool = True
+    evidence: Dict[str, Any]
+
 
 # ─── Health endpoint ───────────────────────────────────────────────────────────
 
@@ -100,6 +113,36 @@ def chat(request: ChatRequest):
             status_code=500,
             detail="I couldn't process that right now. Please try again."
         )
+
+
+# ─── Evidence endpoint ─────────────────────────────────────────────────────────
+
+@app.post("/evidence", response_model=EvidenceResponse)
+def get_evidence(request: EvidenceRequest):
+    """
+    Retrieve official document supporting evidence for a structured recommendation.
+    """
+    if not request.crop or not request.crop.strip():
+        return EvidenceResponse(
+            success=True,
+            evidence={
+                "available": False,
+                "source": None,
+                "supportingText": None,
+                "retrievalType": None,
+            }
+        )
+
+    ev = rag_engine.retrieve_evidence(
+        crop=request.crop.strip(),
+        region=request.region,
+        season=request.season,
+        document=request.document,
+        n_kg_ha=request.n_kg_ha,
+        p2o5_kg_ha=request.p2o5_kg_ha,
+        k2o_kg_ha=request.k2o_kg_ha,
+    )
+    return EvidenceResponse(success=True, evidence=ev)
 
 
 # ─── Debug endpoint (dev-only) ─────────────────────────────────────────────────

@@ -145,11 +145,24 @@ const AIChatbot = () => {
   const [ragStatus, setRagStatus] = useState("unknown"); // "ready", "offline"
   const [copiedId, setCopiedId] = useState(null);
 
-  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
+  const isUserNearBottom = useRef(true);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const handleScroll = () => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      isUserNearBottom.current = scrollHeight - scrollTop - clientHeight < 150;
+    }
+  };
+
+  const scrollToBottom = (force = false) => {
+    if (messagesContainerRef.current && (force || isUserNearBottom.current)) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
   };
 
   useEffect(() => { scrollToBottom(); }, [messages, isTyping]);
@@ -176,11 +189,69 @@ const AIChatbot = () => {
         sender: "bot",
         text: GREETING_TEXT,
         timestamp: new Date(),
-        sources: ["ICAR Agricultural Knowledge Base"],
-        engine: "AgroKart RAG Engine",
+        sources: [],
+        engine: "Conversational Assistant",
       }]);
     }
   }, [isOpen, messages.length]);
+
+  const classifyConversationalIntent = (query) => {
+    if (!query || typeof query !== "string") return null;
+    const cleanQ = query.trim().toLowerCase();
+    const cleanText = cleanQ.replace(/[^\w\s]/g, "").trim();
+    const normalized = cleanText.replace(/(.)\1{2,}/g, "$1");
+
+    const greetings = new Set([
+      "hi", "hii", "hiii", "hello", "helo", "hey", "heyy",
+      "namaskar", "namaste", "namaskaar", "namasthe",
+      "good morning", "good afternoon", "good evening", "good day", "goodnight", "good night",
+      "suprabhat", "shubh prabhat", "greetings"
+    ]);
+
+    if (
+      greetings.has(normalized) ||
+      greetings.has(cleanText) ||
+      /^(hi+|hello+|hey+|helo+|namaskar|namaste|good\s+(morning|afternoon|evening|day))\s*$/i.test(cleanText)
+    ) {
+      return {
+        answer: "Hello! 👋 I’m Agro AI. I can help you with crop nutrition, fertilizers, soil health, irrigation, crop diseases, and other farming questions. What would you like to know?",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    const thanks = new Set([
+      "thanks", "thank you", "thank u", "thx", "thankyou",
+      "dhanyawad", "dhanyavaad", "many thanks", "thanks a lot", "thank you so much"
+    ]);
+    if (thanks.has(cleanText) || /^(thanks?|thank\s+you|thx|dhanyawad)\s*$/i.test(cleanText)) {
+      return {
+        answer: "You're welcome! 🌱 Let me know if you need help with your crop, soil, fertilizer, or farming practices.",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    const okSet = new Set(["ok", "okay", "kk", "got it", "k", "alright", "sure", "thik hai", "theek hai"]);
+    if (okSet.has(cleanText) || /^(ok+|okay|got\s+it|thik\s+hai)\s*$/i.test(cleanText)) {
+      return {
+        answer: "Great! Let me know whenever you have any farming or crop questions. 🌾",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    const byeSet = new Set(["bye", "goodbye", "good bye", "see you", "take care", "tc", "alvida", "phir milenge"]);
+    if (byeSet.has(cleanText) || /^(bye|good\s*bye|take\s+care|see\s+you)\s*$/i.test(cleanText)) {
+      return {
+        answer: "Goodbye, Kisan! 🌱 Wishing you a healthy and productive crop.",
+        sources: [],
+        engine: "Conversational Assistant"
+      };
+    }
+
+    return null;
+  };
 
   const handleSendMessage = useCallback(async (msgText = inputValue) => {
     if (!msgText.trim()) return;
@@ -194,6 +265,22 @@ const AIChatbot = () => {
 
     setMessages((prev) => [...prev, userMsg]);
     setInputValue("");
+    setTimeout(() => scrollToBottom(true), 50);
+
+    const convIntent = classifyConversationalIntent(msgText);
+    if (convIntent) {
+      const botMsg = {
+        id: (Date.now() + 1).toString(),
+        sender: "bot",
+        text: convIntent.answer,
+        sources: [],
+        engine: convIntent.engine,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, botMsg]);
+      return;
+    }
+
     setIsTyping(true);
 
     try {
@@ -210,7 +297,7 @@ const AIChatbot = () => {
           id: (Date.now() + 1).toString(),
           sender: "bot",
           text: res.data.answer,
-          sources: res.data.sources || ["ICAR Handbook"],
+          sources: Array.isArray(res.data.sources) ? res.data.sources : [],
           engine: res.data.engine || "RAG AI Engine",
           timestamp: new Date(),
         };
@@ -313,6 +400,8 @@ const AIChatbot = () => {
 
         {/* Message List */}
         <Box
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
           sx={{
             flex: 1,
             overflowY: "auto",
@@ -404,7 +493,6 @@ const AIChatbot = () => {
               </Paper>
             </Box>
           )}
-          <div ref={messagesEndRef} />
         </Box>
 
         {/* Quick Prompts Bar */}

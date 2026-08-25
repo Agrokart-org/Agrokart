@@ -1,7 +1,8 @@
 {
     "meta": {
         "version": "1.0",
-        "description": "Composition of common fertilizers in India"
+        "description": "Composition of common fertilizers in India. Note: fertilizer_compositions.json is the authoritative FCO source for backend mathematical conversions.",
+        "authoritativeSource": "fertilizer_compositions.json"
     },
     "fertilizers": [
         {

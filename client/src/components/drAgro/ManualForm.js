@@ -41,21 +41,47 @@ const ManualForm = ({ onAnalysisComplete, selectedCrop }) => {
     validationSchema: validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
       try {
-        console.log(
-          `Dr.Agro: Starting Manual Offline Analysis for ${values.crop}...`,
-        );
-
-        // Prepare Data
         const soilData = {
           ph: parseFloat(values.ph),
           nitrogen: parseFloat(values.nitrogen),
           phosphorus: parseFloat(values.phosphorus),
           potassium: parseFloat(values.potassium),
-          // Default OC if not in form (UI doesn't show it but engine likes it)
           organic_carbon: 0.5,
         };
 
-        // Call Offline Engine with land area
+        // 1. Attempt Backend API Call
+        try {
+          const { safeFetch, API_BASE_URL } = require("../../services/api");
+          const res = await safeFetch(`${API_BASE_URL}/dr-agro/analyze-manual`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              crop: values.crop,
+              language: i18n.language || "en",
+              ...soilData,
+            }),
+          });
+
+          if (res && res.ok) {
+            const data = await res.json();
+            if (data.success && data.data) {
+              const enrichedResult = {
+                ...data.data,
+                landDetails: {
+                  area: parseFloat(values.landArea),
+                  unit: values.unit,
+                },
+              };
+              onAnalysisComplete(enrichedResult);
+              setSubmitting(false);
+              return;
+            }
+          }
+        } catch (apiErr) {
+          console.warn("Backend API unreachable, using client offline engine:", apiErr.message);
+        }
+
+        // 2. Offline Fallback
         const response = await RecommendationEngine.processManualData(
           soilData,
           values.crop,
