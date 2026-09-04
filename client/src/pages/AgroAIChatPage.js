@@ -194,8 +194,12 @@ const AgroAIChatPage = () => {
 
     setLoading(true);
 
+    const API_BASE = process.env.REACT_APP_API_URL
+      ? `${process.env.REACT_APP_API_URL}/api`
+      : "/api";
+
     try {
-      const response = await axios.post("/api/dr-agro/chat", {
+      const response = await axios.post(`${API_BASE}/dr-agro/chat`, {
         message: query,
         session_id: sessionId
       });

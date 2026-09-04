@@ -4,10 +4,14 @@ Processes TXT/PDF agricultural docs (recursive) → chunks with source provenanc
 Extracts structured recommendations into data/knowledge/official_recommendations.json
 """
 import os
+import sys
 import re
 import logging
 from pathlib import Path
 from typing import List, Dict, Any
+
+# Ensure project root in sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.extractor import run_extraction, extract_year
 

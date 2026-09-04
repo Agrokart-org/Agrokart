@@ -168,6 +168,14 @@ const createOrder = async (req, res, next) => {
       }
     }
 
+    if (targetVendors.length === 0 && vendors.length > 0) {
+      const { DEMO_MODE } = require("../config/trackingConfig");
+      if (DEMO_MODE) {
+        console.log("⚠️ [DEMO_MODE] No vendor within 10km; auto-including available vendor for demo.");
+        targetVendors.push(vendors[0]);
+      }
+    }
+
     if (targetVendors.length === 0) {
       return res.status(400).json({
         success: false,

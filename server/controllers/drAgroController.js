@@ -189,3 +189,28 @@ exports.ingestDocuments = async (req, res) => {
     res.status(500).json({ success: false, message: "Ingestion trigger error" });
   }
 };
+
+/**
+ * Proxy RAG health check to avoid frontend direct localhost dependencies
+ */
+exports.checkRAGHealth = async (req, res) => {
+  try {
+    const response = await axios.get(`${RAG_SERVICE_URL}/health`, { timeout: 4000 });
+    res.json(response.data);
+  } catch (error) {
+    res.status(503).json({ status: "offline", message: "RAG service unavailable" });
+  }
+};
+
+/**
+ * Proxy RAG session clear
+ */
+exports.clearRAGSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const response = await axios.delete(`${RAG_SERVICE_URL}/session/${sessionId}`, { timeout: 4000 });
+    res.json(response.data);
+  } catch (error) {
+    res.status(200).json({ success: false, message: "Session clear skipped or unavailable" });
+  }
+};

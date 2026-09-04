@@ -165,14 +165,22 @@ const AIChatbot = () => {
     }
   };
 
+const getApiBase = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return `${process.env.REACT_APP_API_URL}/api`;
+  }
+  return "/api";
+};
+const API_BASE = getApiBase();
+
   useEffect(() => { scrollToBottom(); }, [messages, isTyping]);
 
-  // Health-check RAG service on mount
+  // Health-check RAG service via Express proxy
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await axios.get("http://localhost:8000/health", { timeout: 3000 });
-        if (res.data?.status === "OK") setRagStatus("ready");
+        const res = await axios.get(`${API_BASE}/dr-agro/health`, { timeout: 4000 });
+        if (res.data?.status === "OK" || res.data?.status === "UP") setRagStatus("ready");
         else setRagStatus("offline");
       } catch {
         setRagStatus("offline");
@@ -285,7 +293,7 @@ const AIChatbot = () => {
 
     try {
       // Call Express proxy endpoint (which forwards to Python RAG)
-      const res = await axios.post("/api/dr-agro/chat", {
+      const res = await axios.post(`${API_BASE}/dr-agro/chat`, {
         message: msgText,
         session_id: sessionId,
       }, { timeout: 15000 });
@@ -324,7 +332,7 @@ const AIChatbot = () => {
 
   const handleClearChat = async () => {
     if (sessionId) {
-      try { await axios.delete(`http://localhost:8000/session/${sessionId}`); } catch {}
+      try { await axios.delete(`${API_BASE}/dr-agro/session/${sessionId}`); } catch {}
     }
     setSessionId(null);
     setMessages([]);

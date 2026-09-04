@@ -96,5 +96,19 @@ router.post("/analyze-manual", drAgroLimiter, drAgroController.analyzeManual);
  */
 router.post("/chat", drAgroLimiter, drAgroController.chatWithRAG);
 
+/**
+ * @route   GET /api/dr-agro/health
+ * @desc    Proxy RAG Health Check
+ * @access  Public
+ */
+router.get("/health", drAgroController.checkRAGHealth);
+
+/**
+ * @route   DELETE /api/dr-agro/session/:sessionId
+ * @desc    Proxy RAG Session Clear
+ * @access  Public
+ */
+router.delete("/session/:sessionId", drAgroController.clearRAGSession);
+
 module.exports = router;
 

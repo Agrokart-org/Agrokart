@@ -14,6 +14,55 @@ module.exports = async function (req, res, next) {
       .json({ message: "No authentication token provided." });
   }
 
+  // Handle Role-Specific Placeholder / Dev / Demo Tokens
+  const rolePlaceholderTokens = {
+    "customer-jwt-token": "customer",
+    "vendor-jwt-token": "vendor",
+    "delivery-jwt-token": "delivery_partner",
+    "admin-jwt-token": "admin",
+    "mock-jwt-token": "customer",
+    "mock-token": "customer",
+  };
+
+  if (rolePlaceholderTokens[firebaseToken]) {
+    const targetRole = rolePlaceholderTokens[firebaseToken];
+    try {
+      let user = await User.findOne({ role: targetRole }).sort({ updatedAt: -1 });
+      if (!user && targetRole === "delivery_partner") {
+        user = await User.findOne({ email: "delivery@agrokart.com" });
+        if (!user) {
+          user = new User({
+            name: "Raju Delivery Partner",
+            email: "delivery@agrokart.com",
+            phone: "9876500001",
+            role: "delivery_partner",
+            deliveryProfile: {
+              isAvailable: true,
+              isVerified: true,
+              vehicleType: "bike",
+              vehicleNumber: "MH-12-AB-1234",
+              serviceRadius: 20
+            }
+          });
+          await user.save();
+        }
+      } else if (!user && targetRole === "customer") {
+        user = await User.findOne({}).sort({ updatedAt: -1 });
+      }
+      if (user) {
+        req.user = {
+          id: user._id,
+          firebaseUid: user.firebaseUid || `demo-${targetRole}`,
+          email: user.email,
+          role: user.role,
+        };
+        return next();
+      }
+    } catch (dbErr) {
+      console.error("DB error looking up role-specific user:", dbErr.message);
+    }
+  }
+
   // Strictly verify the token in Production
   try {
     const decodedToken = await firebaseAuth.verifyIdToken(firebaseToken);

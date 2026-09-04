@@ -1,7 +1,27 @@
+const mongoose = require("mongoose");
+const Product = require("../models/Product");
 const { db } = require("../config/firebase");
 const { getMarkup, getCustomerPrice } = require("../utils/pricing");
 
 const formatProduct = (doc) => ({ _id: doc.id, id: doc.id, ...doc.data() });
+
+/**
+ * Helper to fetch active products: tries Firestore first, falls back to MongoDB Product model
+ */
+const fetchActiveProducts = async () => {
+  try {
+    let snapshot = await db.collection("products").where("isActive", "==", true).get();
+    return snapshot.docs.map(formatProduct);
+  } catch (firebaseErr) {
+    console.warn("⚠️ Firestore unavailable, falling back to MongoDB Product collection:", firebaseErr.message);
+    const mongoDocs = await Product.find({ isActive: true }).lean();
+    return mongoDocs.map((p) => ({
+      _id: p._id.toString(),
+      id: p._id.toString(),
+      ...p,
+    }));
+  }
+};
 
 /**
  * Apply platform markup to a product for customer-facing display.
@@ -21,8 +41,7 @@ const getProducts = async (req, res, next) => {
   try {
     const { category, page = 1, limit = 20, sortBy = "name", sortOrder = "asc", minPrice, maxPrice, search } = req.query;
 
-    let snapshot = await db.collection("products").where("isActive", "==", true).get();
-    let products = snapshot.docs.map(formatProduct);
+    let products = await fetchActiveProducts();
 
     if (category && category !== "all") {
       products = products.filter((p) => p.category === category);
@@ -82,9 +101,8 @@ const searchProducts = async (req, res, next) => {
     }
 
     const searchCriteria = q.trim().toLowerCase();
-    let snapshot = await db.collection("products").get();
-    let products = snapshot.docs
-      .map(formatProduct)
+    const allProducts = await fetchActiveProducts();
+    let products = allProducts
       .filter((p) =>
         (p.name && p.name.toLowerCase().includes(searchCriteria)) ||
         (p.description && p.description.toLowerCase().includes(searchCriteria)) ||
@@ -99,7 +117,7 @@ const searchProducts = async (req, res, next) => {
         products: products.map((product) => {
           const marked = applyMarkup(product);
           return {
-            id: product._id,
+            id: product._id || product.id,
             name: product.name,
             category: product.category,
             basePrice: marked.basePrice,
@@ -120,8 +138,7 @@ const searchProducts = async (req, res, next) => {
 
 const getAllCategories = async (req, res, next) => {
   try {
-    let snapshot = await db.collection("products").where("isActive", "==", true).get();
-    let products = snapshot.docs.map((d) => d.data());
+    let products = await fetchActiveProducts();
     let categoryMapStore = {};
 
     products.forEach((p) => {
@@ -170,8 +187,8 @@ const getProductsByCategory = async (req, res, next) => {
     const { category } = req.params;
     const { page = 1, limit = 20, sortBy = "name", sortOrder = "asc", minPrice, maxPrice } = req.query;
 
-    let snapshot = await db.collection("products").where("category", "==", category).where("isActive", "==", true).get();
-    let products = snapshot.docs.map(formatProduct);
+    let allProducts = await fetchActiveProducts();
+    let products = allProducts.filter((p) => p.category && p.category.toLowerCase() === category.toLowerCase());
 
     if (minPrice || maxPrice) {
       products = products.filter((p) => {
@@ -216,14 +233,13 @@ const getProductsByCategory = async (req, res, next) => {
 const getFeaturedProducts = async (req, res, next) => {
   try {
     const { limit = 10 } = req.query;
-    let snapshot = await db.collection("products").where("isActive", "==", true).get();
-    let products = snapshot.docs
-      .map(formatProduct)
+    let products = await fetchActiveProducts();
+    let featured = products
       .filter((p) => p.averageRating >= 4.0 || p.isFeatured)
       .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
       .slice(0, Number(limit));
       
-    res.json({ success: true, message: "Featured products loaded", data: products.map(applyMarkup) });
+    res.json({ success: true, message: "Featured products loaded", data: featured.map(applyMarkup) });
   } catch (err) {
     next(err);
   }
@@ -231,11 +247,26 @@ const getFeaturedProducts = async (req, res, next) => {
 
 const getProductById = async (req, res, next) => {
   try {
-    const doc = await db.collection("products").doc(req.params.id).get();
-    if (!doc.exists) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+    try {
+      const doc = await db.collection("products").doc(req.params.id).get();
+      if (doc && doc.exists) {
+        return res.json({ success: true, message: "Product loaded", data: applyMarkup(formatProduct(doc)) });
+      }
+    } catch (fbErr) {
+      // Fall through to MongoDB
     }
-    res.json({ success: true, message: "Product loaded", data: applyMarkup(formatProduct(doc)) });
+
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      const mongoDoc = await Product.findById(req.params.id).lean();
+      if (mongoDoc) {
+        return res.json({
+          success: true,
+          message: "Product loaded",
+          data: applyMarkup({ _id: mongoDoc._id.toString(), id: mongoDoc._id.toString(), ...mongoDoc }),
+        });
+      }
+    }
+    return res.status(404).json({ success: false, message: "Product not found" });
   } catch (err) {
     next(err);
   }
