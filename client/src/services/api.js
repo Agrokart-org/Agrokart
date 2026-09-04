@@ -20,11 +20,11 @@ const getApiBaseUrl = () => {
     (window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1")
   ) {
-    return "http://localhost:5000/api";
+    return "http://localhost:5001/api";
   }
 
   // 3. Dynamic fallback for local network access (e.g. 192.168.x.x)
-  const url = `http://${window.location.hostname}:5000/api`;
+  const url = `http://${window.location.hostname}:5001/api`;
   console.log("API URL selected:", url);
   return url;
 };

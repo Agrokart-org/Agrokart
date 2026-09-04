@@ -1,0 +1,24 @@
+# Indian Agricultural Research Institute (IARI) - Soil Health & Fertilizer Handbook
+
+## 1. Nitrogen Management & Urea Usage
+Nitrogen (N) is a vital macro-nutrient essential for vegetative growth, leaf color, and protein synthesis in crops like Wheat, Rice, and Maize.
+- **Recommended Application**: Split application is advised. Apply 50% at sowing/basal, 25% at tillering, and 25% at flowering.
+- **Soil Specific Guidance for Sandy Soils**: Sandy and light-textured soils have high permeability and low cation exchange capacity. Heavy single applications of Urea cause leaching losses into groundwater as nitrate (NO3-). Therefore, apply Urea in 3 to 4 smaller split doses combined with organic manure or neem-coating to slow down nitrification.
+- **Urea Composition**: Urea contains 46% elemental Nitrogen (N). 100 kg of Urea provides 46 kg of N.
+
+## 2. Phosphorus Management & DAP (Di-Ammonium Phosphate)
+Phosphorus (P) is crucial for root development, early plant vigor, tillering, and crop maturation.
+- **DAP Composition**: DAP contains 18% Nitrogen and 46% Phosphorus (P2O5).
+- **Application Method**: DAP should always be applied at the time of sowing (basal application) near the root zone, as Phosphorus is immobile in soil.
+- **Acidic Soil Considerations**: In acidic soils (pH < 6.0), phosphorus becomes fixed with aluminum and iron ions. Applying Agricultural Lime (calcium carbonate) 2 to 3 weeks prior to sowing neutralizes acidity and increases phosphorus availability.
+
+## 3. Potassium Management & MOP (Muriate of Potash)
+Potassium (K) enhances plant disease resistance, drought tolerance, grain filling, and stem strength.
+- **MOP Composition**: MOP (KCl) contains 60% Potassium (K2O).
+- **Alkaline Soil Considerations**: In alkaline and sodic soils (pH > 7.5), high salinity inhibits nutrient uptake. Applying Gypsum (calcium sulfate) at 500 kg/acre helps displace excess sodium and improves soil structure.
+
+## 4. Crop Specific Nutrient Guidelines
+- **Wheat**: Target yield requirement = 120 kg N/ha, 60 kg P2O5/ha, 40 kg K2O/ha. Ideal pH range: 6.0 - 7.5.
+- **Rice (Paddy)**: Target yield requirement = 100-140 kg N/ha, 40-60 kg P2O5/ha, 40-60 kg K2O/ha. Requires flooded/anaerobic soil management.
+- **Cotton**: Target yield requirement = 100 kg N/ha, 50 kg P2O5/ha, 50 kg K2O/ha. Sensitive to waterlogging and soil compaction.
+- **Sugarcane**: High nutrient consumer. Requires 250 kg N/ha, 115 kg P2O5/ha, 115 kg K2O/ha.

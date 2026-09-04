@@ -41,35 +41,51 @@ class OcrService {
    * @returns {Object} Extracted values { ph, nitrogen, phosphorus, potassium, organic_carbon }
    */
   parseSoilReport(text) {
+    if (!text || typeof text !== "string") {
+      return { ph: null, nitrogen: null, phosphorus: null, potassium: null, organic_carbon: null };
+    }
+
     const cleanedText = text.toLowerCase().replace(/\s+/g, " ");
 
     const data = {
       ph: this.extractValue(cleanedText, [
         /ph\s*:?\s*(\d+(\.\d+)?)/,
+        /soil\s*ph\s*:?\s*(\d+(\.\d+)?)/,
         /reaction\s*:?\s*(\d+(\.\d+)?)/,
       ]),
       nitrogen: this.extractValue(cleanedText, [
-        /nitrogen\s*:?\s*(\d+)/,
-        /n\s*:?\s*(\d+)/,
+        /nitrogen\s*(?:\(n\))?\s*:?\s*(\d+(\.\d+)?)/,
+        /available\s*nitrogen\s*:?\s*(\d+(\.\d+)?)/,
+        /avail\s*n\s*:?\s*(\d+(\.\d+)?)/,
+        /(?:^|\s)n\s*:?\s*(\d+(\.\d+)?)/,
       ]),
       phosphorus: this.extractValue(cleanedText, [
-        /phosphorus\s*:?\s*(\d+)/,
-        /p\s*:?\s*(\d+)/,
+        /phosphorus\s*(?:\(p2o5\)?|\(p\))?\s*:?\s*(\d+(\.\d+)?)/,
+        /available\s*phosphorus\s*:?\s*(\d+(\.\d+)?)/,
+        /avail\s*p\s*:?\s*(\d+(\.\d+)?)/,
+        /p2o5\s*:?\s*(\d+(\.\d+)?)/,
+        /(?:^|\s)p\s*:?\s*(\d+(\.\d+)?)/,
       ]),
       potassium: this.extractValue(cleanedText, [
-        /potassium\s*:?\s*(\d+)/,
-        /k\s*:?\s*(\d+)/,
+        /potassium\s*(?:\(k2o\)?|\(k\))?\s*:?\s*(\d+(\.\d+)?)/,
+        /available\s*potassium\s*:?\s*(\d+(\.\d+)?)/,
+        /avail\s*k\s*:?\s*(\d+(\.\d+)?)/,
+        /k2o\s*:?\s*(\d+(\.\d+)?)/,
+        /(?:^|\s)k\s*:?\s*(\d+(\.\d+)?)/,
       ]),
       organic_carbon: this.extractValue(cleanedText, [
-        /organic\s*carbon\s*:?\s*(\d+(\.\d+)?)/,
+        /organic\s*carbon\s*(?:\(oc\))?\s*:?\s*(\d+(\.\d+)?)/,
         /oc\s*:?\s*(\d+(\.\d+)?)/,
       ]),
     };
 
-    // Post-processing: ensure values are numeric
+    // Post-processing: ensure values are numeric or null
     for (const key in data) {
-      if (data[key]) {
-        data[key] = parseFloat(data[key]);
+      if (data[key] !== null && data[key] !== undefined) {
+        const val = parseFloat(data[key]);
+        data[key] = isNaN(val) ? null : val;
+      } else {
+        data[key] = null;
       }
     }
 

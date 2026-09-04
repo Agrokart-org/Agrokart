@@ -17,7 +17,7 @@ export const SocketProvider = ({ children }) => {
     const SOCKET_URL =
       process.env.REACT_APP_API_URL ||
       (isMobile ? process.env.REACT_APP_API_URL : null) ||
-      "http://localhost:5000";
+      "http://localhost:5001";
     const newSocket = io(SOCKET_URL, {
       transports: ["websocket"], // Force websocket
       reconnectionAttempts: 5,

@@ -51,10 +51,41 @@ const SoilUpload = ({ onAnalysisComplete, onSwitchToManual, selectedCrop }) => {
     setLoading(true);
     setError("");
 
+    // 1. Attempt Backend API Call
     try {
-      console.log(`Dr.Agro: Starting Offline Analysis for ${selectedCrop}...`);
+      const { safeFetch, API_BASE_URL } = require("../../services/api");
+      const formData = new FormData();
+      formData.append("report", file);
+      formData.append("crop", selectedCrop);
+      formData.append("language", i18n.language || "en");
 
-      // Call Offline Engine directly with land area
+      const res = await safeFetch(`${API_BASE_URL}/dr-agro/analyze-report`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data.success && data.data) {
+          const enrichedResult = {
+            ...data.data,
+            landDetails: { area: landArea, unit: unit },
+          };
+          onAnalysisComplete(enrichedResult);
+          setLoading(false);
+          return;
+        } else if (data.message) {
+          setError(data.message);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("Backend API unreachable, using client offline engine:", apiErr.message);
+    }
+
+    // 2. Offline Fallback
+    try {
       const response = await RecommendationEngine.processReport(
         file,
         selectedCrop,
@@ -64,7 +95,6 @@ const SoilUpload = ({ onAnalysisComplete, onSwitchToManual, selectedCrop }) => {
       );
 
       if (response.success) {
-        // Pass Land Area info along with result for final calculation in Results page if needed
         const enrichedResult = {
           ...response.data,
           landDetails: { area: landArea, unit: unit },
@@ -74,8 +104,7 @@ const SoilUpload = ({ onAnalysisComplete, onSwitchToManual, selectedCrop }) => {
         setError({
           type: "validation",
           message: response.message || t("drAgro.invalidReportError"),
-          details:
-            "Please upload a valid soil test report or enter data manually.",
+          details: "Please upload a valid soil test report or enter data manually.",
         });
       } else {
         throw new Error(response.message || "Analysis failed");

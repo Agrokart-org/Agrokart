@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const apiUrl = process.env.REACT_APP_API_URL
             ? `${process.env.REACT_APP_API_URL}/api`
-            : `http://${window.location.hostname}:5000/api`;
+            : `http://${window.location.hostname}:5001/api`;
           const response = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -118,14 +118,40 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
         setShowRoleSelection(false);
       } else {
-        // User is signed out
-        console.log("👋 User signed out, clearing state");
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userRole"); // Clear role
-        setToken(null);
-        setUser(null);
-        setIsAuthenticated(false);
-        setShowRoleSelection(true);
+        // Firebase currentUser is null. Check for local backend JWT session
+        const savedToken = localStorage.getItem("authToken");
+        const savedUserStr = localStorage.getItem("userData");
+        const savedRole = localStorage.getItem("userRole");
+
+        if (savedToken && savedUserStr) {
+          try {
+            const parsedUser = JSON.parse(savedUserStr);
+            console.log("✅ Restored backend user session:", parsedUser.email);
+            setUser(parsedUser);
+            setUserRole(parsedUser.role || savedRole || "customer");
+            setToken(savedToken);
+            setIsAuthenticated(true);
+            setShowRoleSelection(false);
+          } catch (e) {
+            console.error("Failed to parse saved user data:", e);
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("userRole");
+            localStorage.removeItem("userData");
+            setToken(null);
+            setUser(null);
+            setIsAuthenticated(false);
+            setShowRoleSelection(true);
+          }
+        } else {
+          console.log("👋 User signed out, clearing state");
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("userRole");
+          localStorage.removeItem("userData");
+          setToken(null);
+          setUser(null);
+          setIsAuthenticated(false);
+          setShowRoleSelection(true);
+        }
       }
       setLoading(false);
     });
@@ -184,29 +210,67 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Firebase login with email and password
+  // Backend customer email/password login (POST /api/auth/login)
   const login = useCallback(
-    async (email, password) => {
+    async (emailOrCredentials, password, expectedRole = "customer") => {
       setLoading(true);
       try {
-        const userCredential = await signInWithEmailAndPassword(
-          auth,
-          email,
-          password,
-        );
-        const user = userCredential.user;
-        if (userRole) {
-          localStorage.setItem("userRole", userRole);
+        let payload;
+        if (typeof emailOrCredentials === "object" && emailOrCredentials !== null) {
+          payload = {
+            expectedRole: "customer",
+            ...emailOrCredentials,
+          };
+        } else {
+          payload = {
+            email: emailOrCredentials,
+            password: password,
+            expectedRole: expectedRole || "customer",
+          };
         }
-        return { success: true, user };
+
+        const apiUrl = process.env.REACT_APP_API_URL
+          ? `${process.env.REACT_APP_API_URL}/api`
+          : `http://${window.location.hostname}:5001/api`;
+
+        const response = await fetch(`${apiUrl}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const err = new Error(data.message || "Login failed");
+          err.status = response.status;
+          throw err;
+        }
+
+        const userObj = data.user;
+        const userToken = data.token;
+
+        localStorage.setItem("authToken", userToken);
+        localStorage.setItem("userRole", userObj.role);
+        localStorage.setItem("userEmail", userObj.email);
+        localStorage.setItem("userData", JSON.stringify(userObj));
+        localStorage.setItem("isLoggedIn", "true");
+
+        setToken(userToken);
+        setUser(userObj);
+        setUserRole(userObj.role);
+        setIsAuthenticated(true);
+        setShowRoleSelection(false);
+
+        return { success: true, user: userObj, token: userToken };
       } catch (error) {
-        console.error("Firebase login error:", error);
+        console.error("Backend login error:", error);
         throw error;
       } finally {
         setLoading(false);
       }
     },
-    [userRole],
+    [],
   );
 
   // Google Login — uses native Google Sign-In via capgo plugin

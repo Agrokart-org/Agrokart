@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Container,
   Grid,
   Typography,
   Box,
@@ -12,16 +11,10 @@ import {
   Rating,
   IconButton,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
-  Pagination,
-  Skeleton,
   useTheme,
-  alpha,
-  Alert,
   Drawer,
-  Slider,
   Checkbox,
   FormControlLabel,
   Paper,
@@ -36,57 +29,36 @@ import {
   ShoppingCart as CartIcon,
   Favorite as FavoriteIcon,
   FavoriteBorder as FavoriteBorderIcon,
-  Visibility as ViewIcon,
-  Clear as ClearIcon,
-  Search as SearchIcon,
   Home as HomeIcon,
   NavigateNext as NavigateNextIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { useWorkflow } from "../components/WorkflowManager";
 import { motion, AnimatePresence } from "framer-motion";
-
-import SearchSuggestions from "../components/SearchSuggestions";
 import { mockProducts } from "../data/mockProducts";
 
 const FilterContent = ({
   categories,
   categoryFilter,
   setCategoryFilter,
-  priceRange,
-  setPriceRange,
-  minRating,
-  setMinRating,
   clearFilters,
-  maxPrice,
 }) => {
-  const theme = useTheme();
-
   return (
-    <Box sx={{ p: 2 }}>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 2,
-        }}
-      >
-        <Typography variant="h6" fontWeight="700">
+    <Box sx={{ p: 2.5 }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Typography variant="subtitle1" fontWeight="700" sx={{ color: "#111827" }}>
           Filters
         </Typography>
-        <Button size="small" onClick={clearFilters} color="secondary">
+        <Button size="small" onClick={clearFilters} sx={{ color: "#DC2626", textTransform: "none", fontWeight: 600 }}>
           Clear All
         </Button>
       </Box>
-      <Divider sx={{ mb: 3 }} />
+      <Divider sx={{ mb: 2 }} />
 
-      {/* Categories */}
-      <Typography variant="subtitle1" fontWeight="600" gutterBottom>
+      <Typography variant="caption" fontWeight="700" sx={{ color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.8, display: "block", mb: 1 }}>
         Categories
       </Typography>
-      <Box sx={{ display: "flex", flexDirection: "column", mb: 3 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
         {categories.map((category) => (
           <FormControlLabel
             key={category}
@@ -94,71 +66,18 @@ const FilterContent = ({
               <Checkbox
                 checked={categoryFilter.includes(category)}
                 onChange={(e) => {
-                  if (e.target.checked)
-                    setCategoryFilter([...categoryFilter, category]);
-                  else
-                    setCategoryFilter(
-                      categoryFilter.filter((c) => c !== category),
-                    );
+                  if (e.target.checked) setCategoryFilter([...categoryFilter, category]);
+                  else setCategoryFilter(categoryFilter.filter((c) => c !== category));
                 }}
                 size="small"
                 sx={{
-                  color: theme.palette.secondary.main,
-                  "&.Mui-checked": { color: theme.palette.secondary.main },
+                  color: "#6B7280",
+                  "&.Mui-checked": { color: "#1B5E20" },
                 }}
               />
             }
-            label={<Typography variant="body2">{category}</Typography>}
-            sx={{ mb: 0.5 }}
+            label={<Typography variant="body2" fontWeight={500} sx={{ fontSize: "0.88rem" }}>{category}</Typography>}
           />
-        ))}
-      </Box>
-      <Divider sx={{ mb: 3 }} />
-
-      {/* Price */}
-      <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-        Price Range
-      </Typography>
-      <Box sx={{ px: 1, mb: 3 }}>
-        <Slider
-          value={priceRange}
-          onChange={(e, newValue) => setPriceRange(newValue)}
-          valueLabelDisplay="auto"
-          min={0}
-          max={maxPrice}
-          step={50}
-          sx={{ color: theme.palette.tertiary.main }}
-        />
-        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
-          <Typography variant="caption">₹{priceRange[0]}</Typography>
-          <Typography variant="caption">₹{priceRange[1]}+</Typography>
-        </Box>
-      </Box>
-      <Divider sx={{ mb: 3 }} />
-
-      {/* Rating */}
-      <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-        Rating
-      </Typography>
-      <Box sx={{ mb: 3 }}>
-        {[4, 3, 2, 1].map((rating) => (
-          <Box
-            key={rating}
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              cursor: "pointer",
-              mb: 1,
-              opacity: minRating === rating ? 1 : 0.7,
-              "&:hover": { opacity: 1 },
-            }}
-            onClick={() => setMinRating(rating)}
-          >
-            <Rating value={rating} readOnly size="small" />
-            <Typography variant="body2" sx={{ ml: 1 }}>
-              & Up
-            </Typography>
-          </Box>
         ))}
       </Box>
     </Box>
@@ -169,547 +88,214 @@ const ProductsPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { addToCart } = useCart();
-  const { transitionTo, WORKFLOW_STEPS } = useWorkflow();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  // State
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [products, setProducts] = useState(mockProducts);
   const [categoryFilter, setCategoryFilter] = useState([]);
-  const [priceRange, setPriceRange] = useState([0, 5000]);
-  const [minRating, setMinRating] = useState(0);
   const [sortBy, setSortBy] = useState("name");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [favorites, setFavorites] = useState(new Set());
-  const [searchFromNav, setSearchFromNav] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [favorites, setFavorites] = useState(new Set());
 
-  const productsPerPage = 1000; // Show all products (max capacity)
-
-  // Effects
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        setLoading(true);
-        // Use the product service to get real data
-        const allProducts = await import("../services/productsService").then(
-          (m) => m.default.fetchProducts(),
-        );
-        setProducts(allProducts);
-      } catch (error) {
-        console.error("Error loading products:", error);
-        setProducts(mockProducts); // Fallback to mock if API fails
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadProducts();
-  }, []);
+  const categories = [
+    "Fertilizers",
+    "Pesticides",
+    "Seeds",
+    "Organic",
+    "Micronutrients",
+    "Tools",
+  ];
 
   useEffect(() => {
-    const searchFromUrl = searchParams.get("search");
-    const categoryFromUrl = searchParams.get("category");
-
-    if (searchFromUrl) {
-      setSearchFromNav(searchFromUrl);
-      setSearchQuery(searchFromUrl);
-      setCurrentPage(1);
+    const cat = searchParams.get("category");
+    if (cat && categories.includes(cat)) {
+      setCategoryFilter([cat]);
     }
+  }, [location.search]);
 
-    if (categoryFromUrl) {
-      setCategoryFilter([categoryFromUrl]); // Treat as single selection initially
-      setCurrentPage(1);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [currentPage]);
-
-  // Derived Data
-  const categories = [...new Set(products.map((product) => product.category))];
-  const maxPrice = Math.max(...products.map((p) => p.price), 5000);
-
-  // Filter Logic
-  const filteredProducts = products
-    .filter((product) => {
-      const effectiveSearchQuery = searchFromNav || searchQuery;
-      // Search
-      const matchesSearch =
-        !effectiveSearchQuery ||
-        product.name
-          .toLowerCase()
-          .includes(effectiveSearchQuery.toLowerCase()) ||
-        product.description
-          .toLowerCase()
-          .includes(effectiveSearchQuery.toLowerCase()) ||
-        product.category
-          .toLowerCase()
-          .includes(effectiveSearchQuery.toLowerCase());
-
-      // Category - case-insensitive match
-      const matchesCategory =
-        categoryFilter.length === 0 ||
-        categoryFilter.includes("all") ||
-        categoryFilter.some(
-          (cf) => cf.toLowerCase() === product.category.toLowerCase(),
-        );
-
-      // Price
-      const matchesPrice =
-        product.price >= priceRange[0] && product.price <= priceRange[1];
-
-      // Rating
-      const matchesRating = product.averageRating >= minRating;
-
-      return matchesSearch && matchesCategory && matchesPrice && matchesRating;
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "price-low":
-          return a.price - b.price;
-        case "price-high":
-          return b.price - a.price;
-        case "rating":
-          return b.averageRating - a.averageRating;
-        case "name":
-        default:
-          return a.name.localeCompare(b.name);
-      }
-    });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
-  const startIndex = (currentPage - 1) * productsPerPage;
-  const paginatedProducts = filteredProducts.slice(
-    startIndex,
-    startIndex + productsPerPage,
-  );
-
-  // Handlers
-  const handleAddToCart = (e, product) => {
-    e.stopPropagation();
-    addToCart(product);
-    transitionTo(WORKFLOW_STEPS.ADD_TO_CART, { product });
-  };
-
-  const handleProductView = (productId) => {
-    transitionTo(WORKFLOW_STEPS.PRODUCT_DETAIL, { productId });
-    navigate(`/product/${productId}`);
-  };
-
-  const toggleFavorite = (e, productId) => {
+  const toggleFavorite = (e, id) => {
     e.stopPropagation();
     setFavorites((prev) => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(productId)) newFavorites.delete(productId);
-      else newFavorites.add(productId);
-      return newFavorites;
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   };
 
   const clearFilters = () => {
     setCategoryFilter([]);
-    setPriceRange([0, maxPrice]);
-    setMinRating(0);
-    setSearchQuery("");
-    setSearchFromNav("");
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.delete("search");
-    newSearchParams.delete("category");
-    setSearchParams(newSearchParams);
+    setSortBy("name");
   };
 
+  const filteredProducts = products.filter((p) => {
+    if (categoryFilter.length > 0 && !categoryFilter.includes(p.category)) {
+      return false;
+    }
+    const search = searchParams.get("search");
+    if (search) {
+      const q = search.toLowerCase();
+      return p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+    }
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === "price-low") return a.price - b.price;
+    if (sortBy === "price-high") return b.price - a.price;
+    if (sortBy === "rating") return (b.averageRating || 0) - (a.averageRating || 0);
+    return a.name.localeCompare(b.name);
+  });
+
   return (
-    <Container maxWidth="xl" sx={{ py: 4, minHeight: "80vh" }}>
-      {/* Breadcrumbs & Header */}
-      <Box sx={{ mb: 4 }}>
-        <Breadcrumbs
-          separator={<NavigateNextIcon fontSize="small" />}
-          sx={{ mb: 2 }}
-        >
-          <Link
-            underline="hover"
-            color="inherit"
-            href="/customer/dashboard"
-            sx={{ display: "flex", alignItems: "center" }}
-          >
-            <HomeIcon sx={{ mr: 0.5 }} fontSize="inherit" /> Home
-          </Link>
-          <Typography color="text.primary">Shop</Typography>
-        </Breadcrumbs>
+    <Box sx={{ width: "100%", bgcolor: "#F9FAFB", minHeight: "100vh", py: 3, px: { xs: 2, sm: 3, md: 4 }, boxSizing: "border-box" }}>
+      {/* Breadcrumbs */}
+      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 2 }}>
+        <Link underline="hover" color="inherit" onClick={() => navigate("/")} sx={{ display: "flex", alignItems: "center", cursor: "pointer", fontSize: "0.85rem" }}>
+          <HomeIcon sx={{ mr: 0.5, fontSize: 16 }} /> Home
+        </Link>
+        <Typography color="text.primary" fontWeight={600} sx={{ fontSize: "0.85rem" }}>Products</Typography>
+      </Breadcrumbs>
 
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 2,
-          }}
-        >
-          <Typography
-            variant="h4"
-            fontWeight="800"
-            sx={{ color: theme.palette.text.primary }}
-          >
-            {searchFromNav ? `Results for "${searchFromNav}"` : "Our Products"}
+      {/* Header */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3, flexWrap: "wrap", gap: 2 }}>
+        <Box>
+          <Typography variant="h5" fontWeight={700} sx={{ color: "#111827" }}>
+            Agricultural Marketplace ({filteredProducts.length})
           </Typography>
+          <Typography variant="body2" sx={{ color: "#6B7280", fontSize: "0.85rem" }}>
+            Certified fertilizers, seeds, and farm protection supplies delivered to your farm
+          </Typography>
+        </Box>
 
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {isMobile && (
-              <Button
-                startIcon={<FilterIcon />}
-                variant="outlined"
-                onClick={() => setMobileOpen(true)}
-                sx={{ borderRadius: 2 }}
-              >
-                Filters
-              </Button>
-            )}
-
-            <Select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              size="small"
-              sx={{ minWidth: 150, borderRadius: 2, bgcolor: "white" }}
-              displayEmpty
-            >
+        <Stack direction="row" spacing={2} alignItems="center">
+          {isMobile && (
+            <Button variant="outlined" startIcon={<FilterIcon />} onClick={() => setMobileOpen(true)} sx={{ borderColor: "#1B5E20", color: "#1B5E20" }}>
+              Filters
+            </Button>
+          )}
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} sx={{ borderRadius: "6px", bgcolor: "white", fontSize: "0.85rem" }}>
               <MenuItem value="name">Sort by: Name</MenuItem>
               <MenuItem value="price-low">Price: Low to High</MenuItem>
               <MenuItem value="price-high">Price: High to Low</MenuItem>
               <MenuItem value="rating">Top Rated</MenuItem>
             </Select>
-          </Box>
-        </Box>
+          </FormControl>
+        </Stack>
       </Box>
 
-      <Grid container spacing={4}>
-        {/* Sidebar (Desktop) */}
-        <Grid item md={3} sx={{ display: { xs: "none", md: "block" } }}>
-          <Paper
-            elevation={0}
-            sx={{
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 3,
-              position: "sticky",
-              top: 100,
-            }}
-          >
-            <FilterContent
-              categories={categories}
-              categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
-              priceRange={priceRange}
-              setPriceRange={setPriceRange}
-              minRating={minRating}
-              setMinRating={setMinRating}
-              clearFilters={clearFilters}
-              maxPrice={maxPrice}
-            />
+      <Grid container spacing={3}>
+        {/* Desktop Sidebar Filter */}
+        <Grid item md={3} lg={2.5} sx={{ display: { xs: "none", md: "block" } }}>
+          <Paper elevation={0} sx={{ border: "1px solid #E5E7EB", borderRadius: "8px", bgcolor: "white", position: "sticky", top: 90 }}>
+            <FilterContent categories={categories} categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter} clearFilters={clearFilters} />
           </Paper>
         </Grid>
 
         {/* Mobile Filter Drawer */}
-        <Drawer
-          anchor="left"
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          PaperProps={{ sx: { width: 280, borderRadius: "0 20px 20px 0" } }}
-        >
-          <FilterContent
-            categories={categories}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
-            priceRange={priceRange}
-            setPriceRange={setPriceRange}
-            minRating={minRating}
-            setMinRating={setMinRating}
-            clearFilters={clearFilters}
-            maxPrice={maxPrice}
-          />
+        <Drawer anchor="left" open={mobileOpen} onClose={() => setMobileOpen(false)} PaperProps={{ sx: { width: 280 } }}>
+          <FilterContent categories={categories} categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter} clearFilters={clearFilters} />
         </Drawer>
 
-        {/* Product Grid */}
-        <Grid item xs={12} md={9}>
-          {loading ? (
-            <Grid container spacing={3}>
-              {[...Array(6)].map((_, i) => (
-                <Grid item xs={12} sm={6} lg={4} key={i}>
-                  <Skeleton
-                    variant="rectangular"
-                    height={300}
-                    sx={{ borderRadius: 3 }}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          ) : filteredProducts.length === 0 ? (
-            <Paper
-              sx={{
-                p: 4,
-                textAlign: "center",
-                borderRadius: 3,
-                bgcolor: alpha(theme.palette.primary.main, 0.05),
-              }}
-            >
-              <Typography variant="h6" color="text.secondary">
-                No products found matching your criteria.
-              </Typography>
-              <Button onClick={clearFilters} sx={{ mt: 2 }} variant="contained">
-                Clear Filters
-              </Button>
+        {/* Products Grid */}
+        <Grid item xs={12} md={9} lg={9.5}>
+          {filteredProducts.length === 0 ? (
+            <Paper sx={{ p: 6, textAlign: "center", borderRadius: "8px", bgcolor: "white", border: "1px solid #E5E7EB" }}>
+              <Typography variant="h6" color="text.secondary">No products found matching your filter.</Typography>
+              <Button onClick={clearFilters} sx={{ mt: 2 }} variant="contained" sx={{ bgcolor: "#1B5E20" }}>Clear Filters</Button>
             </Paper>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               <AnimatePresence>
-                {paginatedProducts.map((product) => (
-                  <Grid
-                    item
-                    xs={12}
-                    sm={6}
-                    lg={4}
-                    key={product._id}
-                    component={motion.div}
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <Card
-                      sx={{
-                        height: "100%",
-                        borderRadius: 3,
-                        position: "relative",
-                        border: "1px solid",
-                        borderColor: "divider",
-                        transition: "all 0.3s ease",
-                        bgcolor: "white",
-                        overflow: "visible",
-                        "&:hover": {
-                          transform: "translateY(-8px)",
-                          boxShadow: "0 12px 24px -10px rgba(0,0,0,0.15)",
-                          borderColor: theme.palette.secondary.main,
-                          "& .product-actions": {
-                            opacity: 1,
-                            transform: "translateX(-50%) translateY(0)",
-                          },
-                          "& .product-img": { transform: "scale(1.05)" },
-                        },
-                      }}
-                      onClick={() => handleProductView(product._id)}
-                    >
-                      {/* Badge / Favorites */}
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          top: 12,
-                          right: 12,
-                          zIndex: 5,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 1,
-                        }}
-                      >
+                {filteredProducts.map((product) => (
+                  <Grid item xs={6} sm={4} md={4} lg={3} key={product._id || product.id} component={motion.div} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <Card sx={{
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      borderRadius: "8px",
+                      border: "1px solid #E5E7EB",
+                      boxShadow: "none",
+                      bgcolor: "white",
+                      transition: "all 0.15s ease",
+                      "&:hover": { borderColor: "#2E7D32", boxShadow: "0 4px 12px rgba(0,0,0,0.06)" },
+                    }}>
+                      <Box sx={{ position: "relative", pt: "75%", bgcolor: "#FFFFFF", overflow: "hidden", borderBottom: "1px solid #F3F4F6" }}>
+                        <CardMedia
+                          component="img"
+                          image={product.images?.[0] || product.image || "/api/placeholder/400/300"}
+                          alt={product.name}
+                          sx={{
+                            position: "absolute",
+                            top: 0, left: 0,
+                            width: "100%", height: "100%",
+                            objectFit: "contain",
+                            p: 1.5,
+                          }}
+                        />
                         <IconButton
                           size="small"
-                          onClick={(e) => toggleFavorite(e, product._id)}
-                          sx={{
-                            bgcolor: "white",
-                            boxShadow: 1,
-                            "&:hover": {
-                              bgcolor: "#ffebee",
-                              color: "error.main",
-                            },
-                            color: favorites.has(product._id)
-                              ? "error.main"
-                              : "text.secondary",
-                          }}
+                          onClick={(e) => toggleFavorite(e, product._id || product.id)}
+                          sx={{ position: "absolute", top: 8, right: 8, bgcolor: "white", border: "1px solid #E5E7EB", p: 0.5 }}
                         >
-                          {favorites.has(product._id) ? (
-                            <FavoriteIcon fontSize="small" />
-                          ) : (
-                            <FavoriteBorderIcon fontSize="small" />
-                          )}
+                          {favorites.has(product._id || product.id) ? <FavoriteIcon fontSize="small" color="error" /> : <FavoriteBorderIcon fontSize="small" />}
                         </IconButton>
                       </Box>
 
-                      {/* Stock Badge */}
-                      {product.stock === 0 && (
-                        <Chip
-                          label="Out of Stock"
-                          size="small"
-                          color="error"
-                          sx={{
-                            position: "absolute",
-                            top: 12,
-                            left: 12,
-                            zIndex: 5,
-                            fontWeight: 700,
-                          }}
-                        />
-                      )}
-
-                      {/* Image Area */}
-                      <Box
-                        sx={{
-                          position: "relative",
-                          pt: "75%",
-                          overflow: "hidden",
-                          borderRadius: "12px 12px 0 0",
-                          bgcolor: "#f5f5f7",
-                        }}
-                      >
-                        <CardMedia
-                          component="img"
-                          image={
-                            product.images?.[0] || "/api/placeholder/400/300"
-                          }
-                          alt={product.name}
-                          className="product-img"
-                          sx={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                            p: 2,
-                            transition: "transform 0.5s ease",
-                          }}
-                        />
-
-                        {/* Hover Actions */}
-                        <Box
-                          className="product-actions"
-                          sx={{
-                            position: "absolute",
-                            bottom: 10,
-                            left: "50%",
-                            transform: {
-                              xs: "translateX(-50%) translateY(0)",
-                              md: "translateX(-50%) translateY(20px)",
-                            },
-                            opacity: { xs: 1, md: 0 },
-                            zIndex: 2,
-                            transition: "all 0.3s ease",
-                            width: "90%",
-                            display: "flex",
-                            gap: 1,
-                          }}
-                        >
-                          <Button
-                            variant="contained"
-                            fullWidth
-                            startIcon={<CartIcon />}
-                            onClick={(e) => handleAddToCart(e, product)}
-                            disabled={product.stock === 0}
-                            sx={{
-                              bgcolor: theme.palette.text.primary,
-                              color: "white",
-                              "&:hover": {
-                                bgcolor: theme.palette.primary.main,
-                              },
-                              borderRadius: 2,
-                              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                            }}
-                          >
-                            Add
-                          </Button>
-                        </Box>
-                      </Box>
-
-                      <CardContent sx={{ p: 2.5 }}>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: theme.palette.primary.main,
-                            fontWeight: 700,
-                            letterSpacing: 0.5,
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {product.category}
-                        </Typography>
-
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontWeight: 700,
-                            mb: 0.5,
-                            lineHeight: 1.2,
-                            height: 48,
-                            overflow: "hidden",
+                      <CardContent sx={{ p: 1.8, flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                        <Box>
+                          <Typography variant="caption" fontWeight={600} sx={{ color: "#6B7280", textTransform: "uppercase", fontSize: "0.68rem" }}>
+                            {product.category}
+                          </Typography>
+                          <Typography variant="subtitle2" fontWeight={600} sx={{
+                            mt: 0.3, mb: 0.8,
+                            lineHeight: 1.3,
+                            height: 38,
                             display: "-webkit-box",
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: "vertical",
-                          }}
-                        >
-                          {product.name}
-                        </Typography>
-
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", mb: 2 }}
-                        >
-                          <Rating
-                            value={product.averageRating}
-                            readOnly
-                            size="small"
-                            precision={0.5}
-                          />
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ ml: 1 }}
-                          >
-                            ({product.ratings?.length || 0})
+                            overflow: "hidden",
+                            fontSize: "0.9rem",
+                          }}>
+                            {product.name}
                           </Typography>
+
+                          <Stack direction="row" spacing={0.5} alignItems="center" mb={1.2}>
+                            <Rating value={product.averageRating || 4.5} readOnly size="small" precision={0.5} sx={{ fontSize: "0.85rem" }} />
+                            <Typography variant="caption" color="text.secondary">({product.ratings?.length || 12})</Typography>
+                          </Stack>
                         </Box>
 
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <Box>
-                            <Typography
-                              variant="h5"
-                              color="secondary"
-                              fontWeight="800"
-                            >
+                        <Box>
+                          <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", mb: 1.2 }}>
+                            <Typography variant="h6" fontWeight={800} sx={{ color: "#111827", fontSize: "1.05rem" }}>
                               ₹{product.price}
                             </Typography>
                             {product.originalPrice > product.price && (
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  textDecoration: "line-through",
-                                  color: "text.secondary",
-                                }}
-                              >
+                              <Typography variant="caption" sx={{ textDecoration: "line-through", color: "#9CA3AF" }}>
                                 ₹{product.originalPrice}
                               </Typography>
                             )}
                           </Box>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
+
+                          <Button
+                            variant="contained"
+                            fullWidth
+                            startIcon={<CartIcon fontSize="small" />}
+                            onClick={() => addToCart(product)}
                             sx={{
-                              bgcolor: alpha(theme.palette.secondary.main, 0.1),
-                              px: 1,
-                              py: 0.5,
-                              borderRadius: 1,
+                              bgcolor: "#1B5E20",
+                              color: "white",
+                              fontWeight: 600,
+                              borderRadius: "6px",
+                              py: 0.7,
+                              textTransform: "none",
+                              fontSize: "0.82rem",
+                              "&:hover": { bgcolor: "#14532D" },
                             }}
                           >
-                            {product.unit}
-                          </Typography>
+                            Add to Cart
+                          </Button>
                         </Box>
                       </CardContent>
                     </Card>
@@ -718,11 +304,9 @@ const ProductsPage = () => {
               </AnimatePresence>
             </Grid>
           )}
-
-          {/* Pagination Removed as per requirement to show all products */}
         </Grid>
       </Grid>
-    </Container>
+    </Box>
   );
 };
 

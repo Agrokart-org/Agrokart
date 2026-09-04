@@ -21,51 +21,44 @@ const getApiUrl = () => {
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
   ) {
-    return "http://localhost:5000/api";
+    return "http://localhost:5001/api";
   }
 
   // 3. Fallback for local network access
-  return `http://${window.location.hostname}:5000/api`;
+  return `http://${window.location.hostname}:5001/api`;
 };
 
 const API_URL = getApiUrl();
 
 const authService = {
-  // Login with email and password using Firebase
-  login: async (email, password) => {
+  // Login with email and password using backend POST /api/auth/login
+  login: async (email, password, expectedRole = "customer") => {
     try {
-      console.log("Logging in with Firebase:", email);
+      console.log("Logging in via backend API:", email);
 
-      // Use Firebase authentication
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
+      const response = await axios.post(`${API_URL}/auth/login`, {
         email,
         password,
-      );
-      const user = userCredential.user;
-
-      // Get the Firebase ID token
-      const idToken = await user.getIdToken();
-
-      console.log("Firebase login successful");
-
-      // Store user data in localStorage
-      localStorage.setItem("firebaseToken", idToken);
-      localStorage.setItem("userEmail", email);
-      localStorage.setItem("isLoggedIn", "true");
-
-      // Get user data from backend using Firebase token
-      const response = await axios.get(`${API_URL}/auth/me`, {
-        headers: { "firebase-auth-token": idToken },
+        expectedRole,
       });
 
-      return {
-        token: idToken,
-        user: response.data,
-      };
+      const { user, token } = response.data;
+
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("userRole", user.role);
+      localStorage.setItem("userEmail", user.email);
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("userData", JSON.stringify(user));
+
+      return response.data;
     } catch (error) {
-      console.error("Firebase login failed:", error.message);
-      throw { message: "Failed to login. " + error.message };
+      console.error("Backend login error:", error);
+      if (error.response && error.response.data && error.response.data.message) {
+        const errObj = new Error(error.response.data.message);
+        errObj.status = error.response.status;
+        throw errObj;
+      }
+      throw error;
     }
   },
 

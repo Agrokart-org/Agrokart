@@ -1,0 +1,34 @@
+{
+  "total_records_examined": 346,
+  "valid_ml_candidates": 63,
+  "rejected_records": 283,
+  "records_needing_manual_verification": 3,
+  "records_by_crop": {
+    "cotton": 10,
+    "maize": 7,
+    "paddy": 12,
+    "wheat": 14,
+    "sugarcane": 20
+  },
+  "records_by_source": {
+    "MPKV_Cotton.pdf": 9,
+    "MPKV_Maize.pdf": 7,
+    "MPKV_Paddy.pdf": 10,
+    "MPKV_Recommendations_2025.pdf": 8,
+    "MPKV_Sugarcane.pdf": 18,
+    "MPKV_Wheat.pdf": 11
+  },
+  "records_by_input_category": {
+    "fertilizer": 33,
+    "organic_amendment": 30
+  },
+  "records_by_unit": {
+    "kg/ha": 25,
+    "t/ha": 32,
+    "q/ha": 1,
+    "L/ha": 5
+  },
+  "duplicate_count": 14,
+  "missing_field_count": 42,
+  "notice": "This dataset represents clean, rule-verified candidates extracted from official MPKV PDFs. Manual domain expert verification is recommended before training Random Forest."
+}

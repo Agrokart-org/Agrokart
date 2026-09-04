@@ -100,30 +100,17 @@ const LoginPage = () => {
     try {
       const { email, password } = formData;
 
-      // 1. Authenticate with Firebase first (Client Side)
-      const { user: firebaseUser } = await authLogin(email, password);
-      const idToken = await firebaseUser.getIdToken();
+      // Call backend POST /api/auth/login via AuthContext login
+      const result = await authLogin(email, password, "customer");
 
-      // 2. Validate/Register with Backend using the Firebase Token
-      // We send the token so the backend can create the user if missing (Sync)
-      const loginCredentials = {
-        idToken,
-        email,
-        expectedRole: "customer",
-      };
-
-      const result = await login(loginCredentials);
-
-      // Validate user role on frontend
-      if (result.user && result.user.role !== "customer") {
-        throw new Error(
-          `Access denied. This account is registered as ${result.user.role}. Please use the correct login page for your account type.`,
-        );
+      if (result && result.user) {
+        if (result.user.role !== "customer") {
+          throw new Error(
+            `Access denied. This account is registered as ${result.user.role}. Please use the correct login page for your account type.`,
+          );
+        }
+        navigate("/customer/dashboard", { replace: true });
       }
-
-      // Navigate to customer dashboard/home
-
-      // Navigate to customer dashboard/home exists in useEffect now
     } catch (err) {
       console.error("Customer login error:", err);
       setError(

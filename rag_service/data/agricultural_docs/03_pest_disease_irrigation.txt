@@ -1,0 +1,167 @@
+# ICAR Crop Pest and Disease Management Manual
+# Source: ICAR-National Research Centre for Integrated Pest Management (NCIPM), New Delhi
+# Topic: Pest Identification, Damage Symptoms, Control Measures — Major Indian Crops
+
+---
+
+## CHAPTER 1: RICE/PADDY PEST MANAGEMENT
+
+### 1.1 Brown Plant Hopper (BPH) — Nilaparvata lugens
+Damage: Sucks phloem sap from stem base. Causes "hopper burn" — circular yellowing/browning patches in field.
+Economic Threshold: 10-20 hoppers per hill
+Control:
+- Biological: Preserve natural enemies (spiders, mirid bugs, Cyrtorhinus)
+- Resistant varieties: IR-64, Pusa Basmati 1121 (moderate resistance)
+- Chemical: Pymetrozine 50WG at 120 g/ha OR Buprofezin 25SC at 1 litre/ha — avoid synthetic pyrethroids which cause BPH resurgence
+- Cultural: Alternate wetting and drying (AWD) irrigation reduces BPH habitat
+
+### 1.2 Rice Stem Borer — Scirpophaga incertulas (Yellow Stem Borer)
+Damage: 
+- Vegetative stage: "Dead Heart" — central shoot dies while leaves remain green
+- Reproductive stage: "White Ear" — panicle remains white, no grain formation
+Economic Threshold: 5% dead hearts or 1-2% white ears
+Control:
+- Pheromone traps for monitoring: 5 traps/ha from transplanting
+- Trichogramma egg parasitoid release: 5 lakh/ha at 10-day intervals
+- Chemical: Chlorpyrifos 20EC at 2.5 litre/ha OR Cartap Hydrochloride 50SP at 1 kg/ha
+- Flood field after harvest to kill pupae
+
+### 1.3 Rice Blast — Pyricularia oryzae (Fungal Disease)
+Symptoms:
+- Leaf blast: Diamond-shaped lesions with grey center and brown border
+- Neck blast: Infection at panicle neck causes empty grains, "rotten neck"
+Conditions favoring blast: Temperature 24-28°C, relative humidity >90%, nitrogen excess
+Control:
+- Seed treatment: Tricyclazole 75WP at 2 g/kg seed
+- Foliar spray: Tricyclazole 75WP at 0.6 g/litre OR Isoprothiolane 40EC at 1.5 ml/litre
+- Cultural: Avoid excess nitrogen, improve drainage, use resistant varieties (Pusa 44 — blast susceptible, avoid in blast-prone areas)
+
+### 1.4 Rice Bacterial Leaf Blight (BLB) — Xanthomonas oryzae pv. oryzae
+Symptoms: Water-soaked lesions along leaf margins, progressing to creamy-yellow "Kresek" (wilting) in severe cases
+Conditions: High humidity, flood water, wounds from storm/hailstorm
+Control:
+- NO curative chemical — rely on cultural methods
+- Remove and destroy infected plants
+- Avoid flood irrigation after infection appears
+- Copper-based sprays (prophylactic): Copper Oxychloride 50WP at 2.5 g/litre
+
+---
+
+## CHAPTER 2: WHEAT PEST MANAGEMENT
+
+### 2.1 Wheat Aphids — Sitobion avenae, Rhopalosiphum padi
+Damage: Colony formation on leaves and ears, sucking sap, secreting honeydew → sooty mold
+Economic Threshold: 200 aphids per meter row length
+Control:
+- Natural enemies: Ladybird beetles (Coccinella septempunctata) — do NOT spray if present in large numbers
+- Chemical: Dimethoate 30EC at 1 litre/ha OR Thiamethoxam 25WG at 100 g/ha (as foliar spray)
+
+### 2.2 Wheat Yellow Rust — Puccinia striiformis
+Symptoms: Yellow-orange stripe/stripe pattern of pustules along leaf veins; powdery spores
+Favorable conditions: Cool temperatures 10-15°C, high humidity, dew
+Control:
+- Seed treatment: Carboxin 75WP at 2.5 g/kg seed
+- Foliar spray at first symptom: Propiconazole 25EC at 0.1% (1 ml/litre)
+- Resistant varieties: HD-2967, HD-3086 (currently resistant to Yellow Rust)
+
+### 2.3 Wheat Loose Smut — Ustilago tritici
+Symptoms: Entire grain replaced by black powdery spore mass at ear emergence
+Control:
+- Hot water seed treatment: 52-54°C for 10 minutes
+- Fungicide seed treatment: Carboxin + Thiram (1:1) at 2.5 g/kg seed
+- Use disease-free certified seed
+
+---
+
+## CHAPTER 3: COTTON PEST MANAGEMENT
+
+### 3.1 Pink Bollworm — Pectinophora gossypiella
+Damage: Larvae enter bolls, feed on seeds, reduce lint quality. "Rosette flower" symptom.
+Control:
+- Pheromone traps: 5/ha from boll initiation (August-September)
+- Bt Cotton: Bacillus thuringiensis toxin genes (Cry1Ac, Cry2Ab) provide intrinsic resistance
+- Spinosad 45SC at 0.3 ml/litre for severe infestation
+
+### 3.2 Cotton Whitefly — Bemisia tabaci (Virus vector)
+Damage: Sucks phloem sap; transmits Cotton Leaf Curl Virus (CLCuV)
+Symptoms of CLCuV: Leaf curling downward, vein thickening, stunted plant
+Control:
+- Spray: Imidacloprid 70WG at 70 g/ha OR Spiromesifen 22.9SC at 800 ml/ha
+- Avoid broad-spectrum insecticides (kill natural enemies)
+- Remove virus-infected plants
+
+### 3.3 Cotton Leaf Spot — Alternaria macrospora
+Symptoms: Circular brown spots with concentric rings on leaves; defoliation
+Control: Mancozeb 75WP at 2.5 g/litre spray
+
+---
+
+## CHAPTER 4: INTEGRATED PEST MANAGEMENT (IPM) PRINCIPLES
+
+### 4.1 IPM Hierarchy
+1. Cultural controls (first choice): crop rotation, resistant varieties, planting date adjustment
+2. Biological controls: conserve and augment natural enemies (Trichogramma, Chrysoperla)
+3. Mechanical controls: pheromone traps, sticky traps, light traps
+4. Chemical controls (last resort): selective pesticides at economic threshold level only
+
+### 4.2 Economic Threshold Levels (ETL)
+ETL is the pest density at which control action must be taken to prevent economic damage:
+- Rice BPH: 10-20 hoppers/hill
+- Wheat aphid: 200 aphids/meter row
+- Cotton bollworm: 8-10 larvae per 100 plants
+
+### 4.3 Pesticide Precautions
+IMPORTANT SAFETY GUIDELINES:
+1. Always wear PPE: gloves, mask, goggles, full-body protective clothing
+2. Do not spray on windy days or in bright sunshine
+3. Observe pre-harvest intervals (PHI): stop spraying 15-20 days before harvest
+4. Do not mix pesticides from the same chemical class — rotate chemical classes to prevent resistance
+5. Triple-rinse containers; do not use for food/water storage
+6. Kisan Call Center for pesticide queries: 1800-180-1551
+
+### 4.4 Pesticide Resistance Management
+Rotate insecticides of different modes of action:
+- Group 1: Organophosphates (Chlorpyrifos, Dimethoate)
+- Group 4: Neonicotinoids (Imidacloprid, Thiamethoxam) — use judiciously, bee toxicity
+- Group 5: Spinosyns (Spinosad) — safe for beneficials, rotational use
+- Group 28: Diamides (Chlorantraniliprole) — excellent for Lepidoptera
+
+---
+
+## CHAPTER 5: IRRIGATION MANAGEMENT
+
+### 5.1 Critical Irrigation Stages for Major Crops
+
+Wheat critical irrigation stages (total: 4-6 irrigations):
+1. Crown Root Initiation (CRI): 21 DAS — MOST CRITICAL. Missing this causes significant yield loss.
+2. Tillering: 40-45 DAS
+3. Jointing/Stem Elongation: 65 DAS
+4. Flowering/Anthesis: 85 DAS — Very critical
+5. Milk/Dough stage: 100-105 DAS
+
+Total water requirement: 350-450 mm per season
+
+Rice water requirements:
+- Flooded (continuous): 1200-1500 mm per season
+- Alternate Wetting and Drying (AWD): 900-1100 mm (saves 25-30% water)
+- AWD threshold: irrigate when water level drops 15 cm below soil surface (measured with field water tube)
+
+Maize critical stages:
+1. Knee height (V6): 30-35 DAS
+2. Tasselling: 55-60 DAS — Most critical
+3. Silking and grain filling: 65-80 DAS
+
+Cotton critical stages:
+1. Square formation: 45-50 DAS
+2. Boll development: 80-90 DAS
+3. Boll opening: 110-120 DAS
+
+Sugarcane critical stages:
+1. Germination period: 0-30 DAS (light irrigation every 5-7 days)
+2. Grand growth period: 90-210 DAS (heavy irrigation every 10-14 days)
+3. Ripening: 270-300 DAS (reduce/stop irrigation)
+
+---
+
+Source: ICAR-NCIPM, New Delhi — Integrated Pest Management Practical Manual, 2023
+ICAR-Water Technology Centre, New Delhi — Irrigation Scheduling Handbook, 2022

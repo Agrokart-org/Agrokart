@@ -1,0 +1,27 @@
+{
+  "total_records": 346,
+  "verified_records_count": 151,
+  "npk_fertilizer_records": 53,
+  "organic_amendment_records": 30,
+  "micronutrient_records": 4,
+  "other_records": 64,
+  "duplicates_removed": 121,
+  "records_rejected": 74,
+  "crops_represented": {
+    "cotton": 33,
+    "maize": 14,
+    "paddy": 28,
+    "soybean": 3,
+    "wheat": 29,
+    "sugarcane": 43,
+    "pearl millet": 1
+  },
+  "source_documents_represented": {
+    "MPKV_Cotton.pdf": 32,
+    "MPKV_Maize.pdf": 14,
+    "MPKV_Paddy.pdf": 25,
+    "MPKV_Recommendations_2025.pdf": 14,
+    "MPKV_Sugarcane.pdf": 40,
+    "MPKV_Wheat.pdf": 26
+  }
+}

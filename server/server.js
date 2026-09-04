@@ -13,6 +13,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const drAgroRoutes = require("./routes/drAgro");
 const weatherRoutes = require("./routes/weather");
 const mandiRoutes = require("./routes/mandi");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");

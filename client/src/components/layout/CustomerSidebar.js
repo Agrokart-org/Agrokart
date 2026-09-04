@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Drawer,
@@ -12,12 +12,9 @@ import {
   Avatar,
   Typography,
   Badge,
-  Tooltip,
-  alpha,
   useTheme,
   useMediaQuery,
-  IconButton,
-  Collapse,
+  alpha,
 } from "@mui/material";
 import {
   Home as HomeIcon,
@@ -25,16 +22,11 @@ import {
   ShoppingCart as CartIcon,
   Person as ProfileIcon,
   Category as CategoryIcon,
-  Search as SearchIcon,
   Favorite as WishlistIcon,
   Notifications as NotificationsIcon,
   Settings as SettingsIcon,
   Help as HelpIcon,
   Logout as LogoutIcon,
-  Menu as MenuIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ExpandLess,
-  ExpandMore,
   People as PeopleIcon,
   Science as ScienceIcon,
   Storefront as StorefrontIcon,
@@ -43,14 +35,14 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 
-const DRAWER_WIDTH = 280; // Reduced from 320 for better mobile fit
-const DRAWER_WIDTH_COLLAPSED = 80;
-const DRAWER_WIDTH_MOBILE = 240; // Even smaller for mobile
+import SmartToyIcon from "@mui/icons-material/SmartToy";
+import Chip from "@mui/material/Chip";
+
+const DRAWER_WIDTH = 250;
 
 const CustomerSidebar = ({
   open,
   onClose,
-  onOpen,
   mobileOpen,
   onMobileClose,
 }) => {
@@ -61,429 +53,207 @@ const CustomerSidebar = ({
   const { user, logout } = useAuth();
   const { cart } = useCart();
   const { t } = useTranslation();
-  const [expandedItems, setExpandedItems] = useState({});
 
   const cartCount = cart?.length || 0;
 
   const mainMenuItems = [
-    {
-      id: "home",
-      label: t("navigation.home"),
-      icon: HomeIcon,
-      path: "/customer/dashboard",
-      badge: null,
-    },
-    {
-      id: "products",
-      label: t("navigation.products"),
-      icon: CategoryIcon,
-      path: "/products",
-      badge: null,
-    },
-    {
-      id: "labour",
-      label: t("navigation.labour"),
-      icon: PeopleIcon,
-      path: "/customer/labour",
-      badge: null,
-    },
-    {
-      id: "drAgro",
-      label: t("drAgro.title"),
-      icon: ScienceIcon,
-      path: "/customer/dr-agro",
-      badge: null,
-    },
-    {
-      id: "mandiRates",
-      label: t("navigation.mandiRates") || "Mandi Rates",
-      icon: StorefrontIcon,
-      path: "/customer/mandi-rates",
-      badge: null,
-    },
-    {
-      id: "cart",
-      label: t("navigation.cart"),
-      icon: CartIcon,
-      path: "/cart",
-      badge: cartCount > 0 ? cartCount : null,
-    },
-    {
-      id: "orders",
-      label: t("navigation.myOrders"),
-      icon: OrdersIcon,
-      path: "/my-orders",
-      badge: null,
-    },
-    {
-      id: "wishlist",
-      label: t("navigation.wishlist"),
-      icon: WishlistIcon,
-      path: "/wishlist",
-      badge: null,
-    },
+    { id: "home", label: t("navigation.home") || "Dashboard", icon: HomeIcon, path: "/customer/dashboard" },
+    { id: "products", label: t("navigation.products") || "All Products", icon: CategoryIcon, path: "/products" },
+    { id: "drAgro", label: "Dr. Agro", icon: SmartToyIcon, path: "/customer/dr-agro", isAi: true },
+    { id: "mandiRates", label: "Mandi Rates", icon: StorefrontIcon, path: "/customer/mandi-rates" },
+    { id: "labour", label: "Labour Services", icon: PeopleIcon, path: "/customer/labour" },
+  ];
+
+  const drAgroToolsItems = [
+    { id: "soilAnalysis", label: "Crop & Soil Analysis", icon: ScienceIcon, path: "/customer/dr-agro?tool=soil" },
+    { id: "fertilizerCalc", label: "Fertilizer Calculator", icon: CategoryIcon, path: "/customer/dr-agro?tool=fertilizer" },
+    { id: "cropDiag", label: "Crop Diagnosis", icon: CategoryIcon, path: "/customer/dr-agro?tool=cropDiag" },
+    { id: "irrigationAdv", label: "Irrigation Advisor", icon: ScienceIcon, path: "/customer/dr-agro?tool=irrigation" },
+    { id: "weatherAdv", label: "Weather Advisor", icon: ScienceIcon, path: "/customer/dr-agro/weather" },
+  ];
+
+  const aiAssistantItems = [
+    { id: "agroAiChat", label: "Agro AI Chat", icon: SmartToyIcon, path: "/customer/agro-ai", isRagAi: true, badge: "RAG" }
+  ];
+
+  const orderMenuItems = [
+    { id: "cart", label: "Shopping Cart", icon: CartIcon, path: "/cart", badge: cartCount > 0 ? cartCount : null },
+    { id: "orders", label: "My Orders", icon: OrdersIcon, path: "/my-orders" },
+    { id: "wishlist", label: "Wishlist", icon: WishlistIcon, path: "/wishlist" },
   ];
 
   const accountMenuItems = [
-    {
-      id: "profile",
-      label: t("navigation.profile"),
-      icon: ProfileIcon,
-      path: "/profile",
-    },
-    {
-      id: "notifications",
-      label: t("navigation.notifications"),
-      icon: NotificationsIcon,
-      path: "/notifications",
-      badge: 3, // Mock notification count
-    },
-    {
-      id: "settings",
-      label: t("navigation.settings"),
-      icon: SettingsIcon,
-      path: "/settings",
-    },
-  ];
-
-  const supportMenuItems = [
-    {
-      id: "help",
-      label: t("navigation.help"),
-      icon: HelpIcon,
-      path: "/help",
-    },
+    { id: "profile", label: "My Account", icon: ProfileIcon, path: "/profile" },
+    { id: "notifications", label: "Notifications", icon: NotificationsIcon, path: "/notifications", badge: 2 },
+    { id: "settings", label: "Settings", icon: SettingsIcon, path: "/settings" },
+    { id: "help", label: "Help & Support", icon: HelpIcon, path: "/help" },
   ];
 
   const handleNavigation = (path) => {
     navigate(path);
-    if (isMobile) {
-      onMobileClose();
-    }
+    if (isMobile) onMobileClose();
   };
 
   const handleLogout = () => {
     logout();
     navigate("/login");
-    if (isMobile) {
-      onMobileClose();
-    }
+    if (isMobile) onMobileClose();
   };
 
   const isActive = (path) => {
-    if (path === "/customer/dashboard") {
-      return location.pathname === "/customer/dashboard";
-    }
+    if (path === "/customer/dashboard") return location.pathname === "/customer/dashboard";
     return location.pathname.startsWith(path);
   };
 
-  const showContent = open || isMobile;
+  const renderNavGroup = (title, items) => (
+    <Box sx={{ mb: 2 }}>
+      {title && (
+        <Typography
+          variant="caption"
+          sx={{
+            px: 2,
+            py: 0.8,
+            color: "#6B7280",
+            fontWeight: 700,
+            fontSize: "0.68rem",
+            letterSpacing: 0.8,
+            textTransform: "uppercase",
+            display: "block",
+          }}
+        >
+          {title}
+        </Typography>
+      )}
+      <List disablePadding>
+        {items.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.path);
+
+          return (
+            <ListItem key={item.id} disablePadding sx={{ px: 1, py: 0.3 }}>
+              <ListItemButton
+                onClick={() => handleNavigation(item.path)}
+                sx={{
+                  borderRadius: "8px",
+                  minHeight: 40,
+                  px: 1.5,
+                  bgcolor: active ? (item.isAi ? "#ECFDF5" : "#E8F5E9") : "transparent",
+                  color: active ? (item.isAi ? "#047857" : "#1B5E20") : "#374151",
+                  borderLeft: active ? (item.isAi ? "3px solid #059669" : "3px solid #1B5E20") : "3px solid transparent",
+                  "&:hover": {
+                    bgcolor: active ? (item.isAi ? "#D1FAE5" : "#DCEDC8") : "#F3F4F6",
+                    color: active ? (item.isAi ? "#047857" : "#1B5E20") : "#111827",
+                  },
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 34, color: active ? (item.isAi ? "#059669" : "#1B5E20") : "#6B7280" }}>
+                  {item.badge ? (
+                    <Badge badgeContent={item.badge} color="error" sx={{ "& .MuiBadge-badge": { fontSize: 10, height: 16, minWidth: 16 } }}>
+                      <Icon sx={{ fontSize: 20 }} />
+                    </Badge>
+                  ) : (
+                    <Icon sx={{ fontSize: 20 }} />
+                  )}
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.label}
+                  primaryTypographyProps={{
+                    fontWeight: active ? 700 : 500,
+                    fontSize: "0.88rem",
+                  }}
+                />
+                {item.isAi && (
+                  <Chip
+                    label="AI"
+                    size="small"
+                    sx={{
+                      height: 18,
+                      fontSize: "0.62rem",
+                      fontWeight: 800,
+                      bgcolor: active ? "#059669" : "#10B981",
+                      color: "white",
+                      px: 0.5,
+                      ml: 1,
+                      "& .MuiChip-label": { px: 0.8 }
+                    }}
+                  />
+                )}
+              </ListItemButton>
+            </ListItem>
+          );
+        })}
+      </List>
+    </Box>
+  );
 
   const drawerContent = (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", bgcolor: "#FFFFFF" }}>
+      {/* Top User Profile Header */}
       <Box
         sx={{
           p: 2,
-          background: "linear-gradient(135deg, #6B7280 0%, #4B5563 100%)",
-          color: "white",
+          borderBottom: "1px solid #E5E7EB",
           display: "flex",
-          flexDirection: "column",
+          alignItems: "center",
           gap: 1.5,
+          bgcolor: "#F9FAFB",
         }}
       >
-        {showContent && (
-          <>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 2,
-                p: 1.5,
-                borderRadius: 2,
-                bgcolor: alpha("#fff", 0.15),
-                backdropFilter: "blur(10px)",
-              }}
-            >
-              <Avatar
-                src={user?.avatar}
-                sx={{
-                  width: 40,
-                  height: 40,
-                  border: "2px solid white",
-                }}
-              >
-                {user?.name?.charAt(0)?.toUpperCase() || "U"}
-              </Avatar>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle2" fontWeight="700" noWrap>
-                  {user?.name || "Customer"}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ opacity: 0.9, display: "block" }}
-                  noWrap
-                >
-                  {user?.role || "Farmer"}
-                </Typography>
-              </Box>
-            </Box>
-
-            {!isMobile && (
-              <Box sx={{ display: "flex", justifyContent: "center" }}>
-                <IconButton
-                  onClick={onClose}
-                  size="small"
-                  sx={{
-                    color: "white",
-                    bgcolor: alpha("#fff", 0.2),
-                    "&:hover": { bgcolor: alpha("#fff", 0.3) },
-                  }}
-                >
-                  <ChevronLeftIcon />
-                </IconButton>
-              </Box>
-            )}
-          </>
-        )}
-
-        {!showContent && !isMobile && (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: 60,
-            }}
-          >
-            <IconButton
-              onClick={onOpen}
-              size="small"
-              sx={{
-                color: "white",
-                bgcolor: alpha("#fff", 0.2),
-                "&:hover": { bgcolor: alpha("#fff", 0.3) },
-              }}
-            >
-              <MenuIcon />
-            </IconButton>
-          </Box>
-        )}
-      </Box>
-
-      {/* Main Navigation */}
-      <Box sx={{ flexGrow: 1, overflow: "auto", py: 2 }}>
-        <List sx={{ px: 1.5 }}>
-          {mainMenuItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-
-            return (
-              <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
-                <ListItemButton
-                  onClick={() => handleNavigation(item.path)}
-                  sx={{
-                    borderRadius: 2,
-                    minHeight: 48,
-                    bgcolor: active ? alpha("#8B5CF6", 0.1) : "transparent",
-                    color: active ? "#8B5CF6" : "text.primary",
-                    "&:hover": {
-                      bgcolor: active
-                        ? alpha("#8B5CF6", 0.15)
-                        : alpha("#8B5CF6", 0.05),
-                    },
-                    transition: "all 0.2s ease",
-                    ...(showContent ? {} : { justifyContent: "center", px: 0 }),
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: showContent ? 48 : "auto",
-                      color: active ? "#8B5CF6" : "inherit",
-                      justifyContent: showContent ? "flex-start" : "center",
-                    }}
-                  >
-                    {item.badge ? (
-                      <Badge badgeContent={item.badge} color="error">
-                        <Icon />
-                      </Badge>
-                    ) : (
-                      <Icon />
-                    )}
-                  </ListItemIcon>
-                  {showContent && (
-                    <ListItemText
-                      primary={item.label}
-                      primaryTypographyProps={{
-                        fontWeight: active ? 600 : 500,
-                        fontSize: "0.95rem",
-                      }}
-                    />
-                  )}
-                  {!showContent && (
-                    <Tooltip title={item.label} placement="right" arrow>
-                      <Box />
-                    </Tooltip>
-                  )}
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-        </List>
-
-        <Divider sx={{ my: 2, mx: 2 }} />
-
-        {/* Account Section */}
-        <List sx={{ px: 1.5 }}>
-          <Typography
-            variant="caption"
-            sx={{
-              px: 2,
-              py: 1,
-              color: "text.secondary",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              fontSize: "0.7rem",
-              letterSpacing: 1,
-              display: showContent ? "block" : "none",
-            }}
-          >
-            {t("navigation.account")}
+        <Avatar
+          src={user?.avatar}
+          sx={{
+            width: 40,
+            height: 40,
+            bgcolor: "#1B5E20",
+            color: "white",
+            fontWeight: 700,
+            border: "2px solid #A5D6A7",
+          }}
+        >
+          {user?.name?.charAt(0)?.toUpperCase() || "U"}
+        </Avatar>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="subtitle2" fontWeight={700} noWrap sx={{ color: "#111827", fontSize: "0.9rem" }}>
+            {user?.name || "Farmer Account"}
           </Typography>
-          {accountMenuItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-
-            return (
-              <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
-                <ListItemButton
-                  onClick={() => handleNavigation(item.path)}
-                  sx={{
-                    borderRadius: 2,
-                    minHeight: 48,
-                    bgcolor: active ? alpha("#2E7D32", 0.1) : "transparent",
-                    color: active ? "#2E7D32" : "text.primary",
-                    "&:hover": {
-                      bgcolor: active
-                        ? alpha("#2E7D32", 0.15)
-                        : alpha("#2E7D32", 0.05),
-                    },
-                    ...(showContent ? {} : { justifyContent: "center", px: 0 }),
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: showContent ? 48 : "auto",
-                      color: active ? "#8B5CF6" : "inherit",
-                      justifyContent: showContent ? "flex-start" : "center",
-                    }}
-                  >
-                    {item.badge ? (
-                      <Badge badgeContent={item.badge} color="error">
-                        <Icon />
-                      </Badge>
-                    ) : (
-                      <Icon />
-                    )}
-                  </ListItemIcon>
-                  {showContent && (
-                    <ListItemText
-                      primary={item.label}
-                      primaryTypographyProps={{
-                        fontWeight: active ? 600 : 500,
-                        fontSize: "0.95rem",
-                      }}
-                    />
-                  )}
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-        </List>
-
-        <Divider sx={{ my: 2, mx: 2 }} />
-
-        {/* Support Section */}
-        <List sx={{ px: 1.5 }}>
-          {supportMenuItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-
-            return (
-              <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
-                <ListItemButton
-                  onClick={() => handleNavigation(item.path)}
-                  sx={{
-                    borderRadius: 2,
-                    minHeight: 48,
-                    bgcolor: active ? alpha("#2E7D32", 0.1) : "transparent",
-                    color: active ? "#2E7D32" : "text.primary",
-                    "&:hover": {
-                      bgcolor: active
-                        ? alpha("#2E7D32", 0.15)
-                        : alpha("#2E7D32", 0.05),
-                    },
-                    ...(showContent ? {} : { justifyContent: "center", px: 0 }),
-                  }}
-                >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: showContent ? 48 : "auto",
-                      color: active ? "#8B5CF6" : "inherit",
-                      justifyContent: showContent ? "flex-start" : "center",
-                    }}
-                  >
-                    <Icon />
-                  </ListItemIcon>
-                  {showContent && (
-                    <ListItemText
-                      primary={item.label}
-                      primaryTypographyProps={{
-                        fontWeight: active ? 600 : 500,
-                        fontSize: "0.95rem",
-                      }}
-                    />
-                  )}
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-        </List>
+          <Typography variant="caption" sx={{ color: "#6B7280", display: "block" }} noWrap>
+            {user?.email || "customer@agrokart.com"}
+          </Typography>
+        </Box>
       </Box>
 
-      {/* Logout Button */}
-      <Box sx={{ p: 2, borderTop: `1px solid ${alpha("#000", 0.08)}` }}>
+      {/* Navigation Groups */}
+      <Box sx={{ flexGrow: 1, overflowY: "auto", py: 1.5 }}>
+        {renderNavGroup("Marketplace", mainMenuItems)}
+        <Divider sx={{ my: 1, borderColor: "#F3F4F6" }} />
+        {renderNavGroup("Dr. Agro Tools", drAgroToolsItems)}
+        <Divider sx={{ my: 1, borderColor: "#F3F4F6" }} />
+        {renderNavGroup("AI Assistant", aiAssistantItems)}
+        <Divider sx={{ my: 1, borderColor: "#F3F4F6" }} />
+        {renderNavGroup("My Orders & Cart", orderMenuItems)}
+        <Divider sx={{ my: 1, borderColor: "#F3F4F6" }} />
+        {renderNavGroup("Account & Settings", accountMenuItems)}
+      </Box>
+
+      {/* Footer Logout Button */}
+      <Box sx={{ p: 1.5, borderTop: "1px solid #E5E7EB", bgcolor: "#F9FAFB" }}>
         <ListItemButton
           onClick={handleLogout}
           sx={{
-            borderRadius: 2,
-            minHeight: 48,
-            color: "error.main",
-            "&:hover": {
-              bgcolor: alpha("#d32f2f", 0.1),
-            },
-            ...(showContent ? {} : { justifyContent: "center", px: 0 }),
+            borderRadius: "8px",
+            minHeight: 40,
+            color: "#DC2626",
+            "&:hover": { bgcolor: "#FEE2E2" },
           }}
         >
-          <ListItemIcon
-            sx={{
-              minWidth: showContent ? 48 : "auto",
-              color: "error.main",
-              justifyContent: showContent ? "flex-start" : "center",
-            }}
-          >
-            <LogoutIcon />
+          <ListItemIcon sx={{ minWidth: 34, color: "#DC2626" }}>
+            <LogoutIcon sx={{ fontSize: 20 }} />
           </ListItemIcon>
-          {showContent && (
-            <ListItemText
-              primary={t("navigation.logout")}
-              primaryTypographyProps={{
-                fontWeight: 600,
-                fontSize: "0.95rem",
-              }}
-            />
-          )}
+          <ListItemText
+            primary="Sign Out"
+            primaryTypographyProps={{ fontWeight: 600, fontSize: "0.88rem" }}
+          />
         </ListItemButton>
       </Box>
     </Box>
@@ -491,47 +261,39 @@ const CustomerSidebar = ({
 
   return (
     <>
+      {/* Mobile Drawer (< 1024px) */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
         onClose={onMobileClose}
-        ModalProps={{
-          keepMounted: true, // Better open performance on mobile
-        }}
+        ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: "block", md: "none" },
           zIndex: (theme) => theme.zIndex.drawer + 3,
           "& .MuiDrawer-paper": {
+            width: DRAWER_WIDTH,
             boxSizing: "border-box",
-            width: DRAWER_WIDTH_MOBILE,
-            borderRight: `1px solid ${alpha("#000", 0.08)}`,
+            borderRight: "1px solid #E5E7EB",
           },
         }}
       >
         {drawerContent}
       </Drawer>
 
-      {/* Desktop Drawer */}
+      {/* Desktop Drawer (>= 1024px) */}
       <Drawer
         variant="permanent"
         open={open}
         sx={{
           display: { xs: "none", md: "block" },
-          width: open ? DRAWER_WIDTH : DRAWER_WIDTH_COLLAPSED,
+          width: DRAWER_WIDTH,
           flexShrink: 0,
           "& .MuiDrawer-paper": {
-            width: open ? DRAWER_WIDTH : DRAWER_WIDTH_COLLAPSED,
+            width: DRAWER_WIDTH,
             boxSizing: "border-box",
-            borderRight: `1px solid ${alpha("#000", 0.08)}`,
-            transition: theme.transitions.create("width", {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
-            }),
-            overflowX: "hidden",
-            overflowX: "hidden",
-            top: 70,
-            height: "calc(100% - 70px)",
-            borderRadius: 0,
+            borderRight: "1px solid #E5E7EB",
+            top: 72,
+            height: "calc(100% - 72px)",
           },
         }}
       >

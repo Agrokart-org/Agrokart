@@ -38,6 +38,7 @@ import VendorDashboard from "./pages/VendorDashboard";
 import UnifiedAuthPage from "./pages/UnifiedAuthPage";
 import DrAgro from "./pages/DrAgro";
 import DrAgroResults from "./pages/DrAgroResults";
+import AgroAIChatPage from "./pages/AgroAIChatPage";
 import WeatherDetectionPage from "./pages/WeatherDetectionPage";
 import MandiRatesPage from "./pages/MandiRatesPage";
 import DeliveryRegistrationPage from "./pages/DeliveryRegistrationPage";
@@ -312,6 +313,20 @@ const Routes = () => {
         element={
           <CustomerRoute useSidebar={true}>
             <DrAgro />
+          </CustomerRoute>
+        }
+      />
+
+      <Route
+        path="/dr-agro"
+        element={<Navigate to="/customer/dr-agro" replace />}
+      />
+
+      <Route
+        path="/customer/agro-ai"
+        element={
+          <CustomerRoute useSidebar={true}>
+            <AgroAIChatPage />
           </CustomerRoute>
         }
       />

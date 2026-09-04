@@ -1,0 +1,166 @@
+# ICAR Soil Health Management and pH Correction Manual
+# Source: ICAR-Indian Institute of Soil Science (IISS), Bhopal, 2022
+# Topic: Soil pH, Acidic Soils, Alkaline Soils, Soil Testing
+
+---
+
+## CHAPTER 1: UNDERSTANDING SOIL pH
+
+### 1.1 What is Soil pH?
+Soil pH is the measure of hydrogen ion (H+) concentration in soil solution:
+- pH < 7.0: Acidic
+- pH = 7.0: Neutral
+- pH > 7.0: Alkaline (Basic)
+
+Optimal pH range for most Indian food crops: 6.0 to 7.5
+
+### 1.2 Effect of pH on Nutrient Availability
+pH 4-5: Severe toxicity of Al3+, Mn2+ and Fe3+. Phosphorus heavily fixed. Molybdenum unavailable.
+pH 5-6 (Acidic): Phosphorus partially fixed. Ca, Mg deficiency possible. Nitrogen bacteria activity low.
+pH 6-7 (Slightly Acidic - Optimal): Most macronutrients and micronutrients maximally available.
+pH 7-8 (Neutral-Slightly Alkaline): Iron, Zinc, Manganese availability begins to decline.
+pH 8-9 (Strongly Alkaline): Iron, Zinc, Copper, Boron deficiency. Phosphorus fixed with calcium.
+pH > 9 (Sodic/Saline): Structural collapse of soil, plant growth severely inhibited.
+
+### 1.3 Crop Tolerance to pH
+
+Crop — Optimal pH Range:
+- Wheat: 6.0-7.5
+- Rice/Paddy: 5.5-7.0 (Paddy grows in flooded, anaerobic conditions)
+- Maize: 5.8-7.0
+- Cotton: 6.0-8.0
+- Sugarcane: 6.0-7.5
+- Tomato: 5.5-7.0
+- Potato: 5.0-6.0 (slightly acidic preferred)
+- Soybean: 6.0-7.0
+- Groundnut: 6.0-7.0
+
+---
+
+## CHAPTER 2: ACIDIC SOILS (pH < 6.0)
+
+### 2.1 Distribution
+Acidic soils cover approximately 49 million hectares in India, concentrated in:
+- North East India (Assam, Meghalaya, Arunachal Pradesh)
+- Eastern India (West Bengal, Jharkhand, Odisha)
+- Parts of Kerala, Tamil Nadu
+- Laterite soils of Western Ghats
+
+### 2.2 Causes of Soil Acidity
+1. High rainfall: leaches basic cations (Ca2+, Mg2+, K+, Na+) from topsoil
+2. Organic matter decomposition: releases organic acids
+3. Nitrification of ammoniacal fertilizers: produces H+ ions
+4. Mining and industrial activity
+5. Continuous use of acidifying fertilizers (Ammonium Sulfate)
+
+### 2.3 Problems in Acidic Soils
+- Aluminum toxicity: Al3+ solubilizes at pH < 5.5, inhibits root elongation, phosphorus uptake
+- Manganese toxicity: Mn2+ toxic at pH < 5.5
+- Phosphorus fixation: P fixed as AlPO4 and FePO4
+- Low calcium, magnesium availability
+- Reduced microbial activity (nitrogen-fixing bacteria need pH > 5.5)
+
+### 2.4 CORRECTION: Agricultural Lime Application
+
+Agricultural Lime (Calcium Carbonate, CaCO3) — Liming
+Reaction: CaCO3 + 2H+ → Ca2+ + H2O + CO2
+
+Liming neutralizes soil acidity by replacing H+ and Al3+ on exchange sites with Ca2+.
+
+**Dosage Guide (Agricultural Lime / CaCO3):**
+| Current pH | Target pH | Lime Dose (Sandy) | Lime Dose (Clay) |
+|-----------|-----------|-------------------|------------------|
+| 4.5 → 6.0 | 6.0 | 400-600 kg/acre | 700-1000 kg/acre |
+| 5.0 → 6.0 | 6.0 | 250-400 kg/acre | 500-700 kg/acre |
+| 5.5 → 6.5 | 6.5 | 200-300 kg/acre | 400-600 kg/acre |
+
+Standard General Recommendation: 250-300 kg Agricultural Lime per acre (617-741 kg/ha) for soils at pH 5.0-5.5.
+
+**Application Method:**
+1. Apply lime 3-4 weeks BEFORE sowing
+2. Broadcast evenly across the field
+3. Incorporate into soil by ploughing to 15 cm depth
+4. Allow reaction time before seeding (lime takes 2-4 weeks to fully react)
+5. Re-test soil after 6 months to evaluate pH change
+
+**Expected pH change:** 0.5-1.0 pH units per application of 200-300 kg lime/acre
+
+### 2.5 Quick-acting Alternatives
+- Burnt lime (Calcium Oxide, CaO): 56% Ca, faster acting, use at 50% the rate of CaCO3
+- Dolomitic lime (CaCO3 + MgCO3): preferred when Mg deficiency also present
+- Fly ash: 250-500 kg/acre — has liming value due to calcium content (use with soil test)
+
+---
+
+## CHAPTER 3: ALKALINE SOILS (pH > 7.5)
+
+### 3.1 Types of Problem Soils
+a) Calcareous Soils (pH 7.5-8.5): High free lime (CaCO3) content. Common in arid/semi-arid regions.
+b) Sodic/Usar Soils (pH 8.5-10+): High exchangeable sodium percentage (ESP > 15%). Black alkali soils. Common in Uttar Pradesh, Haryana, Punjab, Rajasthan.
+
+### 3.2 Problems in Alkaline/Sodic Soils
+- Iron (Fe), Zinc (Zn), Manganese (Mn) deficiency (precipitate at high pH)
+- Phosphorus fixation with calcium
+- Sodium-induced clay dispersion → poor soil structure, surface crusting
+- Compaction and waterlogging
+- High osmotic stress on plants
+
+### 3.3 CORRECTION: Gypsum Application
+
+Gypsum (Calcium Sulfate, CaSO4·2H2O) — Primary Reclamation Amendment for Sodic Soils
+Reaction: 2NaX + CaSO4 → CaX2 + Na2SO4
+(X = soil exchange site)
+
+Sodium is replaced by calcium on exchange sites. Na2SO4 is soluble and can be leached out.
+
+**Gypsum Dosage:**
+| ESP Level | Gypsum Dose |
+|-----------|------------|
+| Low sodicity (ESP 15-25) | 300-500 kg/acre |
+| Medium sodicity (ESP 25-40) | 500-750 kg/acre |
+| High sodicity (ESP > 40) | 750-1000 kg/acre |
+
+Standard Recommendation: 500 kg Gypsum per acre (1235 kg/ha) for moderately sodic soils.
+
+**Application Method:**
+1. Broadcast gypsum across field
+2. Incorporate to 15 cm depth
+3. Apply heavy irrigation (250-300 mm) to flush displaced sodium below root zone
+4. Allow 30 days before seeding
+5. Re-test after 1 season
+
+### 3.4 Additional Amendments for Alkaline Soils
+- Elemental Sulfur (S): Oxidizes to H2SO4, reducing pH. Use 200-400 kg/acre. Slow acting (3-6 months).
+- Iron Sulfate (FeSO4): Rapid pH reduction, provides iron. 10-15 kg/acre.
+- Organic manures: FYM at 5-10 tonnes/ha improves structure and provides chelated micronutrients.
+- Pyrite (FeS2): 250-500 kg/acre. Slow-acting but effective.
+
+### 3.5 Micronutrient Management in Alkaline Soils
+Iron deficiency (Lime-induced Chlorosis):
+- Symptoms: Yellowing between veins (interveinal chlorosis) on young leaves — opposite to N deficiency which starts from old leaves
+- Correction: FeSO4 spray (1%) on leaves OR soil application of chelated EDTA-Fe at 5-10 kg/ha
+
+Zinc deficiency:
+- Common in flooded rice, maize, cotton in alkaline soils
+- Symptoms: Bronze discoloration in rice, white bud in maize
+- Correction: ZnSO4 at 25 kg/ha soil application OR 0.5% spray
+
+---
+
+## CHAPTER 4: SOIL ORGANIC CARBON (SOC)
+
+### 4.1 Importance
+- Soil Organic Carbon (SOC) improves soil structure, water retention, and nutrient-holding capacity
+- India's average SOC is critically low: 0.4-0.5% (target >0.5%)
+- SOC decline due to: reduced organic inputs, intensive tillage, burning of residues
+
+### 4.2 Building SOC
+- Farmyard Manure (FYM): 5-10 tonnes/ha annually
+- Compost: 2-5 tonnes/ha (enriched with Trichoderma for disease suppression)
+- Green manure crops: Dhaincha (Sesbania), Sunn hemp — incorporate at flowering
+- Crop residue retention: Avoid burning; incorporate rice/wheat straw
+- Vermicompost: 2-4 tonnes/ha
+
+---
+
+Source: ICAR-Indian Institute of Soil Science, Bhopal — Soil Testing and Amendment Manual, 2022
