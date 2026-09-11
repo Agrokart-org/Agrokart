@@ -201,10 +201,10 @@ class AgroKartRAG:
         # Render Free has only 512 MB RAM.
         # Avoid loading PyTorch/SentenceTransformer at API runtime.
         if os.getenv("DISABLE_LOCAL_EMBEDDINGS", "").lower() == "true":
-       	 self.embeddings = None
-       	 self.embeddings_model_name = "disabled (BM25 runtime mode)"
-       	 logger.info("✓ Local embeddings disabled — using BM25 runtime mode")
-       	 return
+            self.embeddings = None
+            self.embeddings_model_name = "disabled (BM25 runtime mode)"
+            logger.info("✓ Local embeddings disabled — using BM25 runtime mode")
+            return
         openai_key = os.getenv("OPENAI_API_KEY", "")
         if openai_key and not openai_key.startswith("sk-your") and len(openai_key) > 20:
             try:
@@ -241,6 +241,33 @@ class AgroKartRAG:
     def _init_vector_store(self):
         """Load Chroma vector store from disk."""
         if not self.embeddings:
+            # Lightweight BM25-only mode: Read documents & metadata directly from Chroma's SQLite without PyTorch/MiniLM
+            if os.path.exists(self.chroma_dir):
+                try:
+                    import chromadb
+                    client = chromadb.PersistentClient(path=self.chroma_dir)
+                    collections = client.list_collections()
+                    target_col = None
+                    for col in collections:
+                        if col.name == "langchain":
+                            target_col = col
+                            break
+                    if not target_col and collections:
+                        target_col = collections[0]
+
+                    if target_col:
+                        data = target_col.get(include=["documents", "metadatas"])
+                        from langchain_core.documents import Document
+                        self.all_documents = [
+                            Document(page_content=doc, metadata=meta or {})
+                            for doc, meta in zip(data.get("documents", []), data.get("metadatas", []))
+                            if doc
+                        ]
+                        logger.info(f"✓ Chroma SQLite loaded without PyTorch: {len(self.all_documents)} chunks available for BM25")
+                    else:
+                        logger.warning("No collection found in Chroma persistent store")
+                except Exception as e:
+                    logger.warning(f"Could not read Chroma SQLite directly: {e}")
             return
         try:
             from langchain_community.vectorstores import Chroma
@@ -632,11 +659,12 @@ User question:
         """Return engine status and stats."""
         return {
             "status": "healthy",
-            "vector_store_loaded": self.vector_store is not None,
+            "vector_store_loaded": self.vector_store is not None or len(self.all_documents) > 0,
             "total_documents": len(self.all_documents),
             "embeddings_model": self.embeddings_model_name,
             "llm_provider": self.llm_provider,
             "llm_active": self.llm is not None,
+            "bm25_active": len(self.all_documents) > 0,
         }
 
     # ─── Public ask method ──────────────────────────────────────────────────────

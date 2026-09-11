@@ -77,13 +77,20 @@ const ProductList = () => {
       setLoading(true);
       setError(null);
       const productsData = await getProducts();
-      // Filter to show only fertilizer products on home page
-      const fertilizerProducts = productsData.filter(
-        (product) =>
-          product.category.includes("Fertilizers") ||
-          product.category === "Fertilizers",
-      );
-      setProducts(fertilizerProducts);
+      const list = Array.isArray(productsData) ? productsData : [];
+      // Filter to show fertilizer products on home page, or all products if none matched
+      const fertilizerProducts = list.filter((product) => {
+        const cat = (product.category || "").toLowerCase();
+        return (
+          cat.includes("fertilizer") ||
+          cat === "urea" ||
+          cat === "dap" ||
+          cat === "npk" ||
+          cat === "micronutrients" ||
+          cat === "organic"
+        );
+      });
+      setProducts(fertilizerProducts.length > 0 ? fertilizerProducts : list);
     } catch (err) {
       console.error("Error fetching products:", err);
       setError("Failed to fetch products");

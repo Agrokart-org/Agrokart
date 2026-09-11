@@ -22,7 +22,9 @@ class ProductsService {
       // Use the API helper method directly which handles the fetch logic
       const productsData = await api.getProducts({ limit: 1000 });
 
-      this.products = productsData || [];
+      this.products = Array.isArray(productsData)
+        ? productsData
+        : (productsData?.products || productsData?.data?.products || productsData?.data || []);
       this.processProducts();
 
       this.initialized = true;
@@ -33,11 +35,15 @@ class ProductsService {
       );
     } catch (error) {
       console.error("Failed to initialize products service:", error);
-      // Fallback to empty or handled in UI
+      this.products = [];
     }
   }
 
   processProducts() {
+    if (!Array.isArray(this.products)) {
+      this.products = [];
+      return;
+    }
     // Add category icons and colors
     this.categoryConfig = {
       Fertilizers: {
@@ -85,14 +91,17 @@ class ProductsService {
         this.categoryConfig[product.category] ||
         this.categoryConfig["Fertilizers"],
       // Generate product slug for URLs
-      slug: this.generateSlug(product.name),
+      slug: this.generateSlug(product.name || ""),
       // Add discount percentage if applicable
       discountPercentage: this.calculateDiscount(
         product.price,
         product.original_price,
       ),
       // Ensure image URL is valid
-      imageUrl: this.validateImageUrl(product.image_url, product),
+      imageUrl: this.validateImageUrl(
+        product.images?.[0] || product.image || product.imageUrl || product.image_url || product.productImage,
+        product,
+      ),
       // Add search keywords
       searchKeywords: this.generateSearchKeywords(product),
     }));
@@ -118,15 +127,16 @@ class ProductsService {
   }
 
   validateImageUrl(imageUrl, product) {
-    // Use imageService to get appropriate image
+    // If real image exists, return api.getProductImageUrl
+    const realImg = api.getProductImageUrl(imageUrl || product);
     if (
-      !imageUrl ||
-      imageUrl.includes("example.com") ||
-      imageUrl.includes("placeholder")
+      realImg &&
+      !realImg.includes("placeholder") &&
+      !realImg.includes("example.com")
     ) {
-      return imageService.getProductImage(product);
+      return realImg;
     }
-    return imageUrl;
+    return imageService.getProductImage(product);
   }
 
   generateSlug(name) {

@@ -4,6 +4,8 @@ import { Paper, Box, Typography, Chip, Divider, Button, Avatar } from "@mui/mate
 import { motion } from "framer-motion";
 import { ChevronRight as ChevronRightIcon, Inventory2 as PackageIcon } from "@mui/icons-material";
 
+import { getProductImageUrl } from "../services/api";
+
 const OrderCard = ({ order }) => {
   const navigate = useNavigate();
 
@@ -37,7 +39,7 @@ const OrderCard = ({ order }) => {
     name: isApiData ? item.product?.name || item.name || "Product" : item.name,
     quantity: item.quantity,
     price: item.price,
-    image: isApiData ? item.product?.imageUrl || item.product?.image || "/images/placeholder.jpg" : item.image || "/images/placeholder.jpg"
+    image: getProductImageUrl(item.product || item) || "/images/placeholder.jpg"
   }));
 
   const totalAmount = isApiData ? `₹${order.totalAmount}` : order.total;

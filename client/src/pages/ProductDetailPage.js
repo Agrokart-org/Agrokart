@@ -44,7 +44,7 @@ import {
   Home as HomeIcon,
 } from "@mui/icons-material";
 import { useCart } from "../context/CartContext";
-import { getProduct } from "../services/api";
+import { getProduct, getProductImageUrl } from "../services/api";
 import { mockProducts } from "../data/mockProducts";
 import { motion, AnimatePresence } from "framer-motion";
 import { alpha } from "@mui/material/styles";
@@ -244,14 +244,17 @@ const ProductDetailPage = () => {
   }
 
   const resolveImage = (img) => {
-    if (img && img.startsWith("http")) return img;
+    const formatted = getProductImageUrl(img);
+    if (formatted && !formatted.includes("placeholder") && !formatted.includes("example.com")) {
+      return formatted;
+    }
     return getProductImage(product.name, product.category, img);
   };
 
   const images =
     product.images && product.images.length > 0
       ? product.images.map(resolveImage)
-      : [getProductImage(product.name, product.category, product.image)];
+      : [getProductImageUrl(product) || getProductImage(product.name, product.category, product.image)];
 
   return (
     <Box sx={{ bgcolor: "#f8fafc", minHeight: "100vh", py: 4 }}>

@@ -36,6 +36,7 @@ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { mockProducts } from "../data/mockProducts";
+import api, { getProductImageUrl } from "../services/api";
 
 const FilterContent = ({
   categories,
@@ -92,7 +93,8 @@ const ProductsPage = () => {
   const { addToCart } = useCart();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState([]);
   const [sortBy, setSortBy] = useState("name");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -108,8 +110,25 @@ const ProductsPage = () => {
   ];
 
   useEffect(() => {
+    const fetchCatalog = async () => {
+      try {
+        setLoading(true);
+        const data = await api.getProducts({ limit: 100 });
+        const list = Array.isArray(data) ? data : (data?.products || mockProducts);
+        setProducts(list);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setProducts(mockProducts);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCatalog();
+  }, []);
+
+  useEffect(() => {
     const cat = searchParams.get("category");
-    if (cat && categories.includes(cat)) {
+    if (cat) {
       setCategoryFilter([cat]);
     }
   }, [location.search]);
@@ -129,21 +148,37 @@ const ProductsPage = () => {
     setSortBy("name");
   };
 
-  const filteredProducts = products.filter((p) => {
-    if (categoryFilter.length > 0 && !categoryFilter.includes(p.category)) {
-      return false;
+  const filteredProducts = (Array.isArray(products) ? products : []).filter((p) => {
+    if (categoryFilter.length > 0) {
+      const pCat = (p.category || "").toLowerCase();
+      const matchesAny = categoryFilter.some((f) => {
+        const catLow = f.toLowerCase();
+        return (
+          pCat === catLow ||
+          pCat.includes(catLow) ||
+          catLow.includes(pCat) ||
+          (catLow === "fertilizers" && (pCat.includes("fertilizer") || pCat === "urea" || pCat === "dap" || pCat === "npk" || pCat === "micronutrients"))
+        );
+      });
+      if (!matchesAny) return false;
     }
     const search = searchParams.get("search");
     if (search) {
       const q = search.toLowerCase();
-      return p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+      return (
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.category && p.category.toLowerCase().includes(q)) ||
+        (p.brand && p.brand.toLowerCase().includes(q))
+      );
     }
     return true;
   }).sort((a, b) => {
-    if (sortBy === "price-low") return a.price - b.price;
-    if (sortBy === "price-high") return b.price - a.price;
+    const priceA = typeof a.price === "number" ? a.price : parseFloat(String(a.price || 0).replace(/[₹,]/g, ""));
+    const priceB = typeof b.price === "number" ? b.price : parseFloat(String(b.price || 0).replace(/[₹,]/g, ""));
+    if (sortBy === "price-low") return priceA - priceB;
+    if (sortBy === "price-high") return priceB - priceA;
     if (sortBy === "rating") return (b.averageRating || 0) - (a.averageRating || 0);
-    return a.name.localeCompare(b.name);
+    return (a.name || "").localeCompare(b.name || "");
   });
 
   return (
@@ -202,7 +237,7 @@ const ProductsPage = () => {
           {filteredProducts.length === 0 ? (
             <Paper sx={{ p: 6, textAlign: "center", borderRadius: "8px", bgcolor: "white", border: "1px solid #E5E7EB" }}>
               <Typography variant="h6" color="text.secondary">No products found matching your filter.</Typography>
-              <Button onClick={clearFilters} sx={{ mt: 2 }} variant="contained" sx={{ bgcolor: "#1B5E20" }}>Clear Filters</Button>
+              <Button onClick={clearFilters} variant="contained" sx={{ mt: 2, bgcolor: "#1B5E20" }}>Clear Filters</Button>
             </Paper>
           ) : (
             <Grid container spacing={2}>
@@ -223,8 +258,12 @@ const ProductsPage = () => {
                       <Box sx={{ position: "relative", pt: "75%", bgcolor: "#FFFFFF", overflow: "hidden", borderBottom: "1px solid #F3F4F6" }}>
                         <CardMedia
                           component="img"
-                          image={product.images?.[0] || product.image || "/api/placeholder/400/300"}
+                          image={getProductImageUrl(product) || "/api/placeholder/400/300"}
                           alt={product.name}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/images/products/organic-fertilizer.jpg";
+                          }}
                           sx={{
                             position: "absolute",
                             top: 0, left: 0,

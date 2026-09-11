@@ -69,10 +69,11 @@ const PaymentPage = () => {
   const [onlineSubMethod, setOnlineSubMethod] = useState("upi");
   const [couponApplied, setCouponApplied] = useState(false);
 
-  const subtotal = getCartTotal();
-  const deliveryFee = subtotal > 5000 ? 0 : 200;
+  const subtotal = Number(getCartTotal()) || 0;
+  const deliveryFee = 0; // FREE Delivery as displayed in Cart
+  const platformFee = 10; // Platform fee ₹10
   const discount = couponApplied ? 50 : 0;
-  const total = subtotal + deliveryFee - discount;
+  const total = Math.max(0, subtotal + deliveryFee + platformFee - discount);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -412,9 +413,13 @@ const PaymentPage = () => {
               </Box>
               <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Typography variant="body2" color="text.secondary">Delivery Fee</Typography>
-                <Typography variant="body2" fontWeight="600" color={deliveryFee === 0 ? "#2E7D32" : "inherit"}>
-                  {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
+                <Typography variant="body2" fontWeight="600" color="success.main">
+                  FREE
                 </Typography>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Typography variant="body2" color="text.secondary">Platform Fee</Typography>
+                <Typography variant="body2" fontWeight="600">₹{platformFee}</Typography>
               </Box>
               {couponApplied && (
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>

@@ -180,7 +180,8 @@ const API_BASE = getApiBase();
     const checkHealth = async () => {
       try {
         const res = await axios.get(`${API_BASE}/dr-agro/health`, { timeout: 4000 });
-        if (res.data?.status === "OK" || res.data?.status === "UP") setRagStatus("ready");
+        const s = (res.data?.status || "").toUpperCase();
+        if (s === "OK" || s === "UP" || s === "HEALTHY") setRagStatus("ready");
         else setRagStatus("offline");
       } catch {
         setRagStatus("offline");

@@ -80,10 +80,9 @@ const MobileProductsPage = () => {
     const loadProducts = async () => {
       try {
         const allProducts = await productsService.fetchProducts();
-        setProducts(allProducts);
+        setProducts(Array.isArray(allProducts) ? allProducts : []);
       } catch (error) {
         console.error("Error loading products:", error);
-        // Clean fallback
         setProducts([]);
       }
     };
@@ -95,7 +94,7 @@ const MobileProductsPage = () => {
   }, [filters, sortBy, products]);
 
   const applyFilters = () => {
-    let filtered = [...products];
+    let filtered = Array.isArray(products) ? [...products] : [];
     console.log("applyFilters - Initial products count:", filtered.length);
     console.log("applyFilters - Current filters:", filters);
 
@@ -103,19 +102,23 @@ const MobileProductsPage = () => {
       const q = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(
         (product) =>
-          product.name.toLowerCase().includes(q) ||
-          (product.category && product.category.toLowerCase().includes(q)),
+          (product.name && product.name.toLowerCase().includes(q)) ||
+          (product.category && product.category.toLowerCase().includes(q)) ||
+          (product.brand && product.brand.toLowerCase().includes(q)),
       );
     }
 
-    if (filters.category) {
+    if (filters.category && filters.category.toLowerCase() !== "all") {
+      const targetCat = filters.category.toLowerCase();
       filtered = filtered.filter((product) => {
-        const match =
-          product.category &&
-          product.category
-            .toLowerCase()
-            .includes(filters.category.toLowerCase());
-        return match;
+        if (!product.category) return false;
+        const pCat = product.category.toLowerCase();
+        return (
+          pCat === targetCat ||
+          pCat.includes(targetCat) ||
+          targetCat.includes(pCat) ||
+          (targetCat === "fertilizers" && (pCat.includes("fertilizer") || pCat === "urea" || pCat === "dap" || pCat === "npk" || pCat === "micronutrients"))
+        );
       });
       console.log(
         "applyFilters - Count after category filter:",

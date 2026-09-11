@@ -2,6 +2,69 @@ const axios = require("axios");
 
 const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://localhost:8000";
 
+const Product = require("../models/Product");
+
+async function resolveRealProducts(fert) {
+  if (!fert) return [];
+  const items = [];
+  if (fert.urea_kg_ha > 0) items.push({ type: "urea", name: "Urea", qty: fert.urea_kg_ha });
+  if (fert.dap_kg_ha > 0) items.push({ type: "dap", name: "DAP", qty: fert.dap_kg_ha });
+  if (fert.mop_kg_ha > 0) items.push({ type: "mop", name: "MOP", qty: fert.mop_kg_ha });
+
+  const resolved = [];
+  for (const item of items) {
+    let product = null;
+    try {
+      if (item.type === "urea") {
+        product = await Product.findOne({
+          $or: [
+            { name: /neem coated urea/i },
+            { name: /urea/i },
+            { category: /urea/i }
+          ]
+        }).lean();
+      } else if (item.type === "dap") {
+        product = await Product.findOne({
+          $or: [
+            { name: /dap/i },
+            { name: /npk/i },
+            { category: /npk/i }
+          ]
+        }).lean();
+      } else if (item.type === "mop") {
+        product = await Product.findOne({
+          $or: [
+            { name: /potash/i },
+            { name: /mop/i },
+            { name: /npk/i },
+            { category: /npk/i }
+          ]
+        }).lean();
+      }
+    } catch (err) {
+      console.warn("Could not query Product collection for recommendation:", err.message);
+    }
+
+    if (product) {
+      resolved.push({
+        _id: product._id,
+        id: product._id,
+        name: product.name,
+        brand: product.brand,
+        price: product.price,
+        image: product.image || product.images?.[0] || null,
+        images: product.images || (product.image ? [product.image] : []),
+        category: product.category,
+        stock: product.stock,
+        inStock: product.stock > 0,
+        recommendedQty: item.qty,
+        recType: item.type,
+      });
+    }
+  }
+  return resolved;
+}
+
 /**
  * Controller for Dr. Agro — Soil Report Analysis
  */
@@ -27,6 +90,10 @@ exports.analyzeReport = async (req, res) => {
     const contextData = { region, season, soil_type, conditions };
     const result = await recommendationEngine.processReport(imageBuffer, crop || "wheat", language || "en", contextData);
     if (!result.success) return res.status(200).json(result);
+
+    const realProducts = await resolveRealProducts(result.data?.fertilizerConversion);
+    result.data.recommendedProducts = realProducts;
+
     res.json({ success: true, data: result.data });
   } catch (error) {
     console.error("Dr.Agro Report Error:", error);
@@ -42,6 +109,11 @@ exports.analyzeManual = async (req, res) => {
     const recommendationEngine = require("../services/RecommendationEngine");
     const { crop, language, ...soilData } = req.body;
     const result = await recommendationEngine.processManualData(soilData, crop || "wheat", language || "en");
+    if (!result.success) return res.status(200).json(result);
+
+    const realProducts = await resolveRealProducts(result.data?.fertilizerConversion);
+    result.data.recommendedProducts = realProducts;
+
     res.json({ success: true, data: result.data });
   } catch (error) {
     console.error("Dr.Agro Manual Error:", error);

@@ -239,9 +239,41 @@ export const deliveryLogin = async (credentials) => {
   }
 };
 
+export const extractProductsArray = (data) => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.products)) return data.products;
+  if (Array.isArray(data.data)) return data.data;
+  if (data.data && Array.isArray(data.data.products)) return data.data.products;
+  if (data.data && Array.isArray(data.data.items)) return data.data.items;
+  return [];
+};
+
+export const getProductImageUrl = (product) => {
+  if (!product) return "/images/placeholder-product.png";
+  const rawUrl =
+    (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) ||
+    product.image ||
+    product.imageUrl ||
+    product.image_url ||
+    product.productImage ||
+    "";
+
+  if (!rawUrl || typeof rawUrl !== "string") {
+    return "/images/placeholder-product.png";
+  }
+  if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+    return rawUrl;
+  }
+  if (rawUrl.startsWith("/uploads/")) {
+    const apiHost = process.env.REACT_APP_API_URL || "";
+    return `${apiHost}${rawUrl}`;
+  }
+  return rawUrl;
+};
+
 export const getProducts = async (params = {}) => {
   try {
-    // Build query string from parameters
     const queryParams = new URLSearchParams();
 
     if (params.category) queryParams.append("category", params.category);
@@ -256,30 +288,17 @@ export const getProducts = async (params = {}) => {
     const queryString = queryParams.toString();
     const url = `${API_BASE_URL}/products${queryString ? `?${queryString}` : ""}`;
 
-    // Try to check backend availability with a shorter timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-    const healthResponse = await safeFetch(`${API_BASE_URL}/health`, {
-      method: "GET",
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (healthResponse.ok) {
-      const response = await safeFetch(url);
-      if (response.ok) {
-        const data = await response.json();
-        console.log(
-          "Products loaded from backend:",
-          data.products?.length || data.length,
-        );
-        return data.products || data; // Handle both paginated and simple responses
+    const response = await safeFetch(url);
+    if (response.ok) {
+      const data = await response.json();
+      const products = extractProductsArray(data);
+      console.log("Products loaded from backend:", products.length);
+      if (Array.isArray(products) && products.length > 0) {
+        return products;
       }
     }
   } catch (error) {
-    console.log("Backend not available, using mock data:", error.message);
+    console.warn("Backend products fetch failed, using fallback:", error.message);
   }
 
   // Filter mock data based on parameters
@@ -699,11 +718,22 @@ export const getProductsByCategory = async (category, params = {}) => {
     const response = await safeFetch(url);
     if (response.ok) {
       const data = await response.json();
+      const products = extractProductsArray(data);
       console.log(
         `Products for category ${category} loaded from backend:`,
-        data.products.length,
+        products.length,
       );
-      return data;
+      return {
+        category,
+        products,
+        pagination: data.data?.pagination || data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalProducts: products.length,
+          hasNext: false,
+          hasPrev: false,
+        }
+      };
     }
   } catch (error) {
     console.log("Backend not available, using mock data:", error.message);
@@ -735,8 +765,9 @@ export const getFeaturedProducts = async (limit = 10) => {
     );
     if (response.ok) {
       const data = await response.json();
-      console.log("Featured products loaded from backend:", data.length);
-      return data;
+      const products = extractProductsArray(data);
+      console.log("Featured products loaded from backend:", products.length);
+      return products;
     }
   } catch (error) {
     console.log(
@@ -756,22 +787,21 @@ export const getFeaturedProducts = async (limit = 10) => {
 export const searchProducts = async (query, params = {}) => {
   try {
     const queryParams = new URLSearchParams();
+    queryParams.append("q", query);
     queryParams.append("search", query);
 
     if (params.category) queryParams.append("category", params.category);
     if (params.page) queryParams.append("page", params.page);
     if (params.limit) queryParams.append("limit", params.limit);
 
-    const url = `${API_BASE_URL}/products?${queryParams.toString()}`;
+    const url = `${API_BASE_URL}/products/search?${queryParams.toString()}`;
 
     const response = await safeFetch(url);
     if (response.ok) {
       const data = await response.json();
-      console.log(
-        "Search results from backend:",
-        data.products?.length || data.length,
-      );
-      return data.products || data;
+      const products = extractProductsArray(data);
+      console.log("Search results from backend:", products.length);
+      return products;
     }
   } catch (error) {
     console.log("Backend not available, using mock search:", error.message);

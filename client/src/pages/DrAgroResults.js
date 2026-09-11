@@ -23,6 +23,7 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import CalculateIcon from "@mui/icons-material/Calculate";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import { useCart } from "../context/CartContext";
+import { getProductImageUrl } from "../services/api";
 
 const flexRowSpaceBetween = {
   display: "flex",
@@ -77,22 +78,41 @@ const DrAgroResults = () => {
   const app = data.applicability;
   const ev = data.evidence;
   const ai = data.aiExplanation;
+  const recommendedProducts = Array.isArray(data.recommendedProducts) ? data.recommendedProducts : [];
 
   // Add converted fertilizers to shopping cart
   const handleAddFertilizersToCart = () => {
+    if (recommendedProducts.length > 0) {
+      recommendedProducts.forEach((p) => {
+        addToCart({
+          _id: p._id || p.id,
+          id: p._id || p.id,
+          name: p.name,
+          brand: p.brand || "AgroKart",
+          price: p.price,
+          category: p.category || "Fertilizers",
+          image: p.image,
+          images: p.images || (p.image ? [p.image] : []),
+          description: `Recommended target dosage: ${p.recommendedQty} kg/ha`,
+          inStock: true,
+        }, 1);
+      });
+      return;
+    }
+
     if (!fert) return;
     const items = [
-      { id: "dap", name: "Di-Ammonium Phosphate (DAP)", qty: fert.dap_kg_ha },
-      { id: "urea", name: "Urea (46% N)", qty: fert.urea_kg_ha },
-      { id: "mop", name: "Muriate of Potash (MOP)", qty: fert.mop_kg_ha },
+      { id: "dap", name: "Di-Ammonium Phosphate (DAP)", qty: fert.dap_kg_ha, price: 1350 },
+      { id: "urea", name: "Neem Coated Urea (46% N)", qty: fert.urea_kg_ha, price: 270 },
+      { id: "mop", name: "Muriate of Potash (MOP)", qty: fert.mop_kg_ha, price: 1200 },
     ];
     items.forEach((item) => {
       if (item.qty > 0) {
         addToCart({
           _id: `fert-${item.id}`,
           name: item.name,
-          price: 450,
-          category: "fertilizer",
+          price: item.price,
+          category: "Fertilizers",
           description: `Calculated target quantity: ${item.qty} kg/ha`,
           inStock: true,
         }, 1);
@@ -291,18 +311,47 @@ const DrAgroResults = () => {
                 </Typography>
 
                 <Stack spacing={1.5} mb={3}>
-                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #DDD6FE", bgcolor: "#FFFFFF", ...flexRowSpaceBetween }}>
-                    <Typography variant="body2" fontWeight="700" color="#3B0764">Di-Ammonium Phosphate (DAP)</Typography>
-                    <Typography variant="h6" fontWeight="800" color="#6B21A8">{fert?.dap_kg_ha || 0} kg/ha</Typography>
-                  </Paper>
-                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #DDD6FE", bgcolor: "#FFFFFF", ...flexRowSpaceBetween }}>
-                    <Typography variant="body2" fontWeight="700" color="#3B0764">Urea (46% N)</Typography>
-                    <Typography variant="h6" fontWeight="800" color="#6B21A8">{fert?.urea_kg_ha || 0} kg/ha</Typography>
-                  </Paper>
-                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #DDD6FE", bgcolor: "#FFFFFF", ...flexRowSpaceBetween }}>
-                    <Typography variant="body2" fontWeight="700" color="#3B0764">Muriate of Potash (MOP)</Typography>
-                    <Typography variant="h6" fontWeight="800" color="#6B21A8">{fert?.mop_kg_ha || 0} kg/ha</Typography>
-                  </Paper>
+                  {recommendedProducts.length > 0 ? (
+                    recommendedProducts.map((p) => {
+                      const imgUrl = getProductImageUrl(p);
+                      return (
+                        <Paper key={p._id || p.id} elevation={0} sx={{ p: 1.5, borderRadius: 2, border: "1px solid #DDD6FE", bgcolor: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                            {imgUrl ? (
+                              <img
+                                src={imgUrl}
+                                alt={p.name}
+                                style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 6, border: "1px solid #E5E7EB" }}
+                                onError={(e) => { e.target.style.display = "none"; }}
+                              />
+                            ) : null}
+                            <Box>
+                              <Typography variant="body2" fontWeight="700" color="#3B0764">{p.name}</Typography>
+                              <Typography variant="caption" color="text.secondary">₹{p.price} • {p.brand || "AgroKart"}</Typography>
+                            </Box>
+                          </Box>
+                          <Typography variant="subtitle1" fontWeight="800" color="#6B21A8" sx={{ whiteSpace: "nowrap" }}>
+                            {p.recommendedQty} kg/ha
+                          </Typography>
+                        </Paper>
+                      );
+                    })
+                  ) : (
+                    <>
+                      <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #DDD6FE", bgcolor: "#FFFFFF", ...flexRowSpaceBetween }}>
+                        <Typography variant="body2" fontWeight="700" color="#3B0764">Di-Ammonium Phosphate (DAP)</Typography>
+                        <Typography variant="h6" fontWeight="800" color="#6B21A8">{fert?.dap_kg_ha || 0} kg/ha</Typography>
+                      </Paper>
+                      <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #DDD6FE", bgcolor: "#FFFFFF", ...flexRowSpaceBetween }}>
+                        <Typography variant="body2" fontWeight="700" color="#3B0764">Urea (46% N)</Typography>
+                        <Typography variant="h6" fontWeight="800" color="#6B21A8">{fert?.urea_kg_ha || 0} kg/ha</Typography>
+                      </Paper>
+                      <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #DDD6FE", bgcolor: "#FFFFFF", ...flexRowSpaceBetween }}>
+                        <Typography variant="body2" fontWeight="700" color="#3B0764">Muriate of Potash (MOP)</Typography>
+                        <Typography variant="h6" fontWeight="800" color="#6B21A8">{fert?.mop_kg_ha || 0} kg/ha</Typography>
+                      </Paper>
+                    </>
+                  )}
                 </Stack>
 
                 {/* Mandatory Mathematical Disclaimer Alert */}
