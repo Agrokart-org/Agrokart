@@ -198,6 +198,13 @@ class AgroKartRAG:
 
     def _init_embeddings(self):
         """Load best available embedding model."""
+        # Render Free has only 512 MB RAM.
+        # Avoid loading PyTorch/SentenceTransformer at API runtime.
+        if os.getenv("DISABLE_LOCAL_EMBEDDINGS", "").lower() == "true":
+       	 self.embeddings = None
+       	 self.embeddings_model_name = "disabled (BM25 runtime mode)"
+       	 logger.info("✓ Local embeddings disabled — using BM25 runtime mode")
+       	 return
         openai_key = os.getenv("OPENAI_API_KEY", "")
         if openai_key and not openai_key.startswith("sk-your") and len(openai_key) > 20:
             try:
