@@ -223,3 +223,15 @@ if __name__ == "__main__":
     doc_dir = sys.argv[1] if len(sys.argv) > 1 else "./data/agricultural_docs"
     success = ingest_documents(doc_dir=doc_dir)
     sys.exit(0 if success else 1)
+
+    # ── Release memory before structured extraction ────────────────────────────
+    import gc
+
+    del vector_store
+    del embeddings
+    del chunks
+    del all_docs
+    del splitter
+    gc.collect()
+
+    logger.info("  🧹 Released embedding/RAG memory before structured extraction")
