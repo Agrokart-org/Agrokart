@@ -583,14 +583,16 @@ const MobileProductsPage = () => {
                           fontWeight="900"
                           sx={{ color: "#1B5E20", fontSize: "1rem" }}
                         >
-                          ₹{product.price}
+                          {typeof product.price === "string" && product.price.startsWith("₹")
+                            ? product.price
+                            : `₹${product.price}`}
                         </Typography>
                         <Typography variant="caption" color="text.disabled">
                           /{product.unit || "kg"}
                         </Typography>
                       </Box>
 
-                      {product.originalPrice > product.price && (
+                      {product.originalPrice && product.originalPrice !== product.price && (
                         <Typography
                           variant="caption"
                           sx={{
@@ -600,7 +602,9 @@ const MobileProductsPage = () => {
                             display: "block",
                           }}
                         >
-                          ₹{product.originalPrice}
+                          {typeof product.originalPrice === "string" && product.originalPrice.startsWith("₹")
+                            ? product.originalPrice
+                            : `₹${product.originalPrice}`}
                         </Typography>
                       )}
 

@@ -328,11 +328,15 @@ const ProductsPage = () => {
                         <Box>
                           <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", mb: 1.2 }}>
                             <Typography variant="h6" fontWeight={800} sx={{ color: "#111827", fontSize: "1.05rem" }}>
-                              ₹{product.price}
+                              {typeof product.price === "string" && product.price.startsWith("₹")
+                                ? product.price
+                                : `₹${product.price}`}
                             </Typography>
-                            {product.originalPrice > product.price && (
+                            {product.originalPrice && product.originalPrice !== product.price && (
                               <Typography variant="caption" sx={{ textDecoration: "line-through", color: "#9CA3AF" }}>
-                                ₹{product.originalPrice}
+                                {typeof product.originalPrice === "string" && product.originalPrice.startsWith("₹")
+                                  ? product.originalPrice
+                                  : `₹${product.originalPrice}`}
                               </Typography>
                             )}
                           </Box>
