@@ -278,6 +278,8 @@ const ProductsPage = () => {
                           component="img"
                           image={getProductImageUrl(product) || "/api/placeholder/400/300"}
                           alt={product.name}
+                          loading="lazy"
+                          decoding="async"
                           onError={(e) => {
                             e.target.onerror = null;
                             e.target.src = "/images/products/organic-fertilizer.jpg";

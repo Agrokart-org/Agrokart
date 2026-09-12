@@ -88,6 +88,15 @@ const CustomerLayout = ({ children }) => {
     }
   };
 
+  // Hide general 5-tab BottomNavigation on checkout/payment funnel pages so it never overlaps checkout/payment CTA bars
+  const hideBottomNavRoutes = [
+    "/cart",
+    "/delivery-details",
+    "/payment",
+    "/order-confirmation",
+  ];
+  const shouldHideBottomNav = hideBottomNavRoutes.includes(routerLocation.pathname);
+
   return (
     <Box
       sx={{
@@ -334,7 +343,7 @@ const CustomerLayout = ({ children }) => {
           flexGrow: 1,
           minWidth: 0,
           pt: "72px", // Fixed height of AppBar
-          pb: { xs: "85px", md: 0 },
+          pb: { xs: shouldHideBottomNav ? 0 : "85px", md: 0 },
           bgcolor: "#F9FAFB",
           minHeight: "100vh",
           display: "flex",
@@ -346,8 +355,8 @@ const CustomerLayout = ({ children }) => {
         {!isMobile && <Footer />}
       </Box>
 
-      {/* Mobile Bottom Navigation (< 1024px) */}
-      {isMobile && (
+      {/* Mobile Bottom Navigation (< 1024px, hidden during checkout/cart funnel) */}
+      {isMobile && !shouldHideBottomNav && (
         <Paper
           sx={{
             position: "fixed",

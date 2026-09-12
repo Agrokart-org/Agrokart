@@ -459,6 +459,8 @@ const MobileProductsPage = () => {
                           product.image || product.images?.[0],
                         )}
                         alt={product.name}
+                        loading="lazy"
+                        decoding="async"
                         onError={(e) => {
                           e.target.style.display = "none";
                           e.target.nextSibling.style.display = "flex";

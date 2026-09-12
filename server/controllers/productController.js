@@ -5,21 +5,40 @@ const { getMarkup, getCustomerPrice } = require("../utils/pricing");
 
 const formatProduct = (doc) => ({ _id: doc.id, id: doc.id, ...doc.data() });
 
+let cachedProducts = null;
+let lastCacheTime = 0;
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+const invalidateProductCache = () => {
+  cachedProducts = null;
+  lastCacheTime = 0;
+};
+
 /**
- * Helper to fetch active products: tries Firestore first, falls back to MongoDB Product model
+ * Helper to fetch active products: tries Firestore first, falls back to MongoDB Product model.
+ * Caches in memory for 60s to eliminate high-latency remote database round-trips.
  */
-const fetchActiveProducts = async () => {
+const fetchActiveProducts = async (forceRefresh = false) => {
+  const now = Date.now();
+  if (!forceRefresh && cachedProducts && (now - lastCacheTime < CACHE_TTL_MS)) {
+    return cachedProducts;
+  }
+
   try {
     let snapshot = await db.collection("products").where("isActive", "==", true).get();
-    return snapshot.docs.map(formatProduct);
+    cachedProducts = snapshot.docs.map(formatProduct);
+    lastCacheTime = Date.now();
+    return cachedProducts;
   } catch (firebaseErr) {
     console.warn("⚠️ Firestore unavailable, falling back to MongoDB Product collection:", firebaseErr.message);
     const mongoDocs = await Product.find({ isActive: true }).lean();
-    return mongoDocs.map((p) => ({
+    cachedProducts = mongoDocs.map((p) => ({
       _id: p._id.toString(),
       id: p._id.toString(),
       ...p,
     }));
+    lastCacheTime = Date.now();
+    return cachedProducts;
   }
 };
 
@@ -319,6 +338,7 @@ const addProduct = async (req, res, next) => {
     };
 
     const docRef = await db.collection('products').add(productData);
+    invalidateProductCache();
     const doc = await docRef.get();
     res.status(201).json({ success: true, message: 'Product created', data: formatProduct(doc) });
   } catch (err) {
@@ -330,6 +350,7 @@ const addProduct = async (req, res, next) => {
 const updateProduct = async (req, res, next) => {
   try {
     await db.collection("products").doc(req.params.id).update(req.body);
+    invalidateProductCache();
     const doc = await db.collection("products").doc(req.params.id).get();
     res.json({ success: true, message: "Product updated", data: formatProduct(doc) });
   } catch (err) {
@@ -340,6 +361,7 @@ const updateProduct = async (req, res, next) => {
 const deleteProduct = async (req, res, next) => {
   try {
     await db.collection("products").doc(req.params.id).delete();
+    invalidateProductCache();
     res.json({ success: true, message: "Product deleted", data: {} });
   } catch (err) {
     next(err);

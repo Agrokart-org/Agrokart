@@ -359,7 +359,7 @@ const PaymentPage = () => {
       sx={{
         bgcolor: "#F5F7F5",
         minHeight: "100vh",
-        pb: { xs: "220px", md: "150px" },
+        pb: "calc(120px + env(safe-area-inset-bottom, 0px))",
         display: "flex",
         flexDirection: "column",
       }}
@@ -605,11 +605,11 @@ const PaymentPage = () => {
           left: 0,
           right: 0,
           p: 2,
-          pb: { xs: 12, md: 2 },
+          pb: "calc(16px + env(safe-area-inset-bottom, 0px))",
           bgcolor: "white",
           borderTop: "1px solid #E0E0E0",
-          boxShadow: "0 -8px 24px rgba(0,0,0,0.1)",
-          zIndex: 100,
+          boxShadow: "0 -8px 24px rgba(0,0,0,0.12)",
+          zIndex: 1100,
         }}
       >
         <Container maxWidth="md" sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: 0 }}>

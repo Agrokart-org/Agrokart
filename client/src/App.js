@@ -161,10 +161,9 @@ const AppContent = () => {
     return <Navigate to="/customer/dashboard" replace />;
   }
 
-  // For new/unauthenticated users, show role selection on normal entry points,
-  // but not when they explicitly navigate to a login/register route.
-  if (!shouldBypassRoleGate && showRoleSelection && !isAuthenticated) {
-    // Mobile First: Redirect to Customer Login directly on mobile
+  // Only gate root "/" or explicit "/role-selection" for unauthenticated visitors,
+  // allowing direct access to public product catalog, cart, and auth routes.
+  if ((location.pathname === "/" || location.pathname === "/role-selection") && showRoleSelection && !isAuthenticated) {
     if (isMobile && location.pathname === "/") {
       return <Navigate to="/login" replace />;
     }
@@ -183,24 +182,36 @@ const AppContent = () => {
 };
 
 function App() {
-  const [showSplash, setShowSplash] = useState(true);
-  const [appReady, setAppReady] = useState(false);
+  // Only show splash screen on native mobile platforms (iOS/Android app), never delay web browser loads
+  const isNativeApp =
+    typeof window !== "undefined" &&
+    window.Capacitor &&
+    typeof window.Capacitor.isNativePlatform === "function" &&
+    window.Capacitor.isNativePlatform();
+
+  const [showSplash, setShowSplash] = useState(isNativeApp);
+  const [appReady, setAppReady] = useState(true);
 
   useEffect(() => {
-    // Simulate app initialization
+    if (!isNativeApp) {
+      setShowSplash(false);
+      setAppReady(true);
+      return;
+    }
+
     const initTimer = setTimeout(() => {
       setAppReady(true);
     }, 100);
 
     return () => clearTimeout(initTimer);
-  }, []);
+  }, [isNativeApp]);
 
   const handleSplashComplete = () => {
     setShowSplash(false);
   };
 
-  // Show splash screen until app is ready and splash duration is complete
-  if (showSplash || !appReady) {
+  // Show splash screen only on native mobile app until app is ready
+  if (showSplash || (!appReady && isNativeApp)) {
     return (
       <ThemeProvider>
         <CssBaseline />

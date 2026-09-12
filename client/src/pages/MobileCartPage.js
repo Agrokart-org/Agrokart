@@ -96,7 +96,7 @@ const MobileCartPage = () => {
   }
 
   return (
-    <Box sx={{ bgcolor: "#FFF", minHeight: "100vh", pb: 12 }}>
+    <Box sx={{ bgcolor: "#FFF", minHeight: "100vh", pb: "calc(110px + env(safe-area-inset-bottom, 0px))" }}>
       {/* Header */}
       <Box
         sx={{
@@ -370,16 +370,19 @@ const MobileCartPage = () => {
       </Box>
 
       <Paper
+        elevation={6}
         sx={{
           position: "fixed",
-          bottom: { xs: 75, md: 0 },
+          bottom: 0,
           left: 0,
           right: 0,
           p: 2,
-          pb: { xs: 2, md: 3 },
+          pb: "calc(16px + env(safe-area-inset-bottom, 0px))",
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
-          boxShadow: "0 -8px 32px rgba(0,0,0,0.08)",
+          boxShadow: "0 -8px 32px rgba(0,0,0,0.12)",
+          zIndex: 1100,
+          bgcolor: "#FFFFFF",
         }}
       >
         <Button

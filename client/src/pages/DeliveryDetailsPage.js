@@ -796,12 +796,13 @@ const DeliveryDetailsPage = () => {
         elevation={8} 
         sx={{ 
           position: "fixed", 
-          bottom: { xs: 56, md: 0 }, 
+          bottom: 0, 
           left: 0, 
           right: 0, 
           p: 2, 
+          pb: "calc(16px + env(safe-area-inset-bottom, 0px))",
           bgcolor: "white", 
-          zIndex: 1000,
+          zIndex: 1100,
           borderTop: "1px solid #e0e0e0"
         }}
       >

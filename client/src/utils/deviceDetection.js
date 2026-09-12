@@ -2,13 +2,21 @@ import React from "react";
 
 // Device detection utility
 export const isMobileDevice = () => {
-  // Check if running in Capacitor (mobile app)
-  if (window.Capacitor) {
+  // Check if running in Capacitor native platform (iOS / Android mobile app)
+  if (
+    typeof window !== "undefined" &&
+    window.Capacitor &&
+    typeof window.Capacitor.isNativePlatform === "function" &&
+    window.Capacitor.isNativePlatform()
+  ) {
     return true;
   }
 
   // Check user agent for mobile devices
-  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+  const userAgent =
+    typeof navigator !== "undefined"
+      ? navigator.userAgent || navigator.vendor || window.opera
+      : "";
 
   // Mobile device patterns
   const mobilePatterns = [
@@ -25,11 +33,13 @@ export const isMobileDevice = () => {
   const isMobileUA = mobilePatterns.some((pattern) => pattern.test(userAgent));
 
   // Check screen size
-  const isMobileScreen = window.innerWidth <= 768;
+  const isMobileScreen =
+    typeof window !== "undefined" && window.innerWidth <= 768;
 
   // Check touch capability
   const isTouchDevice =
-    "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    typeof window !== "undefined" &&
+    ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
   return isMobileUA || (isMobileScreen && isTouchDevice);
 };
