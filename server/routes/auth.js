@@ -9,7 +9,16 @@ const path = require("path");
 const User = require("../models/User");
 
 const findUserByEmail = async (email) => {
-  return await User.findOne({ email });
+  if (!email) return null;
+  const cleanEmail = email.toString().trim().toLowerCase();
+  return await User.findOne({ email: cleanEmail });
+};
+
+const findUserByPhone = async (phone) => {
+  if (!phone) return null;
+  const cleanPhone = phone.toString().trim();
+  if (!cleanPhone) return null;
+  return await User.findOne({ phone: cleanPhone });
 };
 
 const saveUser = async (userData) => {
@@ -44,14 +53,35 @@ router.post("/register", async (req, res) => {
       firebaseUid,
     });
 
-    if (!email) {
+    if (!email || !email.toString().trim()) {
       return res.status(400).json({ message: "Email is required" });
     }
 
+    const cleanEmail = email.toString().trim().toLowerCase();
+
     // Check if user already exists
-    let user = await findUserByEmail(email);
+    let user = await findUserByEmail(cleanEmail);
     if (user) {
       return res.status(400).json({ message: "An account with this email already exists. Please log in." });
+    }
+
+    // Clean phone or generate fallback
+    let userPhone = (phone || "").toString().trim();
+    if (userPhone) {
+      const existingPhoneUser = await findUserByPhone(userPhone);
+      if (existingPhoneUser) {
+        return res.status(400).json({
+          message: "This phone number is already registered with another account. Please use a different phone number or log in.",
+        });
+      }
+    } else {
+      let attempts = 0;
+      do {
+        userPhone = `98${Date.now().toString().slice(-6)}${Math.floor(10 + Math.random() * 90)}`;
+        const existing = await findUserByPhone(userPhone);
+        if (!existing) break;
+        attempts++;
+      } while (attempts < 5);
     }
 
     // Hash password if provided
@@ -61,13 +91,10 @@ router.post("/register", async (req, res) => {
       hashedPassword = await bcrypt.hash(password, salt);
     }
 
-    // Generate fallback phone if missing
-    const userPhone = phone || `98${Math.floor(10000000 + Math.random() * 90000000)}`;
-
     // Create new user in database
     user = await saveUser({
-      name: name || email.split("@")[0],
-      email,
+      name: (name || "").trim() || cleanEmail.split("@")[0],
+      email: cleanEmail,
       password: hashedPassword,
       firebaseUid: firebaseUid || undefined,
       phone: userPhone,
@@ -101,6 +128,32 @@ router.post("/register", async (req, res) => {
     });
   } catch (err) {
     console.error("Registration error:", err);
+
+    // Handle MongoDB duplicate key errors (code 11000)
+    if (err.code === 11000 || (err.name === "MongoServerError" && err.code === 11000)) {
+      if (err.keyPattern?.phone || (err.message && err.message.includes("phone_1"))) {
+        return res.status(400).json({
+          message: "This phone number is already registered with another account. Please use a different phone number or log in.",
+        });
+      }
+      if (err.keyPattern?.email || (err.message && err.message.includes("email_1"))) {
+        return res.status(400).json({
+          message: "An account with this email already exists. Please log in.",
+        });
+      }
+      return res.status(400).json({
+        message: "An account with this phone number or email already exists.",
+      });
+    }
+
+    // Handle Mongoose schema validation errors
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((e) => e.message);
+      return res.status(400).json({
+        message: messages.join(", ") || "Validation error",
+      });
+    }
+
     res
       .status(500)
       .json({ message: "Server error", error: err.message });

@@ -170,6 +170,14 @@ export const register = async (userData) => {
 
   const result = typeof response.json === "function" ? await response.json() : response.data || response;
   if (!response.ok) {
+    if (result.error && typeof result.error === "string") {
+      if (result.error.includes("phone_1")) {
+        throw new Error("This phone number is already registered with another account. Please use a different phone number or log in.");
+      }
+      if (result.error.includes("email_1")) {
+        throw new Error("An account with this email already exists. Please log in.");
+      }
+    }
     throw new Error(result.message || "Registration failed. Please try again.");
   }
   return result;

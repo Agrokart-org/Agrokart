@@ -157,7 +157,15 @@ const authService = {
       } catch (fbError) {
         console.warn("Firebase direct register skipped/failed:", fbError.code || fbError.message);
         if (fbError.code === "auth/email-already-in-use") {
-          throw { message: "An account with this email already exists. Please log in." };
+          // If already in Firebase (e.g., from prior attempt where Mongo failed), authenticate to obtain token
+          try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const firebaseUser = userCredential.user;
+            idToken = await firebaseUser.getIdToken();
+            firebaseUid = firebaseUser.uid;
+          } catch (signInErr) {
+            throw { message: "An account with this email already exists. Please log in." };
+          }
         }
         // If other Firebase error (e.g. domain not authorized), continue to direct backend registration
       }
@@ -167,10 +175,10 @@ const authService = {
       const response = await axios.post(
         `${API_URL}/auth/register`,
         {
-          name,
-          email,
+          name: (name || "").trim(),
+          email: (email || "").trim().toLowerCase(),
           password,
-          phone,
+          phone: (phone || "").trim(),
           firebaseUid: firebaseUid || undefined,
           role: "customer",
         },
@@ -199,9 +207,27 @@ const authService = {
       };
     } catch (error) {
       console.error("Registration error:", error);
-      if (error.response?.data?.message) {
-        throw { message: error.response.data.message };
+
+      const serverMsg = error.response?.data?.message;
+      const serverErr = error.response?.data?.error;
+
+      if (serverErr && typeof serverErr === "string") {
+        if (serverErr.includes("phone_1")) {
+          throw { message: "This phone number is already registered with another account. Please use a different number or log in." };
+        }
+        if (serverErr.includes("email_1")) {
+          throw { message: "An account with this email already exists. Please log in." };
+        }
       }
+
+      if (serverMsg && serverMsg !== "Server error") {
+        throw { message: serverMsg };
+      }
+
+      if (serverMsg === "Server error" && serverErr) {
+        throw { message: `Registration failed: ${serverErr}` };
+      }
+
       throw { message: error.message || "Failed to register. Please try again." };
     }
   },
