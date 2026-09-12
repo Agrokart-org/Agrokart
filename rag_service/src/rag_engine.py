@@ -349,7 +349,12 @@ class AgroKartRAG:
             try:
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 model = os.getenv("LLM_MODEL", "gemini-1.5-flash")
-                self.llm = ChatGoogleGenerativeAI(model=model, temperature=0.1, google_api_key=gemini_key)
+                self.llm = ChatGoogleGenerativeAI(
+                    model=model,
+                    temperature=0.1,
+                    google_api_key=gemini_key,
+                    convert_system_message_to_human=True
+                )
                 self.llm_provider = f"google/{model}"
                 logger.info(f"✓ LLM: Google Gemini {model}")
                 return
@@ -743,9 +748,10 @@ User question:
                 answer = self._sanitize_answer(raw_answer)
                 engine = self.llm_provider or "llm"
             except Exception as e:
-                logger.error(f"LLM generation error: {e}")
-                answer = "I couldn't generate a reliable answer from the available agricultural sources right now. Please try asking the question again."
-                engine = "llm_error_fallback"
+                logger.error(f"LLM generation error: {e}, falling back to knowledge synthesizer")
+                raw_answer = self._format_retrieved_response(query, chunks, intent)
+                answer = self._sanitize_answer(raw_answer)
+                engine = "synthesizer_fallback"
         else:
             raw_answer = self._format_retrieved_response(query, chunks, intent)
             answer = self._sanitize_answer(raw_answer)

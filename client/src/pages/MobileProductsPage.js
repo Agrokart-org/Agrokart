@@ -673,6 +673,34 @@ const MobileProductsPage = () => {
               );
             })}
           </AnimatePresence>
+          {filteredProducts.length === 0 && (
+            <Grid item xs={12}>
+              <Box sx={{ py: 6, textAlign: "center", px: 3 }}>
+                <Typography variant="body1" fontWeight="600" color="text.secondary" gutterBottom>
+                  No products found
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+                  Try adjusting your search terms or filters to see available agricultural supplies.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setFilters({
+                      category: "",
+                      searchTerm: "",
+                      priceRange: [0, 5000],
+                      rating: 0,
+                      inStock: false,
+                    });
+                  }}
+                  sx={{ borderRadius: 2, textTransform: "none", color: "#2E7D32", borderColor: "#2E7D32" }}
+                >
+                  Clear All Filters
+                </Button>
+              </Box>
+            </Grid>
+          )}
         </Grid>
       </Box>
 

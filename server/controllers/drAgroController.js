@@ -1,6 +1,11 @@
 const axios = require("axios");
 
-const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://localhost:8000";
+const RAG_SERVICE_URL = (
+  process.env.RAG_SERVICE_URL ||
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:8000"
+    : "https://agrokart-rag.onrender.com")
+).replace(/\/+$/, "");
 
 const Product = require("../models/Product");
 
@@ -206,7 +211,7 @@ exports.chatWithRAG = async (req, res) => {
         message: message.trim(),
         ml_recommendation: ml_recommendation || null,
         session_id: session_id || null,
-      }, { timeout: 12000 });
+      }, { timeout: 30000 });
 
       return res.json({
         success: true,
@@ -267,7 +272,7 @@ exports.ingestDocuments = async (req, res) => {
  */
 exports.checkRAGHealth = async (req, res) => {
   try {
-    const response = await axios.get(`${RAG_SERVICE_URL}/health`, { timeout: 4000 });
+    const response = await axios.get(`${RAG_SERVICE_URL}/health`, { timeout: 10000 });
     res.json(response.data);
   } catch (error) {
     res.status(503).json({ status: "offline", message: "RAG service unavailable" });

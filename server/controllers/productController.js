@@ -43,8 +43,18 @@ const getProducts = async (req, res, next) => {
 
     let products = await fetchActiveProducts();
 
-    if (category && category !== "all") {
-      products = products.filter((p) => p.category === category);
+    if (category && category.trim().toLowerCase() !== "all") {
+      const targetCat = category.trim().toLowerCase();
+      products = products.filter((p) => {
+        if (!p.category) return false;
+        const pCat = p.category.toLowerCase();
+        return (
+          pCat === targetCat ||
+          pCat.includes(targetCat) ||
+          targetCat.includes(pCat) ||
+          (targetCat === "fertilizers" && (pCat.includes("fertilizer") || pCat === "urea" || pCat === "dap" || pCat === "npk" || pCat === "micronutrients"))
+        );
+      });
     }
     if (minPrice || maxPrice) {
       products = products.filter((p) => {

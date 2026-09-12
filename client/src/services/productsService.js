@@ -3,7 +3,7 @@
  * Manages agricultural product data, categories, and inventory
  */
 
-import api from "./api";
+import api, { getProductImageUrl } from "./api";
 import imageService from "./imageService";
 import imagePreloader from "../utils/imagePreloader";
 
@@ -128,7 +128,8 @@ class ProductsService {
 
   validateImageUrl(imageUrl, product) {
     // If real image exists, return api.getProductImageUrl
-    const realImg = api.getProductImageUrl(imageUrl || product);
+    const getImageFn = (typeof api?.getProductImageUrl === "function") ? api.getProductImageUrl : getProductImageUrl;
+    const realImg = getImageFn ? getImageFn(imageUrl || product) : null;
     if (
       realImg &&
       !realImg.includes("placeholder") &&

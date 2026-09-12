@@ -199,9 +199,9 @@ const Routes = () => {
       <Route
         path="/products"
         element={
-          <CustomerRoute useSidebar={true}>
+          <CustomerOrPublicRoute>
             <ResponsivePageWrapper pageType="products" />
-          </CustomerRoute>
+          </CustomerOrPublicRoute>
         }
       />
 

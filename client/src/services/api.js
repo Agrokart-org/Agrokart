@@ -1391,6 +1391,8 @@ const api = {
   getFeaturedProducts,
   searchProducts,
   getProduct,
+  getProductImageUrl,
+  extractProductsArray,
 
   // Orders
   createOrder,

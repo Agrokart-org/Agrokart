@@ -23,6 +23,7 @@ import {
   useMediaQuery,
   Breadcrumbs,
   Link,
+  CircularProgress,
 } from "@mui/material";
 import {
   FilterList as FilterIcon,
@@ -95,6 +96,7 @@ const ProductsPage = () => {
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState([]);
   const [sortBy, setSortBy] = useState("name");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -113,12 +115,16 @@ const ProductsPage = () => {
     const fetchCatalog = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await api.getProducts({ limit: 100 });
-        const list = Array.isArray(data) ? data : (data?.products || mockProducts);
+        const list = Array.isArray(data)
+          ? data
+          : (data?.data?.products || data?.products || []);
         setProducts(list);
       } catch (err) {
         console.error("Error fetching products:", err);
-        setProducts(mockProducts);
+        setError("Unable to load products. Please try again.");
+        setProducts([]);
       } finally {
         setLoading(false);
       }
@@ -234,7 +240,19 @@ const ProductsPage = () => {
 
         {/* Products Grid */}
         <Grid item xs={12} md={9} lg={9.5}>
-          {filteredProducts.length === 0 ? (
+          {loading ? (
+            <Paper sx={{ p: 6, textAlign: "center", borderRadius: "8px", bgcolor: "white", border: "1px solid #E5E7EB" }}>
+              <CircularProgress sx={{ color: "#1B5E20", mb: 2 }} />
+              <Typography variant="body1" color="text.secondary">Loading agricultural catalog...</Typography>
+            </Paper>
+          ) : error ? (
+            <Paper sx={{ p: 6, textAlign: "center", borderRadius: "8px", bgcolor: "white", border: "1px solid #E5E7EB" }}>
+              <Typography variant="h6" color="error" gutterBottom>{error}</Typography>
+              <Button onClick={() => window.location.reload()} variant="contained" sx={{ mt: 2, bgcolor: "#1B5E20" }}>
+                Retry
+              </Button>
+            </Paper>
+          ) : filteredProducts.length === 0 ? (
             <Paper sx={{ p: 6, textAlign: "center", borderRadius: "8px", bgcolor: "white", border: "1px solid #E5E7EB" }}>
               <Typography variant="h6" color="text.secondary">No products found matching your filter.</Typography>
               <Button onClick={clearFilters} variant="contained" sx={{ mt: 2, bgcolor: "#1B5E20" }}>Clear Filters</Button>
