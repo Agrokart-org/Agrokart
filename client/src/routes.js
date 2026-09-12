@@ -121,14 +121,18 @@ const CustomerRoute = ({ children, useSidebar = false }) => {
 };
 
 // Public Route that redirects Vendors/Delivery Partners to their specific dashboards
-// Used for Home, Products etc which should be accessible to public + customers, but NOT vendors/delivery (who have their own portals)
-const CustomerOrPublicRoute = ({ children }) => {
+// Used for Home, Products, Cart etc which should be accessible to public + customers, but NOT vendors/delivery (who have their own portals)
+const CustomerOrPublicRoute = ({ children, useSidebar = false }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) return <div>Loading...</div>;
 
   if (isAuthenticated && user && user.role !== "customer") {
     return <Navigate to={getDashboardForRole(user.role)} replace />;
+  }
+
+  if (useSidebar) {
+    return <CustomerLayout>{children}</CustomerLayout>;
   }
 
   return children;
@@ -358,13 +362,13 @@ const Routes = () => {
         }
       />
 
-      {/* Protected Routes (Customer Only) */}
+      {/* Cart Route (Public & Customer viewable with customer layout) */}
       <Route
         path="/cart"
         element={
-          <CustomerRoute useSidebar={true}>
+          <CustomerOrPublicRoute useSidebar={true}>
             <ResponsivePageWrapper pageType="cart" />
-          </CustomerRoute>
+          </CustomerOrPublicRoute>
         }
       />
       <Route
