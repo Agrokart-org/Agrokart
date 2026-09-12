@@ -237,6 +237,8 @@ const MandiRatesPage = () => {
     fetchDistricts();
   }, [selectedState]);
 
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
+
   const fetchPrices = useCallback(
     async (pageNum = 1) => {
       if (!selectedState && !selectedCrop) {
@@ -245,6 +247,7 @@ const MandiRatesPage = () => {
       }
       setLoading(true);
       setError(null);
+      setServiceUnavailable(false);
       try {
         const params = new URLSearchParams({
           limit: LIMIT,
@@ -258,14 +261,22 @@ const MandiRatesPage = () => {
         const res = await safeFetch(`${API_BASE_URL}/mandi/prices?${params}`);
         const data =
           typeof res.json === "function" ? await res.json() : res.data || res;
-        if (data.success) {
-          setPrices(data.data);
+        if (data.serviceUnavailable) {
+          setServiceUnavailable(true);
+          setError(data.message || "Government Mandi (AGMARKNET) live market data is currently unavailable. Please check back shortly.");
+        } else if (data.success) {
+          setPrices(data.data || []);
           setTotalRecords(data.total || data.data.length);
           setPage(pageNum);
-          if (!data.data.length) setError("No data found");
-        } else setError(data.message || "Failed to fetch prices");
+          if (!data.data || !data.data.length) {
+            setError(`No market arrivals recorded for ${selectedCrop || "selected crop"} in ${selectedDistrict || selectedState} today. Try selecting a nearby district or major commodity.`);
+          }
+        } else {
+          setError(data.message || "Failed to fetch prices. Please try again.");
+        }
       } catch {
-        setError("Service unavailable. Try again.");
+        setServiceUnavailable(true);
+        setError("Government Mandi service is temporarily unreachable. Please try again shortly.");
       } finally {
         setLoading(false);
       }
@@ -289,6 +300,7 @@ const MandiRatesPage = () => {
     "Rice",
     "Onion",
     "Tomato",
+    "Soybean",
     "Soyabean",
     "Cotton",
     "Potato",
@@ -563,9 +575,12 @@ const MandiRatesPage = () => {
         </Box>
       </Paper>
 
-      {/* ── ERROR ── */}
+      {/* ── ERROR / SERVICE STATUS ── */}
       {error && (
-        <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+        <Alert
+          severity={serviceUnavailable ? "warning" : "info"}
+          sx={{ mb: 2, borderRadius: 2, fontWeight: 500 }}
+        >
           {error}
         </Alert>
       )}

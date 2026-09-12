@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Typography,
@@ -23,7 +23,7 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import CalculateIcon from "@mui/icons-material/Calculate";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import { useCart } from "../context/CartContext";
-import { getProductImageUrl } from "../services/api";
+import { getProductImageUrl, API_BASE_URL, safeFetch } from "../services/api";
 
 const flexRowSpaceBetween = {
   display: "flex",
@@ -44,6 +44,75 @@ const DrAgroResults = () => {
   const { addToCart } = useCart();
 
   const res = location.state?.result;
+  const data = res?.data || res || {};
+  const initialRecs = Array.isArray(data?.recommendedProducts) ? data.recommendedProducts : [];
+  const [recommendedProducts, setRecommendedProducts] = useState(initialRecs);
+  const [productUnavailable, setProductUnavailable] = useState(false);
+
+  const fert = data?.fertilizerConversion;
+
+  // Fetch and resolve real marketplace products if not already resolved
+  useEffect(() => {
+    if (!res) return;
+    if (initialRecs.length > 0 && initialRecs.every((p) => p._id && !p._id.startsWith("fert-"))) {
+      setRecommendedProducts(initialRecs);
+      return;
+    }
+
+    const resolveMarketplaceProducts = async () => {
+      try {
+        const resProd = await safeFetch(`${API_BASE_URL}/products?limit=100`);
+        const json = typeof resProd.json === "function" ? await resProd.json() : resProd.data || resProd;
+        const allProducts = Array.isArray(json) ? json : json.products || json.data || [];
+
+        if (allProducts.length === 0) {
+          setProductUnavailable(true);
+          return;
+        }
+
+        const resolved = [];
+        const ureaProd = allProducts.find((p) => /neem coated urea|urea/i.test(p.name));
+        const dapProd = allProducts.find((p) => /dap|10-26-26|12-32-16|npk/i.test(p.name));
+        const mopProd = allProducts.find((p) => /potash|mop|npk/i.test(p.name));
+
+        if (fert?.urea_kg_ha > 0 && ureaProd) {
+          resolved.push({
+            ...ureaProd,
+            id: ureaProd._id,
+            recommendedQty: fert.urea_kg_ha,
+            recType: "urea",
+          });
+        }
+        if (fert?.dap_kg_ha > 0 && dapProd) {
+          resolved.push({
+            ...dapProd,
+            id: dapProd._id,
+            recommendedQty: fert.dap_kg_ha,
+            recType: "dap",
+          });
+        }
+        if (fert?.mop_kg_ha > 0 && mopProd) {
+          resolved.push({
+            ...mopProd,
+            id: mopProd._id,
+            recommendedQty: fert.mop_kg_ha,
+            recType: "mop",
+          });
+        }
+
+        if (resolved.length > 0) {
+          setRecommendedProducts(resolved);
+        } else {
+          setProductUnavailable(true);
+        }
+      } catch (err) {
+        console.warn("Could not resolve real products from marketplace:", err);
+        setProductUnavailable(true);
+      }
+    };
+
+    resolveMarketplaceProducts();
+  }, [res, fert, initialRecs]);
 
   if (!res) {
     return (
@@ -70,54 +139,35 @@ const DrAgroResults = () => {
   const isInvalidReport = Boolean(res.isInvalidReport || res.success === false);
   const isInsufficientData = Boolean(res.insufficientData || (!res.nutrientRequirement && !res.data?.nutrientRequirement));
 
-  const data = res.data || res;
   const sa = data.soilAssessment;
   const req = data.nutrientRequirement;
-  const fert = data.fertilizerConversion;
   const source = data.source;
   const app = data.applicability;
   const ev = data.evidence;
   const ai = data.aiExplanation;
-  const recommendedProducts = Array.isArray(data.recommendedProducts) ? data.recommendedProducts : [];
 
-  // Add converted fertilizers to shopping cart
+  // Add converted fertilizers to shopping cart with real product objects
   const handleAddFertilizersToCart = () => {
-    if (recommendedProducts.length > 0) {
-      recommendedProducts.forEach((p) => {
+    const validProducts = recommendedProducts.filter(p => p._id && !String(p._id).startsWith("fert-"));
+    if (validProducts.length > 0) {
+      validProducts.forEach((p) => {
         addToCart({
-          _id: p._id || p.id,
-          id: p._id || p.id,
+          _id: p._id,
+          id: p._id,
           name: p.name,
           brand: p.brand || "AgroKart",
           price: p.price,
           category: p.category || "Fertilizers",
-          image: p.image,
+          image: p.image || p.images?.[0] || null,
           images: p.images || (p.image ? [p.image] : []),
-          description: `Recommended target dosage: ${p.recommendedQty} kg/ha`,
-          inStock: true,
+          description: `Recommended target dosage: ${p.recommendedQty || 50} kg/ha`,
+          inStock: p.stock !== undefined ? p.stock > 0 : true,
         }, 1);
       });
-      return;
+      navigate("/cart");
+    } else {
+      setProductUnavailable(true);
     }
-
-    if (!fert) return;
-    const items = [
-      { id: "dap", name: "Di-Ammonium Phosphate (DAP)", qty: fert.dap_kg_ha, price: 1350 },
-      { id: "urea", name: "Neem Coated Urea (46% N)", qty: fert.urea_kg_ha, price: 270 },
-      { id: "mop", name: "Muriate of Potash (MOP)", qty: fert.mop_kg_ha, price: 1200 },
-    ];
-    items.forEach((item) => {
-      if (item.qty > 0) {
-        addToCart({
-          _id: `fert-${item.id}`,
-          name: item.name,
-          price: item.price,
-          category: "Fertilizers",
-          description: `Calculated target quantity: ${item.qty} kg/ha`,
-          inStock: true,
-        }, 1);
-      }
-    });
   };
 
   const getStatusColor = (status) => {
@@ -364,14 +414,21 @@ const DrAgroResults = () => {
                   </Typography>
                 </Alert>
 
+                {productUnavailable && (
+                  <Alert severity="info" sx={{ mt: 2, borderRadius: 2 }}>
+                    Matching marketplace products are currently out of stock or unavailable. You can browse available stock directly on the Products page.
+                  </Alert>
+                )}
+
                 <Button
                   fullWidth
                   variant="contained"
+                  disabled={recommendedProducts.length === 0}
                   startIcon={<ShoppingCartIcon />}
                   onClick={handleAddFertilizersToCart}
                   sx={{ mt: 2.5, bgcolor: "#6B21A8", "&:hover": { bgcolor: "#581C87" }, fontWeight: "700", py: 1.2, borderRadius: 2, textTransform: "none" }}
                 >
-                  Add Converted Fertilizers to Cart
+                  {recommendedProducts.length > 0 ? "Add Converted Fertilizers to Cart" : "Marketplace Stock Unavailable"}
                 </Button>
               </Paper>
             </Grid>

@@ -219,13 +219,27 @@ const CATEGORY_FALLBACK = {
  */
 export function getProductImage(name = "", category = "", existingImage = "") {
   // If DB has a real uploaded file URL (starts with /uploads/ or http), use it
-  if (
-    existingImage &&
-    (existingImage.startsWith("/uploads/") ||
-      existingImage.startsWith("http") ||
-      existingImage.startsWith("data:"))
-  ) {
-    return existingImage;
+  if (existingImage && typeof existingImage === "string") {
+    if (
+      existingImage.startsWith("http://") ||
+      existingImage.startsWith("https://") ||
+      existingImage.startsWith("data:")
+    ) {
+      return existingImage;
+    }
+    if (existingImage.startsWith("/uploads/")) {
+      const apiHost =
+        process.env.REACT_APP_API_URL ||
+        (typeof window !== "undefined" &&
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1"
+          ? "https://agrokart-api.onrender.com"
+          : "");
+      return `${apiHost.replace(/\/+$/, "")}${existingImage}`;
+    }
+    if (existingImage.startsWith("/images/")) {
+      return existingImage;
+    }
   }
 
   const nameLower = (name || "").toLowerCase();

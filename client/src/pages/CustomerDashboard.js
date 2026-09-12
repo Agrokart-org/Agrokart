@@ -29,7 +29,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useCart } from "../context/CartContext";
-import { getProducts } from "../services/api";
+import { getProducts, getProductImageUrl } from "../services/api";
+import { mockProducts } from "../data/mockProducts";
 
 // Banner Assets
 import bannerSale from "../assets/banner_sale_field.png";
@@ -104,13 +105,16 @@ const CustomerDashboard = () => {
     const loadProducts = async () => {
       try {
         setProductsLoading(true);
-        const fetched = await getProducts({ limit: 100 });
-        const mapped = (fetched || []).map((p) => ({
-          id: p._id,
-          _id: p._id,
+        let fetched = await getProducts({ limit: 100 });
+        if (!Array.isArray(fetched) || fetched.length === 0) {
+          fetched = mockProducts;
+        }
+        const mapped = fetched.map((p, idx) => ({
+          id: p._id || p.id || `prod-${idx}`,
+          _id: p._id || p.id || `prod-${idx}`,
           name: p.name,
           weight: p.unit || "kg",
-          image: p.images?.[0] || p.image || "",
+          image: getProductImageUrl(p) || p.image || p.images?.[0] || "",
           price: p.price,
           originalPrice: p.price ? Math.round(p.price * 1.25) : 0,
           discount: p.price ? Math.round(((p.price * 1.25 - p.price) / (p.price * 1.25)) * 100) : 20,
@@ -119,14 +123,32 @@ const CustomerDashboard = () => {
           category: p.category,
           brand: p.brand || (p.category === "urea" ? "IFFCO" : p.category === "npk" ? "Mahadhan" : "Bayer Agri"),
           unit: p.unit || "kg",
-          stock: p.stock || 50,
-          inStock: (p.stock || 50) > 0,
+          stock: p.stock ?? 50,
+          inStock: (p.stock ?? 50) > 0,
           description: p.description,
         }));
         setProducts(mapped);
       } catch (e) {
         console.error("Failed to load products:", e);
-        setProducts([]);
+        const mapped = mockProducts.map((p, idx) => ({
+          id: p._id || p.id || `mock-${idx}`,
+          _id: p._id || p.id || `mock-${idx}`,
+          name: p.name,
+          weight: p.unit || "kg",
+          image: getProductImageUrl(p) || p.image || "",
+          price: p.price,
+          originalPrice: p.price ? Math.round(p.price * 1.25) : 0,
+          discount: p.price ? Math.round(((p.price * 1.25 - p.price) / (p.price * 1.25)) * 100) : 20,
+          rating: p.averageRating || 4.5,
+          reviews: 24,
+          category: p.category,
+          brand: p.brand || "IFFCO",
+          unit: p.unit || "kg",
+          stock: p.stock ?? 50,
+          inStock: true,
+          description: p.description,
+        }));
+        setProducts(mapped);
       } finally {
         setProductsLoading(false);
       }
@@ -604,12 +626,12 @@ const CustomerDashboard = () => {
 
         <Grid container spacing={2}>
           {productsLoading ? (
-            <Grid item xs={12}>
+            <Grid item xs={12} sx={{ py: 3, display: "flex", alignItems: "center", gap: 1.5 }}>
               <Typography variant="body2" color="text.secondary">Loading marketplace products...</Typography>
             </Grid>
           ) : (
             products.slice(0, 15).map((product) => (
-              <Grid item xs={6} sm={4} md={4} lg={3} xl={2.4} key={product.id}>
+              <Grid item xs={6} sm={4} md={4} lg={3} xl={2.4} key={product.id || product._id}>
                 <ProductCard product={product} />
               </Grid>
             ))

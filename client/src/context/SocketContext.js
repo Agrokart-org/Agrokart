@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import io from "socket.io-client";
+import { API_BASE_URL } from "../services/api";
 
 const SocketContext = createContext(null);
 
@@ -12,12 +13,10 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     // Connect to the backend server
-    // Use the same logic as api.js/authService.js to determine URL
-    const isMobile = window.Capacitor && window.Capacitor.isNativePlatform();
     const SOCKET_URL =
       process.env.REACT_APP_API_URL ||
-      (isMobile ? process.env.REACT_APP_API_URL : null) ||
-      "http://localhost:5001";
+      API_BASE_URL.replace(/\/api\/?$/, "") ||
+      "https://agrokart-api.onrender.com";
     const newSocket = io(SOCKET_URL, {
       transports: ["websocket"], // Force websocket
       reconnectionAttempts: 5,

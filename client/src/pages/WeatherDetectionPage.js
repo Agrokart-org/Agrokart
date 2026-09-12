@@ -24,42 +24,70 @@ const WeatherDetectionPage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  const POPULAR_DISTRICTS = ["Pune", "Buldhana", "Nashik", "Nagpur", "Indore", "Ahmednagar"];
+
   const fetchWeatherByCoords = useCallback(async (lat, lon) => {
     setLoading(true);
     setError(null);
     try {
-      const geoRes = await fetch(`${GEO_URL}/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${API_KEY}`);
-      if (geoRes.ok) {
-        const geoData = await geoRes.json();
-        if (geoData && geoData.length > 0) {
-          const name = geoData[0].local_names?.en || geoData[0].local_names?.hi || geoData[0].name;
-          const state = geoData[0].state || "";
-          setLocationName(`${name}${state ? `, ${state}` : ''}`);
-        } else {
-          setLocationName("Unknown Location");
+      let locLabel = "";
+      try {
+        const geoRes = await fetch(`${GEO_URL}/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${API_KEY}`);
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData && geoData.length > 0) {
+            const name = geoData[0].local_names?.en || geoData[0].local_names?.hi || geoData[0].name;
+            const state = geoData[0].state || "";
+            locLabel = `${name}${state ? `, ${state}` : ''}`;
+            setLocationName(locLabel);
+          }
         }
+      } catch (e) {
+        console.warn("Geo reverse error:", e);
       }
 
       const weatherRes = await fetch(`${API_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
       if (!weatherRes.ok) throw new Error("Could not fetch weather data.");
       const wData = await weatherRes.json();
       
-      if (!locationName) {
-        setLocationName(wData.name || "Unknown Location");
+      if (!locLabel) {
+        setLocationName(wData.name || "Agricultural Region");
       }
       setWeatherData(wData);
 
       const forecastRes = await fetch(`${API_URL}/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
-      if (!forecastRes.ok) throw new Error("Could not fetch forecast.");
-      const fData = await forecastRes.json();
-      setForecastData(fData.list.slice(0, 8)); 
-
+      if (forecastRes.ok) {
+        const fData = await forecastRes.json();
+        setForecastData(fData.list.slice(0, 8));
+      }
     } catch (err) {
-      setError(err.message || "Failed to load location data. Please ensure GPS is enabled.");
+      setError(err.message || "Failed to load location data.");
     } finally {
       setLoading(false);
     }
-  }, [locationName]);
+  }, []);
+
+  const fetchWeatherByCity = useCallback(async (cityName) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const weatherRes = await fetch(`${API_URL}/weather?q=${encodeURIComponent(cityName)},IN&units=metric&appid=${API_KEY}`);
+      if (!weatherRes.ok) throw new Error(`Could not fetch weather for ${cityName}`);
+      const wData = await weatherRes.json();
+      setLocationName(`${wData.name}, India`);
+      setWeatherData(wData);
+
+      const forecastRes = await fetch(`${API_URL}/forecast?q=${encodeURIComponent(cityName)},IN&units=metric&appid=${API_KEY}`);
+      if (forecastRes.ok) {
+        const fData = await forecastRes.json();
+        setForecastData(fData.list.slice(0, 8));
+      }
+    } catch (err) {
+      setError(err.message || `Could not fetch weather for ${cityName}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const requestLocationAndFetch = useCallback(() => {
     setLoading(true);
@@ -68,17 +96,15 @@ const WeatherDetectionPage = () => {
       navigator.geolocation.getCurrentPosition(
         (position) => fetchWeatherByCoords(position.coords.latitude, position.coords.longitude),
         (geoErr) => {
-          console.error("Geoloaction error:", geoErr);
-          setError("Location access denied or unavailable. Please enable device location (GPS) and try again.");
-          setLoading(false);
+          console.warn("Geolocation denied or timed out, loading default district (Pune):", geoErr);
+          fetchWeatherByCity("Pune");
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
       );
     } else {
-      setError("Geolocation is not supported by your browser.");
-      setLoading(false);
+      fetchWeatherByCity("Pune");
     }
-  }, [fetchWeatherByCoords]);
+  }, [fetchWeatherByCoords, fetchWeatherByCity]);
 
   useEffect(() => {
     requestLocationAndFetch();
@@ -110,7 +136,33 @@ const WeatherDetectionPage = () => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="sm" sx={{ flex: 1, display: "flex", flexDirection: "column", pt: 3 }}>
+      <Container maxWidth="sm" sx={{ flex: 1, display: "flex", flexDirection: "column", pt: 2 }}>
+        {/* District Switcher */}
+        <Box sx={{ display: "flex", gap: 1, overflowX: "auto", pb: 1.5, mb: 1, scrollbarWidth: "none" }}>
+          {POPULAR_DISTRICTS.map((d) => (
+            <Button
+              key={d}
+              size="small"
+              variant={locationName.toLowerCase().includes(d.toLowerCase()) ? "contained" : "outlined"}
+              onClick={() => fetchWeatherByCity(d)}
+              sx={{
+                borderRadius: 20,
+                fontSize: "0.75rem",
+                py: 0.4,
+                px: 1.5,
+                whiteSpace: "nowrap",
+                textTransform: "none",
+                bgcolor: locationName.toLowerCase().includes(d.toLowerCase()) ? "#2E7D32" : "white",
+                color: locationName.toLowerCase().includes(d.toLowerCase()) ? "white" : "#2E7D32",
+                borderColor: "#A5D6A7",
+                "&:hover": { bgcolor: "#2E7D32", color: "white" }
+              }}
+            >
+              {d}
+            </Button>
+          ))}
+        </Box>
+
         <AnimatePresence mode="wait">
           {loading ? (
             <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
@@ -121,8 +173,8 @@ const WeatherDetectionPage = () => {
             <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <Paper elevation={0} sx={{ p: 4, borderRadius: 4, textAlign: "center", border: "1px solid #e0e0e0" }}>
                 <Typography color="error" mb={2} fontWeight={600}>{error}</Typography>
-                <Button variant="contained" onClick={requestLocationAndFetch} startIcon={<LocationOn />} sx={{ borderRadius: 3, bgcolor: "#2E7D32", textTransform: "none", fontWeight: 700 }}>
-                  Retry Location
+                <Button variant="contained" onClick={() => fetchWeatherByCity("Pune")} sx={{ borderRadius: 3, bgcolor: "#2E7D32", textTransform: "none", fontWeight: 700 }}>
+                  Load Pune Weather
                 </Button>
               </Paper>
             </motion.div>

@@ -1,4 +1,5 @@
 import { mockProducts, mockCategories } from "../data/mockProducts";
+import { getProductImage } from "../data/productImages";
 import { CapacitorHttp } from "@capacitor/core";
 
 // Detect if running on mobile device (Capacitor)
@@ -7,26 +8,33 @@ const isMobile = () => {
 };
 
 // Get the appropriate API base URL
-const getApiBaseUrl = () => {
+export const getApiBaseUrl = () => {
   // 1. If REACT_APP_API_URL is set (production Render URL), always use it
-  //    This covers both mobile APK and deployed web — they both need the remote backend.
   if (process.env.REACT_APP_API_URL) {
-    return `${process.env.REACT_APP_API_URL}/api`;
+    return `${process.env.REACT_APP_API_URL.replace(/\/+$/, "")}/api`;
   }
 
   // 2. If running on localhost web browser, use local backend for development
   if (
     !isMobile() &&
+    typeof window !== "undefined" &&
     (window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1")
   ) {
-    return "http://localhost:5001/api";
+    return "http://localhost:4000/api";
   }
 
-  // 3. Dynamic fallback for local network access (e.g. 192.168.x.x)
-  const url = `http://${window.location.hostname}:5001/api`;
-  console.log("API URL selected:", url);
-  return url;
+  // 3. Dynamic fallback for deployed production (Vercel / Cloud)
+  if (
+    typeof window !== "undefined" &&
+    (window.location.hostname.includes("vercel.app") ||
+      window.location.hostname.includes("agrokart") ||
+      window.location.hostname !== "localhost")
+  ) {
+    return "https://agrokart-api.onrender.com/api";
+  }
+
+  return "https://agrokart-api.onrender.com/api";
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -152,28 +160,19 @@ export const login = async (credentials) => {
 };
 
 export const register = async (userData) => {
-  try {
-    const response = await safeFetch(`${API_BASE_URL}/auth/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(userData),
-    });
-    return response.json();
-  } catch (error) {
-    // Mock registration for demo purposes
-    return {
-      success: true,
-      message: "Registration successful",
-      user: {
-        id: "new-user",
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone,
-      },
-    };
+  const response = await safeFetch(`${API_BASE_URL}/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+
+  const result = typeof response.json === "function" ? await response.json() : response.data || response;
+  if (!response.ok) {
+    throw new Error(result.message || "Registration failed. Please try again.");
   }
+  return result;
 };
 
 export const vendorLogin = async (credentials) => {
@@ -251,6 +250,27 @@ export const extractProductsArray = (data) => {
 
 export const getProductImageUrl = (product) => {
   if (!product) return "/images/placeholder-product.png";
+  if (typeof product === "string") {
+    if (
+      product.startsWith("http://") ||
+      product.startsWith("https://") ||
+      product.startsWith("data:")
+    ) {
+      return product;
+    }
+    if (product.startsWith("/uploads/")) {
+      const apiHost =
+        process.env.REACT_APP_API_URL ||
+        (typeof window !== "undefined" &&
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1"
+          ? "https://agrokart-api.onrender.com"
+          : "");
+      return `${apiHost.replace(/\/+$/, "")}${product}`;
+    }
+    return product;
+  }
+
   const rawUrl =
     (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) ||
     product.image ||
@@ -259,17 +279,30 @@ export const getProductImageUrl = (product) => {
     product.productImage ||
     "";
 
-  if (!rawUrl || typeof rawUrl !== "string") {
-    return "/images/placeholder-product.png";
+  if (rawUrl && typeof rawUrl === "string") {
+    if (
+      rawUrl.startsWith("http://") ||
+      rawUrl.startsWith("https://") ||
+      rawUrl.startsWith("data:")
+    ) {
+      return rawUrl;
+    }
+    if (rawUrl.startsWith("/uploads/")) {
+      const apiHost =
+        process.env.REACT_APP_API_URL ||
+        (typeof window !== "undefined" &&
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1"
+          ? "https://agrokart-api.onrender.com"
+          : "");
+      return `${apiHost.replace(/\/+$/, "")}${rawUrl}`;
+    }
+    if (rawUrl.startsWith("/images/")) {
+      return rawUrl;
+    }
   }
-  if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
-    return rawUrl;
-  }
-  if (rawUrl.startsWith("/uploads/")) {
-    const apiHost = process.env.REACT_APP_API_URL || "";
-    return `${apiHost}${rawUrl}`;
-  }
-  return rawUrl;
+
+  return getProductImage(product.name, product.category, rawUrl);
 };
 
 export const getProducts = async (params = {}) => {
@@ -294,7 +327,13 @@ export const getProducts = async (params = {}) => {
       const products = extractProductsArray(data);
       console.log("Products loaded from backend:", products.length);
       if (Array.isArray(products) && products.length > 0) {
-        return products;
+        return products.map((p, idx) => ({
+          ...p,
+          id: p._id || p.id || `p-${idx}`,
+          _id: p._id || p.id || `p-${idx}`,
+          image: getProductImageUrl(p),
+          images: Array.isArray(p.images) && p.images.length > 0 ? p.images : [getProductImageUrl(p)],
+        }));
       }
     }
   } catch (error) {
@@ -347,7 +386,13 @@ export const getProducts = async (params = {}) => {
   }
 
   console.log("Using filtered mock products data:", filteredProducts.length);
-  return filteredProducts;
+  return filteredProducts.map((p, idx) => ({
+    ...p,
+    id: p._id || p.id || `mock-${idx}`,
+    _id: p._id || p.id || `mock-${idx}`,
+    image: getProductImageUrl(p),
+    images: Array.isArray(p.images) && p.images.length > 0 ? p.images : [getProductImageUrl(p)],
+  }));
 };
 
 export const getProduct = async (id) => {
@@ -1092,16 +1137,20 @@ export const createPaymentOrder = async (amount, token) => {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Payment API Error:", errorText);
-      alert(`Payment API Error: ${response.status} - ${errorText}`);
-      throw new Error(errorText || "Failed to create payment order");
+      let errorMsg = "Failed to create payment order";
+      try {
+        const errorJson = await response.json();
+        errorMsg = errorJson.message || errorMsg;
+      } catch (_) {
+        errorMsg = (await response.text()) || errorMsg;
+      }
+      console.error("Payment API Error:", errorMsg);
+      throw new Error(errorMsg);
     }
 
     return response.json();
   } catch (error) {
-    console.error("Payment Network Error:", error);
-    alert(`Payment Network Error: ${error.message}`);
+    console.error("Payment Network Error:", error.message || error);
     throw error;
   }
 };

@@ -91,6 +91,7 @@ const NEARBY_DISTRICTS = {
   Nashik: ["Ahmednagar", "Dhule", "Jalgaon", "Aurangabad", "Pune"],
   Nagpur: ["Wardha", "Chandrapur", "Bhandara", "Amravati"],
   Aurangabad: ["Jalna", "Ahmednagar", "Beed", "Nashik"],
+  Buldhana: ["Akola", "Jalgaon", "Amravati", "Washim", "Jalna"],
   // UP
   Lucknow: ["Barabanki", "Unnao", "Hardoi", "Sitapur", "Raebareli"],
   Varanasi: ["Jaunpur", "Chandauli", "Ghazipur", "Mirzapur"],
@@ -111,88 +112,149 @@ const NEARBY_DISTRICTS = {
   Amritsar: ["Tarn Taran", "Gurdaspur", "Jalandhar"],
 };
 
+// ── Standard Districts by State Fallback (ensures dropdowns are always populated) ──
+const FALLBACK_DISTRICTS = {
+  Maharashtra: [
+    "Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara",
+    "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli",
+    "Jalgaon", "Jalna", "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban",
+    "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Palghar",
+    "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara",
+    "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"
+  ],
+  "Madhya Pradesh": [
+    "Bhopal", "Indore", "Gwalior", "Jabalpur", "Ujjain", "Sagar", "Dewas",
+    "Satna", "Ratlam", "Rewa", "Sehore", "Vidisha", "Raisen", "Dhar", "Khargone"
+  ],
+  Gujarat: [
+    "Ahmedabad", "Amreli", "Anand", "Banaskantha", "Bharuch", "Bhavnagar",
+    "Gandhinagar", "Jamnagar", "Junagadh", "Kheda", "Kutch", "Mehsana",
+    "Morbi", "Navsari", "Patan", "Porbandar", "Rajkot", "Surat", "Surendranagar", "Vadodara"
+  ],
+  Karnataka: [
+    "Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban",
+    "Bidar", "Chamarajanagar", "Chikkaballapura", "Chikkamagaluru", "Chitradurga",
+    "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri",
+    "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur",
+    "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayapura", "Yadgir"
+  ],
+  "Uttar Pradesh": [
+    "Agra", "Aligarh", "Ayodhya", "Azamgarh", "Bareilly", "Basti", "Bijnor",
+    "Bulandshahr", "Ghaziabad", "Gorakhpur", "Jhansi", "Kanpur Nagar",
+    "Lucknow", "Mathura", "Meerut", "Moradabad", "Muzaffarnagar", "Prayagraj", "Varanasi"
+  ],
+  Punjab: [
+    "Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka",
+    "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala", "Ludhiana",
+    "Mansa", "Moga", "Muktsar", "Pathankot", "Patiala", "Rupnagar", "Sangrur", "Tarn Taran"
+  ],
+  Rajasthan: [
+    "Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara",
+    "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur",
+    "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu",
+    "Jodhpur", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand", "Sawai Madhopur",
+    "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"
+  ]
+};
+
+// ── Commodity Alias Normalization ──
+const COMMODITY_ALIASES = {
+  soybean: "Soyabean",
+  soya: "Soyabean",
+  soyabean: "Soyabean",
+  paddy: "Rice",
+  corn: "Maize",
+  peanut: "Groundnut",
+  chana: "Bengal Gram(Gram)(Whole)",
+  gram: "Bengal Gram(Gram)(Whole)",
+  tur: "Arhar (Tur/Red Gram)",
+  arhar: "Arhar (Tur/Red Gram)",
+  moong: "Green Gram (Moong)",
+  urad: "Black Gram (Urd Beans)",
+};
+
 // ── GET /api/mandi/detect-location?lat=...&lon=... ──
-// Reverse geocodes GPS to state/district using OpenWeatherMap
+// Reverse geocodes GPS to state/district using OpenWeatherMap or free Nominatim
 router.get("/detect-location", async (req, res) => {
   try {
     const { lat, lon } = req.query;
-    const apiKey = process.env.OPENWEATHERMAP_API_KEY;
-
     if (!lat || !lon) {
       return res
         .status(400)
         .json({ success: false, message: "lat and lon are required" });
-    }
-    if (!apiKey) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Geocoding API key not configured" });
     }
 
     const cacheKey = `geo_${parseFloat(lat).toFixed(2)}_${parseFloat(lon).toFixed(2)}`;
     const cached = getCached(cacheKey);
     if (cached) return res.json(cached);
 
-    const url = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`;
-    const geoRes = await fetch(url);
+    let detectedState = "";
+    let detectedDistrict = "";
+    let cityName = "";
+    let country = "India";
 
-    if (!geoRes.ok) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Geocoding failed" });
+    // 1. Try OpenWeatherMap reverse geocode if key is available
+    const apiKey = process.env.OPENWEATHERMAP_API_KEY;
+    if (apiKey) {
+      try {
+        const url = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`;
+        const geoRes = await fetch(url);
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData && geoData.length > 0) {
+            const loc = geoData[0];
+            detectedState = loc.state || "";
+            detectedDistrict = loc.name || "";
+            cityName = loc.name || "";
+            country = loc.country || "IN";
+          }
+        }
+      } catch (err) {
+        console.warn("OpenWeatherMap geocode error, falling back:", err.message);
+      }
     }
 
-    const geoData = await geoRes.json();
-    if (!geoData || geoData.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Location not found" });
+    // 2. Free Nominatim OpenStreetMap fallback
+    if (!detectedState) {
+      try {
+        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`;
+        const nomRes = await fetch(nominatimUrl, {
+          headers: { "User-Agent": "AgroKart-Mandi/1.0 (contact@agrokart.org)" }
+        });
+        if (nomRes.ok) {
+          const nomData = await nomRes.json();
+          const addr = nomData.address || {};
+          detectedState = addr.state || "";
+          detectedDistrict = addr.county || addr.state_district || addr.city || addr.town || "";
+          cityName = addr.city || addr.town || addr.village || detectedDistrict;
+          country = addr.country || "India";
+        }
+      } catch (err) {
+        console.warn("Nominatim fallback geocode error:", err.message);
+      }
     }
 
-    const location = geoData[0];
-    // Map OpenWeatherMap state names to data.gov.in format
-    const stateMapping = {
-      Maharashtra: "Maharashtra",
-      "Uttar Pradesh": "Uttar Pradesh",
-      Karnataka: "Karnataka",
-      "Tamil Nadu": "Tamil Nadu",
-      Rajasthan: "Rajasthan",
-      Gujarat: "Gujarat",
-      "Madhya Pradesh": "Madhya Pradesh",
-      "West Bengal": "West Bengal",
-      Bihar: "Bihar",
-      Punjab: "Punjab",
-      Haryana: "Haryana",
-      Telangana: "Telangana",
-      "Andhra Pradesh": "Andhra Pradesh",
-      Kerala: "Kerala",
-      Odisha: "Odisha",
-      Jharkhand: "Jharkhand",
-      Chhattisgarh: "Chhattisgarh",
-      Assam: "Assam",
-      Uttarakhand: "Uttarakhand",
-      Goa: "Goa",
-      "National Capital Territory of Delhi": "Delhi",
-      Delhi: "Delhi",
-      NCT: "Delhi",
-    };
+    if (!detectedState && !detectedDistrict) {
+      return res.status(200).json({
+        success: false,
+        message: "Location could not be automatically detected. Please select state and district manually.",
+      });
+    }
 
-    const detectedState = stateMapping[location.state] || location.state;
-    // Extract district from the location name or local_names
-    const detectedDistrict = location.name || "";
-
-    const nearbyDistricts = NEARBY_DISTRICTS[detectedDistrict] || [];
+    // Clean up district name (e.g., "Buldhana District" -> "Buldhana")
+    const cleanDistrict = detectedDistrict.replace(/ district/i, "").trim();
+    const nearbyDistricts = NEARBY_DISTRICTS[cleanDistrict] || [];
 
     const response = {
       success: true,
       data: {
         state: detectedState,
-        district: detectedDistrict,
-        city: location.name,
-        country: location.country,
+        district: cleanDistrict,
+        city: cityName,
+        country,
         nearbyDistricts,
-        lat: location.lat,
-        lon: location.lon,
+        lat: parseFloat(lat),
+        lon: parseFloat(lon),
       },
     };
 
@@ -200,13 +262,11 @@ router.get("/detect-location", async (req, res) => {
     res.json(response);
   } catch (error) {
     console.error("Detect location error:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Location detection failed",
-        details: error.message,
-      });
+    res.status(200).json({
+      success: false,
+      message: "Location detection unavailable. Please select your state and district manually.",
+      details: error.message,
+    });
   }
 });
 
@@ -221,36 +281,49 @@ router.get("/crops", (req, res) => {
 });
 
 // ── GET /api/mandi/districts?state=Maharashtra ──
-// Returns distinct districts for a state by querying the mandi API
+// Returns distinct districts for a state
 router.get("/districts", async (req, res) => {
   try {
     const { state } = req.query;
     if (!state) {
       return res.status(400).json({ success: false, message: "state is required" });
     }
-    const apiKey = process.env.DATA_GOV_IN_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ success: false, message: "Mandi API key not configured" });
-    }
 
     const cacheKey = `districts_${state}`;
     const cached = getCached(cacheKey);
     if (cached) return res.json(cached);
 
-    const url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=100&filters[state.keyword]=${encodeURIComponent(state)}`;
-    const apiRes = await fetch(url);
-    const rawData = await apiRes.json();
-    const records = rawData.records || [];
+    const apiKey = process.env.DATA_GOV_IN_API_KEY;
+    if (apiKey) {
+      try {
+        const url = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=100&filters[state.keyword]=${encodeURIComponent(state)}`;
+        const apiRes = await fetch(url);
+        if (apiRes.ok) {
+          const rawData = await apiRes.json();
+          const records = rawData.records || [];
+          const districts = [...new Set(records.map((r) => r.district).filter(Boolean))].sort();
+          if (districts.length > 0) {
+            const response = { success: true, data: districts };
+            setCache(cacheKey, response);
+            return res.json(response);
+          }
+        }
+      } catch (err) {
+        console.warn("data.gov.in district fetch error, using static fallback:", err.message);
+      }
+    }
 
-    // Extract unique districts
-    const districts = [...new Set(records.map((r) => r.district).filter(Boolean))].sort();
-
-    const response = { success: true, data: districts };
+    // Static Fallback for districts
+    const fallback = FALLBACK_DISTRICTS[state] || [
+      "Ahmednagar", "Buldhana", "Nagpur", "Nashik", "Pune", "Solapur"
+    ];
+    const response = { success: true, data: fallback.sort() };
     setCache(cacheKey, response);
     res.json(response);
   } catch (error) {
     console.error("Districts fetch error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch districts", data: [] });
+    const fallback = FALLBACK_DISTRICTS[req.query?.state] || [];
+    res.json({ success: true, data: fallback });
   }
 });
 
@@ -280,29 +353,37 @@ router.get("/prices", async (req, res) => {
     } = req.query;
     const apiKey = process.env.DATA_GOV_IN_API_KEY;
 
-    if (!apiKey) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Mandi API key not configured" });
+    if (!state && !commodity) {
+      return res.status(400).json({
+        success: false,
+        message: "Provide at least state or commodity",
+      });
     }
 
-    if (!state && !commodity) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Provide at least state or commodity",
-        });
+    if (!apiKey) {
+      return res.status(503).json({
+        success: false,
+        serviceUnavailable: true,
+        message: "Government Mandi (data.gov.in) live data service is currently unavailable. Live rates cannot be fetched without API gateway configuration.",
+      });
+    }
+
+    // Normalize commodity with aliases (e.g. "Soybean" -> "Soyabean")
+    let normalizedCommodity = commodity ? commodity.trim() : "";
+    if (normalizedCommodity) {
+      const alias = COMMODITY_ALIASES[normalizedCommodity.toLowerCase()];
+      if (alias) normalizedCommodity = alias;
     }
 
     // Build filter parameters (data.gov.in uses filters[field] syntax)
     const filters = [];
-    if (state)
-      filters.push(`filters[state.keyword]=${encodeURIComponent(state)}`);
-    if (commodity)
-      filters.push(`filters[commodity]=${encodeURIComponent(commodity)}`);
-    if (district)
-      filters.push(`filters[district]=${encodeURIComponent(district)}`);
+    if (state) filters.push(`filters[state.keyword]=${encodeURIComponent(state)}`);
+    if (normalizedCommodity) filters.push(`filters[commodity]=${encodeURIComponent(normalizedCommodity)}`);
+    if (district) {
+      // AGMARKNET sometimes uses "Buldana" or "Buldhana"
+      const cleanDistrict = district.trim();
+      filters.push(`filters[district]=${encodeURIComponent(cleanDistrict)}`);
+    }
 
     const cacheKey = `mandi_${filters.join("_")}_${limit}_${offset}`;
     const cached = getCached(cacheKey);
@@ -321,15 +402,16 @@ router.get("/prices", async (req, res) => {
         apiRes.status,
         rawData.message || rawData,
       );
-      return res.status(apiRes.status === 200 ? 400 : apiRes.status).json({
+      return res.status(502).json({
         success: false,
-        message: rawData.message || "Failed to fetch mandi data",
+        serviceUnavailable: true,
+        message: rawData.message || "Government Mandi portal (AGMARKNET) is currently unreachable. Please try again later.",
       });
     }
     const records = rawData.records || [];
 
     const data = records.map((r) => {
-      const proximityScore = getProximityScore(r.district, userDistrict);
+      const proximityScore = getProximityScore(r.district, userDistrict || district);
       return {
         state: r.state,
         district: r.district,
@@ -348,7 +430,7 @@ router.get("/prices", async (req, res) => {
     });
 
     // Sort: exact district → nearby districts → rest
-    if (userDistrict) {
+    if (userDistrict || district) {
       data.sort((a, b) => a.proximityScore - b.proximityScore);
     }
 
@@ -359,20 +441,19 @@ router.get("/prices", async (req, res) => {
       count: rawData.count || data.length,
       offset: Number(offset),
       limit: Number(limit),
-      userDistrict: userDistrict || null,
+      userDistrict: userDistrict || district || null,
     };
 
     setCache(cacheKey, response);
     res.json(response);
   } catch (error) {
     console.error("Mandi API error:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Mandi service unavailable",
-        details: error.message,
-      });
+    res.status(502).json({
+      success: false,
+      serviceUnavailable: true,
+      message: "Government Mandi service is temporarily unavailable. Please try again shortly.",
+      details: error.message,
+    });
   }
 });
 

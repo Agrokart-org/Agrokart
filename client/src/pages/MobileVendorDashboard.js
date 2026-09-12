@@ -1358,9 +1358,7 @@ const MobileVendorDashboard = () => {
     setSavingStock(true);
     try {
       const token = localStorage.getItem("authToken");
-      const API_BASE = process.env.REACT_APP_API_URL
-        ? `${process.env.REACT_APP_API_URL}/api`
-        : `http://${window.location.hostname}:5001/api`;
+      const API_BASE = API_BASE_URL;
       const todayDate = new Date().toDateString();
       await Promise.all(
         Object.entries(dailyStockEdits).map(([id, qty]) =>

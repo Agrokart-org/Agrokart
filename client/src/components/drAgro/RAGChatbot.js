@@ -10,6 +10,7 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import ScienceIcon from "@mui/icons-material/Science";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import axios from "axios";
+import { API_BASE_URL } from "../../services/api";
 
 const RAGChatbot = ({ mlRecommendation = null, initialQuery = "" }) => {
   const [messages, setMessages] = useState([
@@ -131,15 +132,13 @@ const RAGChatbot = ({ mlRecommendation = null, initialQuery = "" }) => {
 
     setLoading(true);
 
-    const API_BASE = process.env.REACT_APP_API_URL
-      ? `${process.env.REACT_APP_API_URL}/api`
-      : "/api";
+    const API_BASE = API_BASE_URL;
 
     try {
       const response = await axios.post(`${API_BASE}/dr-agro/chat`, {
         message: query,
         ml_recommendation: mlRecommendation || null
-      });
+      }, { timeout: 20000 });
 
       const botTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       const botMessage = {

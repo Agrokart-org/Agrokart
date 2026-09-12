@@ -8,27 +8,9 @@ import {
   updateProfile,
 } from "firebase/auth";
 
-// Dynamic API URL detection for mobile and web
-const getApiUrl = () => {
-  // 1. If REACT_APP_API_URL is set (production Render URL), always use it
-  //    This covers both mobile APK and deployed web.
-  if (process.env.REACT_APP_API_URL) {
-    return `${process.env.REACT_APP_API_URL}/api`;
-  }
+import { getApiBaseUrl } from "./api";
 
-  // 2. If running on localhost web browser, use local backend for development
-  if (
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
-  ) {
-    return "http://localhost:5001/api";
-  }
-
-  // 3. Fallback for local network access
-  return `http://${window.location.hostname}:5001/api`;
-};
-
-const API_URL = getApiUrl();
+const API_URL = getApiBaseUrl();
 
 const authService = {
   // Login with email and password using backend POST /api/auth/login
@@ -45,10 +27,13 @@ const authService = {
       const { user, token } = response.data;
 
       localStorage.setItem("authToken", token);
+      localStorage.setItem("token", token);
       localStorage.setItem("userRole", user.role);
       localStorage.setItem("userEmail", user.email);
-      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("userName", user.name || "");
       localStorage.setItem("userData", JSON.stringify(user));
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("isLoggedIn", "true");
 
       return response.data;
     } catch (error) {
@@ -128,13 +113,21 @@ const authService = {
     }
   },
 
-  // Logout using Firebase
+  // Logout
   logout: async () => {
     try {
-      console.log("Logging out user with Firebase");
-      await signOut(auth);
+      console.log("Logging out user");
+      try {
+        await signOut(auth);
+      } catch (e) {}
       localStorage.removeItem("firebaseToken");
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("token");
+      localStorage.removeItem("userRole");
       localStorage.removeItem("userEmail");
+      localStorage.removeItem("userName");
+      localStorage.removeItem("userData");
+      localStorage.removeItem("user");
       localStorage.removeItem("isLoggedIn");
     } catch (error) {
       console.error("Error during logout:", error.message);
@@ -142,124 +135,74 @@ const authService = {
     }
   },
 
-  // Register user using Firebase
+  // Register user
   register: async (name, email, password, phone) => {
     try {
-      console.log("Registering user with Firebase:", { name, email, phone });
+      console.log("Registering user:", { name, email, phone });
 
-      // Create user with Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password,
-      );
-      const firebaseUser = userCredential.user;
+      let idToken = null;
+      let firebaseUid = null;
 
-      // Update Firebase user profile with name
-      await updateProfile(firebaseUser, {
-        displayName: name,
-      });
+      // Try Firebase registration first if available
+      try {
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password,
+        );
+        const firebaseUser = userCredential.user;
+        await updateProfile(firebaseUser, { displayName: name });
+        idToken = await firebaseUser.getIdToken();
+        firebaseUid = firebaseUser.uid;
+      } catch (fbError) {
+        console.warn("Firebase direct register skipped/failed:", fbError.code || fbError.message);
+        if (fbError.code === "auth/email-already-in-use") {
+          throw { message: "An account with this email already exists. Please log in." };
+        }
+        // If other Firebase error (e.g. domain not authorized), continue to direct backend registration
+      }
 
-      // Get the Firebase ID token
-      const idToken = await firebaseUser.getIdToken();
-
-      // Register user in our backend with Firebase UID
+      // Register user in our backend
+      const headers = idToken ? { "firebase-auth-token": idToken } : {};
       const response = await axios.post(
         `${API_URL}/auth/register`,
         {
           name,
           email,
+          password,
           phone,
-          firebaseUid: firebaseUser.uid,
+          firebaseUid: firebaseUid || undefined,
+          role: "customer",
         },
-        {
-          headers: { "firebase-auth-token": idToken },
-        },
+        { headers }
       );
 
       console.log("Registration successful:", response.data);
 
-      // Store Firebase token and user data
-      localStorage.setItem("firebaseToken", idToken);
+      const returnedUser = response.data.user || response.data;
+      const finalToken = response.data.token || idToken || "customer-jwt-token";
+
+      // Store token and user data across all storage keys
+      localStorage.setItem("authToken", finalToken);
+      localStorage.setItem("token", finalToken);
+      if (idToken) localStorage.setItem("firebaseToken", idToken);
       localStorage.setItem("userEmail", email);
       localStorage.setItem("userName", name);
+      localStorage.setItem("userRole", returnedUser.role || "customer");
+      localStorage.setItem("userData", JSON.stringify(returnedUser));
+      localStorage.setItem("user", JSON.stringify(returnedUser));
       localStorage.setItem("isLoggedIn", "true");
 
       return {
-        token: idToken,
-        user: response.data,
+        token: finalToken,
+        user: returnedUser,
       };
     } catch (error) {
-      console.error("Firebase registration failed:", error.message);
-
-      // Handle existing user case (Account exists, try to login and add role/register backend)
-      if (error.code === "auth/email-already-in-use") {
-        try {
-          console.log(
-            "🔄 Email in use. Attempting to sign in with provided credentials...",
-          );
-          const userCredential = await signInWithEmailAndPassword(
-            auth,
-            email,
-            password,
-          );
-          const firebaseUser = userCredential.user;
-
-          // Update Firebase user profile with name
-          await updateProfile(firebaseUser, {
-            displayName: name,
-          });
-
-          const idToken = await firebaseUser.getIdToken();
-
-          // Register/Update user in backend with Firebase UID
-          console.log("📤 Registering/Updating existing user in backend");
-          const response = await axios.post(
-            `${API_URL}/auth/register`,
-            {
-              name,
-              email,
-              phone,
-              firebaseUid: firebaseUser.uid,
-            },
-            {
-              headers: { "firebase-auth-token": idToken },
-            },
-          );
-
-          console.log("Registration/Update successful:", response.data);
-
-          // Store Firebase token and user data
-          localStorage.setItem("firebaseToken", idToken);
-          localStorage.setItem("userEmail", email);
-          localStorage.setItem("userName", name);
-          localStorage.setItem("isLoggedIn", "true");
-
-          return {
-            token: idToken,
-            user: response.data,
-          };
-        } catch (loginError) {
-          console.error("❌ Failed to sign in existing user:", loginError);
-          if (loginError.code === "auth/wrong-password") {
-            throw {
-              message:
-                "An account with this email exists, but the password provided is incorrect. Please log in or use a different email.",
-            };
-          }
-          if (loginError.response) {
-            // Backend error
-            throw {
-              message:
-                "Registration failed: " +
-                (loginError.response.data?.message || loginError.message),
-            };
-          }
-          throw { message: "This email is already registered. Please login." };
-        }
+      console.error("Registration error:", error);
+      if (error.response?.data?.message) {
+        throw { message: error.response.data.message };
       }
-
-      throw { message: "Failed to register. " + error.message };
+      throw { message: error.message || "Failed to register. Please try again." };
     }
   },
 

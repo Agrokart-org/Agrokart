@@ -66,9 +66,10 @@ const CartPage = () => {
     });
   };
 
-  const subtotal = getCartTotal();
-  const deliveryFee = subtotal > 5000 ? 0 : 200;
-  const total = subtotal + deliveryFee;
+  const subtotal = Number(getCartTotal()) || 0;
+  const deliveryFee = 0; // FREE Delivery
+  const platformFee = 10;
+  const total = subtotal + deliveryFee + platformFee;
 
   const handleCheckout = () => {
     navigate("/delivery-details");
@@ -455,22 +456,34 @@ const CartPage = () => {
                       <ShippingIcon
                         sx={{
                           fontSize: 18,
-                          color:
-                            deliveryFee === 0
-                              ? "success.main"
-                              : "text.secondary",
+                          color: "success.main",
                         }}
                       />
                       <Typography variant="body1" color="text.secondary">
-                        Delivery
+                        Delivery Fee
                       </Typography>
                     </Box>
                     <Typography
                       variant="body1"
                       fontWeight="600"
-                      color={deliveryFee === 0 ? "success.main" : "inherit"}
+                      color="success.main"
                     >
-                      {deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}
+                      FREE
+                    </Typography>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Typography variant="body1" color="text.secondary">
+                      Platform Fee
+                    </Typography>
+                    <Typography variant="body1" fontWeight="600">
+                      ₹{platformFee}
                     </Typography>
                   </Box>
 
@@ -484,7 +497,7 @@ const CartPage = () => {
                     }}
                   >
                     <Typography variant="h6" fontWeight="700">
-                      Total
+                      To Pay
                     </Typography>
                     <Typography variant="h5" fontWeight="700" color="primary">
                       ₹{total}

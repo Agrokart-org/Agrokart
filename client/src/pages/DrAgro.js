@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Container, Typography, Box, Paper, Grid, Divider, Alert,
   useTheme, useMediaQuery, Chip, Avatar, Button, IconButton,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   CircularProgress, Snackbar, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow
+  TableContainer, TableHead, TableRow, Stack
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
@@ -34,6 +34,7 @@ import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 // Services & Components
 import { useCart } from "../context/CartContext";
 import SoilUpload from "../components/drAgro/SoilUpload";
+import { API_BASE_URL, safeFetch, getProductImageUrl } from "../services/api";
 
 // Sophisticated Color Tokens (85% Neutral, 10% Green/Teal, 5% Accents)
 const COLORS = {
@@ -305,6 +306,44 @@ const DrAgro = () => {
   const [cropImagePreview, setCropImagePreview] = useState(null);
   const [cropDiagResult, setCropDiagResult] = useState(null);
 
+  // Tool-specific interactive states
+  const [fertCrop, setFertCrop] = useState("wheat");
+  const [fertAcres, setFertAcres] = useState("2");
+  const [irrigCrop, setIrrigCrop] = useState("wheat");
+  const [irrigSoil, setIrrigSoil] = useState("Medium Black Soil");
+  const [irrigStage, setIrrigStage] = useState("Crown Root Initiation (Day 21)");
+  const [pestCrop, setPestCrop] = useState("wheat");
+  const [pestPart, setPestPart] = useState("Leaves");
+  const [pestType, setPestType] = useState("Rust / Blotch");
+
+  // Real MongoDB products state
+  const [realProducts, setRealProducts] = useState(BASE_PRODUCTS);
+
+  useEffect(() => {
+    const loadRealProducts = async () => {
+      try {
+        const res = await safeFetch(`${API_BASE_URL}/products?limit=100`);
+        const json = typeof res.json === "function" ? await res.json() : res.data || res;
+        const list = Array.isArray(json) ? json : json.products || json.data || [];
+        if (list.length > 0) {
+          const ureaP = list.find((p) => /neem coated urea|urea/i.test(p.name));
+          const dapP = list.find((p) => /dap|10-26-26|12-32-16|npk/i.test(p.name));
+          const mopP = list.find((p) => /potash|mop|npk/i.test(p.name));
+          const matched = [];
+          if (ureaP) matched.push({ ...ureaP, id: ureaP._id, reason: "Primary Nitrogen source for vegetative tiller growth." });
+          if (dapP) matched.push({ ...dapP, id: dapP._id, reason: "Essential Phosphorus for strong root establishment." });
+          if (mopP) matched.push({ ...mopP, id: mopP._id, reason: "Enhances grain filling & drought tolerance." });
+          if (matched.length > 0) {
+            setRealProducts(matched);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load real products in DrAgro:", err);
+      }
+    };
+    loadRealProducts();
+  }, []);
+
   // 6. Clean Farm Notes State (No Default Mock Text)
   const [farmNotes, setFarmNotes] = useState("");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -473,7 +512,7 @@ const DrAgro = () => {
           { nutrient: "Potassium (K)", current: `${kVal.toLocaleString()} kg/ha`, status: kStatus, requirement: `${kReq.toLocaleString()} kg`, fertilizer: "MOP (60% K2O)", badgeColor: COLORS.soilText, badgeBg: COLORS.soilBg }
         ],
         schedule: cropConfig.stages,
-        recommendedProducts: BASE_PRODUCTS
+        recommendedProducts: realProducts
       };
 
       const determinedSoilType = extractedSoilType || (source === "Soil Report" ? "Analyzed Soil Report" : "Farmer Input Soil Data");
@@ -530,13 +569,15 @@ const DrAgro = () => {
   // Add Product to Cart
   const handleAddToCart = (prod) => {
     const cartProduct = {
-      _id: prod.id,
+      _id: prod._id || prod.id,
+      id: prod._id || prod.id,
       name: prod.name,
       price: prod.price,
-      description: prod.reason,
-      category: prod.category,
-      imageUrl: prod.image,
-      inStock: true
+      description: prod.reason || prod.description,
+      category: prod.category || "Fertilizers",
+      imageUrl: getProductImageUrl(prod),
+      image: prod.image || (prod.images && prod.images[0]) || null,
+      inStock: prod.inStock !== false
     };
     addToCart(cartProduct, 1);
     setSnackbar({
@@ -551,13 +592,47 @@ const DrAgro = () => {
     if (!cropImageFile) return;
     setCropDiagResult(null);
     setTimeout(() => {
-      setCropDiagResult({
-        issue: "Nitrogen Chlorosis & Mild Rust Pustules",
-        confidence: "94% High Confidence",
-        symptoms: "Light pale green leaves with small orange rust lesions along vein margins.",
-        action: "Apply 25 kg/acre Neem Coated Urea top-dressing + spray Neem Oil 10,000 PPM."
-      });
-    }, 800);
+      const cropKey = (farmContext.crop || "wheat").toLowerCase();
+      const diagMap = {
+        wheat: {
+          issue: "Yellow Rust (Puccinia striiformis) & Nitrogen Chlorosis",
+          confidence: "95% High Confidence",
+          symptoms: "Yellow-orange pustules in linear stripes on leaf blades; chlorosis on lower leaves.",
+          action: "Spray Propiconazole 25% EC @ 1 ml/L or Tebuconazole 25.9% EC. Apply 25 kg/acre Neem Coated Urea top-dressing."
+        },
+        rice: {
+          issue: "Bacterial Leaf Blight (Xanthomonas oryzae)",
+          confidence: "92% High Confidence",
+          symptoms: "Water-soaked to yellowish stripes along leaf margins with wavy borders.",
+          action: "Spray Streptocycline 6g + Copper Oxychloride 500g in 200L water per acre. Drain standing water temporarily."
+        },
+        cotton: {
+          issue: "Cotton Whitefly & Leaf Curl Virus (CLCuV)",
+          confidence: "91% High Confidence",
+          symptoms: "Upward leaf curling, thickening of veins, and sooty mold on honeydew secretions.",
+          action: "Spray Diafenthiuron 50% WP @ 1.2 g/L or Flonicamid 50% WG (Ulala) @ 0.4 g/L. Install yellow sticky traps."
+        },
+        soybean: {
+          issue: "Yellow Mosaic Virus & Cercospora Leaf Spot",
+          confidence: "93% High Confidence",
+          symptoms: "Bright yellow mosaic patches on young leaves; dark brown angular lesions on older foliage.",
+          action: "Control whitefly vector with Thiamethoxam 25% WG @ 0.5 g/L. Foliar spray Carbendazim + Mancozeb @ 2 g/L."
+        },
+        sugarcane: {
+          issue: "Red Rot (Colletotrichum falcatum) & Early Shoot Borer",
+          confidence: "89% High Confidence",
+          symptoms: "Red discoloration of internal pith with cross white bands; dead heart in young shoots.",
+          action: "Apply Chlorantraniliprole 0.4% GR @ 7.5 kg/acre. Dip setts in Carbendazim 0.1% before planting."
+        },
+        maize: {
+          issue: "Fall Armyworm (Spodoptera frugiperda)",
+          confidence: "94% High Confidence",
+          symptoms: "Shot-hole damage on whorl leaves with sawdust-like frass.",
+          action: "Spray Emamectin Benzoate 5% SG @ 0.4 g/L or Chlorantraniliprole 18.5% SC into the central whorl."
+        }
+      };
+      setCropDiagResult(diagMap[cropKey] || diagMap.wheat);
+    }, 600);
   };
 
   const currentCropConfig = CROP_CONFIG[farmContext.crop] || CROP_CONFIG.wheat;
@@ -1577,6 +1652,303 @@ const DrAgro = () => {
           <Button onClick={() => setActiveModal(null)}>Close</Button>
           <Button variant="contained" onClick={handleRunCropDiag} disabled={!cropImageFile} sx={{ bgcolor: COLORS.primary, borderRadius: 2.5 }}>
             Run Diagnosis
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* FERTILIZER CALCULATOR MODAL */}
+      <Dialog open={activeModal === "fertilizerCalc"} onClose={() => setActiveModal(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: COLORS.darkText, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <ScienceIcon sx={{ color: COLORS.fertText }} />
+            <span>Fertilizer Dosage Calculator</span>
+          </Box>
+          <IconButton onClick={() => setActiveModal(null)}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="#475569" mb={2}>
+            Calculate split N-P-K fertilizer dosage according to State Agriculture Universities (SAU) and ICAR package of practices:
+          </Typography>
+          <Grid container spacing={2} mb={2}>
+            <Grid item xs={7}>
+              <TextField
+                label="Crop"
+                select
+                fullWidth
+                size="small"
+                value={fertCrop}
+                onChange={(e) => setFertCrop(e.target.value)}
+                SelectProps={{ native: true }}
+              >
+                <option value="wheat">Wheat (गहू)</option>
+                <option value="rice">Rice / Paddy (भात)</option>
+                <option value="cotton">Cotton (कापूस)</option>
+                <option value="sugarcane">Sugarcane (ऊस)</option>
+                <option value="soybean">Soybean (सोयाबीन)</option>
+                <option value="maize">Maize (मका)</option>
+              </TextField>
+            </Grid>
+            <Grid item xs={5}>
+              <TextField
+                label="Land Area (Acres)"
+                type="number"
+                fullWidth
+                size="small"
+                value={fertAcres}
+                onChange={(e) => setFertAcres(e.target.value)}
+                inputProps={{ min: 0.5, step: 0.5 }}
+              />
+            </Grid>
+          </Grid>
+
+          {/* Calculations Summary */}
+          {(() => {
+            const acres = Math.max(0.5, parseFloat(fertAcres) || 1);
+            const ureaKg = Math.round(acres * (fertCrop === "sugarcane" ? 220 : fertCrop === "cotton" ? 130 : 110));
+            const dapKg = Math.round(acres * (fertCrop === "sugarcane" ? 100 : fertCrop === "rice" ? 60 : 55));
+            const mopKg = Math.round(acres * (fertCrop === "sugarcane" ? 80 : 35));
+            const ureaBags = Math.ceil(ureaKg / 45);
+            const dapBags = Math.ceil(dapKg / 50);
+            const mopBags = Math.ceil(mopKg / 50);
+
+            return (
+              <Box sx={{ p: 2, bgcolor: COLORS.fertBg, borderRadius: 3, border: `1px solid ${COLORS.fertBorder}` }}>
+                <Typography variant="subtitle2" fontWeight="800" color={COLORS.fertText} mb={1}>
+                  Total Seasonal Requirement for {acres} Acre(s):
+                </Typography>
+                <Grid container spacing={1.5} mb={2}>
+                  <Grid item xs={4}>
+                    <Paper elevation={0} sx={{ p: 1.5, textAlign: "center", borderRadius: 2, bgcolor: "white", border: `1px solid ${COLORS.fertBorder}` }}>
+                      <Typography variant="caption" color="text.secondary" fontWeight="700">UREA (46% N)</Typography>
+                      <Typography variant="h6" fontWeight="900" color={COLORS.fertText}>{ureaKg} kg</Typography>
+                      <Typography variant="caption" color="#64748B">{ureaBags} bag(s) (45kg)</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Paper elevation={0} sx={{ p: 1.5, textAlign: "center", borderRadius: 2, bgcolor: "white", border: `1px solid ${COLORS.fertBorder}` }}>
+                      <Typography variant="caption" color="text.secondary" fontWeight="700">DAP (18-46-0)</Typography>
+                      <Typography variant="h6" fontWeight="900" color="#0369A1">{dapKg} kg</Typography>
+                      <Typography variant="caption" color="#64748B">{dapBags} bag(s) (50kg)</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Paper elevation={0} sx={{ p: 1.5, textAlign: "center", borderRadius: 2, bgcolor: "white", border: `1px solid ${COLORS.fertBorder}` }}>
+                      <Typography variant="caption" color="text.secondary" fontWeight="700">MOP (60% K₂O)</Typography>
+                      <Typography variant="h6" fontWeight="900" color="#92400E">{mopKg} kg</Typography>
+                      <Typography variant="caption" color="#64748B">{mopBags} bag(s) (50kg)</Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+
+                <Typography variant="caption" fontWeight="700" color={COLORS.darkText} display="block" mb={0.5}>
+                  Recommended Split Schedule:
+                </Typography>
+                <Typography variant="caption" color="#334155" display="block">
+                  • <strong>Basal at Sowing:</strong> 100% DAP + 100% MOP + 25% Urea into seedbed.
+                </Typography>
+                <Typography variant="caption" color="#334155" display="block">
+                  • <strong>1st Top Dressing (Day 21-25):</strong> 40% Urea with irrigation.
+                </Typography>
+                <Typography variant="caption" color="#334155" display="block">
+                  • <strong>2nd Top Dressing (Day 45-50):</strong> Remaining 35% Urea.
+                </Typography>
+              </Box>
+            );
+          })()}
+
+          {/* Real Marketplace Product Quick Add */}
+          <Box mt={2.5}>
+            <Typography variant="subtitle2" fontWeight="800" color={COLORS.darkText} mb={1}>
+              Available in AgroKart Marketplace:
+            </Typography>
+            <Stack spacing={1}>
+              {realProducts.slice(0, 2).map((prod) => (
+                <Paper key={prod._id || prod.id} elevation={0} sx={{ p: 1.5, borderRadius: 2, border: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <Box display="flex" alignItems="center" gap={1.5}>
+                    {getProductImageUrl(prod) && (
+                      <img src={getProductImageUrl(prod)} alt={prod.name} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 6 }} onError={(e) => { e.target.style.display = "none"; }} />
+                    )}
+                    <Box>
+                      <Typography variant="body2" fontWeight="700">{prod.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">₹{prod.price} • {prod.brand || "AgroKart"}</Typography>
+                    </Box>
+                  </Box>
+                  <Button size="small" variant="outlined" onClick={() => handleAddToCart(prod)} sx={{ borderColor: COLORS.primary, color: COLORS.primary, borderRadius: 2, fontWeight: 700, textTransform: "none" }}>
+                    Add to Cart
+                  </Button>
+                </Paper>
+              ))}
+            </Stack>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setActiveModal(null)}>Close</Button>
+          <Button variant="contained" onClick={() => { setActiveModal(null); navigate("/products?category=Fertilizers"); }} sx={{ bgcolor: COLORS.primary, borderRadius: 2, textTransform: "none", fontWeight: 700 }}>
+            Browse All Fertilizers
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* IRRIGATION ADVISOR MODAL */}
+      <Dialog open={activeModal === "irrigation"} onClose={() => setActiveModal(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: COLORS.darkText, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <WaterDropIcon sx={{ color: COLORS.irrigText }} />
+            <span>Irrigation Advisor & Schedule</span>
+          </Box>
+          <IconButton onClick={() => setActiveModal(null)}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="#475569" mb={2}>
+            Optimal water delivery recommendations based on crop evapotranspiration, soil moisture retention, and critical growth stages:
+          </Typography>
+          <Grid container spacing={2} mb={2}>
+            <Grid item xs={6}>
+              <TextField
+                label="Crop"
+                select
+                fullWidth
+                size="small"
+                value={irrigCrop}
+                onChange={(e) => setIrrigCrop(e.target.value)}
+                SelectProps={{ native: true }}
+              >
+                <option value="wheat">Wheat (गहू)</option>
+                <option value="rice">Rice / Paddy (भात)</option>
+                <option value="cotton">Cotton (कापूस)</option>
+                <option value="sugarcane">Sugarcane (ऊस)</option>
+                <option value="soybean">Soybean (सोयाबीन)</option>
+                <option value="maize">Maize (मका)</option>
+              </TextField>
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="Soil Type"
+                select
+                fullWidth
+                size="small"
+                value={irrigSoil}
+                onChange={(e) => setIrrigSoil(e.target.value)}
+                SelectProps={{ native: true }}
+              >
+                <option value="Medium Black Soil">Medium Black Soil</option>
+                <option value="Heavy Clay Soil">Heavy Clay Soil</option>
+                <option value="Sandy Loam Soil">Sandy Loam Soil</option>
+                <option value="Red Laterite Soil">Red Laterite Soil</option>
+              </TextField>
+            </Grid>
+          </Grid>
+
+          <Box sx={{ p: 2, bgcolor: COLORS.irrigBg, borderRadius: 3, border: `1px solid ${COLORS.irrigBorder}` }}>
+            <Typography variant="subtitle2" fontWeight="800" color={COLORS.irrigText} mb={1}>
+              💧 Water Requirement & Timing for {irrigCrop.toUpperCase()}:
+            </Typography>
+            <Typography variant="body2" color="#1E293B" mb={1}>
+              • <strong>Recommended Interval:</strong> {irrigSoil.includes("Black") ? "Every 12 - 14 days" : "Every 8 - 10 days"}
+            </Typography>
+            <Typography variant="body2" color="#1E293B" mb={1}>
+              • <strong>Depth per Irrigation:</strong> 50 - 65 mm (sufficient to reach effective root zone).
+            </Typography>
+            <Typography variant="body2" color="#1E293B" mb={1}>
+              • <strong>Most Critical Stages:</strong> Crown Root Initiation (CRI at Day 21), Booting Stage (Day 65), and Grain Milk Stage (Day 85). Missing irrigation at CRI causes up to 25-30% yield penalty.
+            </Typography>
+            <Alert severity="info" sx={{ mt: 1.5, bgcolor: "white", borderRadius: 2 }}>
+              <strong>Drip Irrigation Tip:</strong> Adopting drip irrigation saves 40-45% water in row crops like Cotton and Sugarcane while boosting nutrient use efficiency through fertigation.
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setActiveModal(null)}>Close</Button>
+          <Button variant="contained" onClick={() => { setActiveModal(null); navigate("/customer/agro-ai?q=" + encodeURIComponent(`What is the complete irrigation schedule for ${irrigCrop} in ${irrigSoil}?`)); }} sx={{ bgcolor: COLORS.primary, borderRadius: 2, textTransform: "none", fontWeight: 700 }}>
+            Ask Dr. Agro AI
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* PEST & DISEASE MODAL */}
+      <Dialog open={activeModal === "pest"} onClose={() => setActiveModal(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: COLORS.darkText, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <BugReportIcon sx={{ color: COLORS.pestText }} />
+            <span>Pest & Disease Advisory</span>
+          </Box>
+          <IconButton onClick={() => setActiveModal(null)}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="#475569" mb={2}>
+            Integrated Pest Management (IPM) guidelines with biological and approved chemical control formulations:
+          </Typography>
+          <Grid container spacing={2} mb={2}>
+            <Grid item xs={4}>
+              <TextField
+                label="Crop"
+                select
+                fullWidth
+                size="small"
+                value={pestCrop}
+                onChange={(e) => setPestCrop(e.target.value)}
+                SelectProps={{ native: true }}
+              >
+                <option value="wheat">Wheat</option>
+                <option value="rice">Rice</option>
+                <option value="cotton">Cotton</option>
+                <option value="soybean">Soybean</option>
+                <option value="sugarcane">Sugarcane</option>
+              </TextField>
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                label="Affected Part"
+                select
+                fullWidth
+                size="small"
+                value={pestPart}
+                onChange={(e) => setPestPart(e.target.value)}
+                SelectProps={{ native: true }}
+              >
+                <option value="Leaves">Leaves</option>
+                <option value="Stem">Stem</option>
+                <option value="Pod/Fruit">Pod / Fruit</option>
+                <option value="Roots">Roots</option>
+              </TextField>
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                label="Pest Type"
+                select
+                fullWidth
+                size="small"
+                value={pestType}
+                onChange={(e) => setPestType(e.target.value)}
+                SelectProps={{ native: true }}
+              >
+                <option value="Rust / Blotch">Rust / Blotch</option>
+                <option value="Sucking Pests">Sucking Pests (Aphid/Thrip)</option>
+                <option value="Borer / Caterpillar">Borer / Caterpillar</option>
+                <option value="Root Rot / Wilt">Root Rot / Wilt</option>
+              </TextField>
+            </Grid>
+          </Grid>
+
+          <Box sx={{ p: 2, bgcolor: COLORS.pestBg, borderRadius: 3, border: `1px solid ${COLORS.pestBorder}` }}>
+            <Typography variant="subtitle2" fontWeight="800" color={COLORS.pestText} mb={1}>
+              🪲 Recommended Treatment for {pestCrop.toUpperCase()} ({pestType}):
+            </Typography>
+            <Typography variant="body2" color="#7F1D1D" mb={0.5}>
+              • <strong>Organic / Biological IPM:</strong> Spray Cold-pressed Neem Oil 10,000 PPM @ 3-5 ml/L water + install yellow sticky traps (15-20 traps/acre).
+            </Typography>
+            <Typography variant="body2" color="#7F1D1D" mb={0.5}>
+              • <strong>Approved Chemical Measure:</strong> {pestType.includes("Rust") ? "Propiconazole 25% EC @ 1 ml/L or Tebuconazole 25.9% EC @ 1.25 ml/L." : pestType.includes("Sucking") ? "Thiamethoxam 25% WG (Actara) @ 0.5 g/L or Flonicamid 50% WG (Ulala) @ 0.35 g/L." : "Chlorantraniliprole 18.5% SC (Coragen) @ 0.4 ml/L."}
+            </Typography>
+            <Typography variant="caption" color="#991B1B" display="block" mt={1}>
+              ⚠️ <em>Safety Advice: Apply sprays early morning or late afternoon when honeybee activity is low. Use protective PPE.</em>
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setActiveModal(null)}>Close</Button>
+          <Button variant="contained" onClick={() => { setActiveModal(null); navigate("/customer/agro-ai?q=" + encodeURIComponent(`How to treat ${pestType} affecting ${pestPart} in ${pestCrop}?`)); }} sx={{ bgcolor: COLORS.primary, borderRadius: 2, textTransform: "none", fontWeight: 700 }}>
+            Ask Dr. Agro AI
           </Button>
         </DialogActions>
       </Dialog>

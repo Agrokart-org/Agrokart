@@ -41,6 +41,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { useCart } from "../context/CartContext";
+import { API_BASE_URL } from "../services/api";
 
 // ── Quick Prompt Chips ──────────────────────────────────────────────────────────
 const QUICK_PROMPTS = [
@@ -165,13 +166,7 @@ const AIChatbot = () => {
     }
   };
 
-const getApiBase = () => {
-  if (process.env.REACT_APP_API_URL) {
-    return `${process.env.REACT_APP_API_URL}/api`;
-  }
-  return "/api";
-};
-const API_BASE = getApiBase();
+const API_BASE = API_BASE_URL;
 
   useEffect(() => { scrollToBottom(); }, [messages, isTyping]);
 

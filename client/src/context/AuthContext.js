@@ -27,6 +27,7 @@ import {
 import { auth } from "../config/firebase";
 import { Capacitor } from "@capacitor/core";
 import AgrokartLoader from "../components/AgrokartLoader";
+import { getApiBaseUrl } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -64,9 +65,11 @@ export const AuthProvider = ({ children }) => {
       );
 
       if (currentUser) {
-        // User is signed in
+        // User is signed in with Firebase
         const idToken = await currentUser.getIdToken();
+        localStorage.setItem("firebaseToken", idToken);
         localStorage.setItem("authToken", idToken);
+        localStorage.setItem("token", idToken);
         setToken(idToken);
 
         const currentRole = localStorage.getItem("userRole") || "customer";
@@ -75,6 +78,7 @@ export const AuthProvider = ({ children }) => {
         // Basic info from Firebase
         let userData = {
           id: currentUser.uid,
+          _id: currentUser.uid,
           name: currentUser.displayName || currentUser.email.split("@")[0],
           email: currentUser.email,
           phone: currentUser.phoneNumber,
@@ -83,60 +87,82 @@ export const AuthProvider = ({ children }) => {
 
         // Sync with backend using /auth/login to ensure user exists
         try {
-          const apiUrl = process.env.REACT_APP_API_URL
-            ? `${process.env.REACT_APP_API_URL}/api`
-            : `http://${window.location.hostname}:5001/api`;
+          const apiUrl = getApiBaseUrl();
           const response = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken, expectedRole: currentRole }), // Send role so backend creates user with correct role
+            body: JSON.stringify({ idToken, expectedRole: currentRole }),
           });
 
           if (response.ok) {
             const data = await response.json();
             console.log("✅ Backend sync successful:", data.user);
             userData = { ...userData, ...data.user };
-            // Ensure ID is consistent (MongoDB ID takes precedence)
             userData.id = data.user.id || data.user._id || currentUser.uid;
-            // Ensure role is synced back to localStorage
+            userData._id = userData.id;
+
+            const finalToken = data.token || idToken;
+            localStorage.setItem("authToken", finalToken);
+            localStorage.setItem("token", finalToken);
+            setToken(finalToken);
+
             if (data.user.role) {
               localStorage.setItem("userRole", data.user.role);
               setUserRole(data.user.role);
             }
           } else {
             console.warn("Backend sync failed:", response.status);
-            // Keep the localStorage role when backend is unavailable
             userData.role = currentRole;
           }
         } catch (err) {
           console.error("Failed to sync with backend:", err);
-          // Keep the localStorage role when backend is unavailable
           userData.role = currentRole;
         }
+
+        localStorage.setItem("userData", JSON.stringify(userData));
+        localStorage.setItem("user", JSON.stringify(userData));
+        localStorage.setItem("userRole", userData.role);
+        localStorage.setItem("userEmail", userData.email);
+        localStorage.setItem("isLoggedIn", "true");
 
         setUser(userData);
         setIsAuthenticated(true);
         setShowRoleSelection(false);
       } else {
         // Firebase currentUser is null. Check for local backend JWT session
-        const savedToken = localStorage.getItem("authToken");
-        const savedUserStr = localStorage.getItem("userData");
+        const savedToken =
+          localStorage.getItem("authToken") ||
+          localStorage.getItem("token") ||
+          localStorage.getItem("firebaseToken");
+        const savedUserStr =
+          localStorage.getItem("userData") || localStorage.getItem("user");
         const savedRole = localStorage.getItem("userRole");
 
         if (savedToken && savedUserStr) {
           try {
             const parsedUser = JSON.parse(savedUserStr);
-            console.log("✅ Restored backend user session:", parsedUser.email);
+            console.log("✅ Restored persistent user session:", parsedUser.email);
             setUser(parsedUser);
             setUserRole(parsedUser.role || savedRole || "customer");
             setToken(savedToken);
             setIsAuthenticated(true);
             setShowRoleSelection(false);
+
+            // Re-align storage keys
+            localStorage.setItem("authToken", savedToken);
+            localStorage.setItem("token", savedToken);
+            localStorage.setItem("userData", savedUserStr);
+            localStorage.setItem("user", savedUserStr);
+            localStorage.setItem("isLoggedIn", "true");
           } catch (e) {
             console.error("Failed to parse saved user data:", e);
             localStorage.removeItem("authToken");
+            localStorage.removeItem("token");
+            localStorage.removeItem("firebaseToken");
             localStorage.removeItem("userRole");
             localStorage.removeItem("userData");
+            localStorage.removeItem("user");
+            localStorage.removeItem("isLoggedIn");
             setToken(null);
             setUser(null);
             setIsAuthenticated(false);
@@ -145,8 +171,12 @@ export const AuthProvider = ({ children }) => {
         } else {
           console.log("👋 User signed out, clearing state");
           localStorage.removeItem("authToken");
+          localStorage.removeItem("token");
+          localStorage.removeItem("firebaseToken");
           localStorage.removeItem("userRole");
           localStorage.removeItem("userData");
+          localStorage.removeItem("user");
+          localStorage.removeItem("isLoggedIn");
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
@@ -211,6 +241,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Backend customer email/password login (POST /api/auth/login)
+  // Backend customer email/password login (POST /api/auth/login)
   const login = useCallback(
     async (emailOrCredentials, password, expectedRole = "customer") => {
       setLoading(true);
@@ -229,9 +260,7 @@ export const AuthProvider = ({ children }) => {
           };
         }
 
-        const apiUrl = process.env.REACT_APP_API_URL
-          ? `${process.env.REACT_APP_API_URL}/api`
-          : `http://${window.location.hostname}:5001/api`;
+        const apiUrl = getApiBaseUrl();
 
         const response = await fetch(`${apiUrl}/auth/login`, {
           method: "POST",
@@ -251,9 +280,12 @@ export const AuthProvider = ({ children }) => {
         const userToken = data.token;
 
         localStorage.setItem("authToken", userToken);
+        localStorage.setItem("token", userToken);
         localStorage.setItem("userRole", userObj.role);
         localStorage.setItem("userEmail", userObj.email);
+        localStorage.setItem("userName", userObj.name || "");
         localStorage.setItem("userData", JSON.stringify(userObj));
+        localStorage.setItem("user", JSON.stringify(userObj));
         localStorage.setItem("isLoggedIn", "true");
 
         setToken(userToken);
@@ -273,47 +305,60 @@ export const AuthProvider = ({ children }) => {
     [],
   );
 
-  // Google Login — uses native Google Sign-In via capgo plugin
+  // Google Login — supports both Web (Popup/Redirect) and Mobile Native APK
   const googleLogin = useCallback(async () => {
     setLoading(true);
     try {
-      // ─── USE @capgo/capacitor-social-login FOR ALL PLATFORMS ───
-      // This guarantees the native Google account picker opens on mobile (NOT a WebView),
-      // completely bypassing Google's "Use secure browsers" policy block (Error 403).
-      const { SocialLogin } = await import("@capgo/capacitor-social-login");
+      const isNative = Capacitor.isNativePlatform();
 
-      // Initialize the plugin
-      await SocialLogin.initialize({
-        google: {
-          webClientId: "425831974831-2vvplda38aoa1n8vvb2uhbt052udhebl.apps.googleusercontent.com", 
-        },
-      });
+      if (isNative) {
+        // Native Android APK: use @capgo/capacitor-social-login
+        const { SocialLogin } = await import("@capgo/capacitor-social-login");
+        await SocialLogin.initialize({
+          google: {
+            webClientId: "425831974831-2vvplda38aoa1n8vvb2uhbt052udhebl.apps.googleusercontent.com",
+          },
+        });
 
-      const result = await SocialLogin.login({
-        provider: "google",
-        options: {
-          scopes: ["email", "profile"],
-        },
-      });
+        const result = await SocialLogin.login({
+          provider: "google",
+          options: {
+            scopes: ["email", "profile"],
+          },
+        });
 
-      console.log("📱 Google Sign-In result:", result);
+        console.log("📱 Native Google Sign-In result:", result);
 
-      if (result?.result?.idToken) {
-        // Use the Google ID token to authenticate with Firebase
-        const credential = GoogleAuthProvider.credential(result.result.idToken);
-        const firebaseResult = await signInWithCredential(auth, credential);
-        console.log("✅ Firebase auth with Google token:", firebaseResult.user.email);
+        if (result?.result?.idToken) {
+          const credential = GoogleAuthProvider.credential(result.result.idToken);
+          const firebaseResult = await signInWithCredential(auth, credential);
+          if (userRole) localStorage.setItem("userRole", userRole);
+          return { success: true, user: firebaseResult.user };
+        } else {
+          throw new Error("No ID token received from Google Sign-In");
+        }
+      } else {
+        // Standard Web Browser (Desktop / Mobile web on Vercel)
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        let firebaseResult;
+        try {
+          firebaseResult = await signInWithPopup(auth, provider);
+        } catch (popupErr) {
+          console.warn("Popup blocked or failed, attempting redirect:", popupErr.code);
+          if (popupErr.code === "auth/popup-blocked" || popupErr.code === "auth/cancelled-popup-request") {
+            return await signInWithRedirect(auth, provider);
+          }
+          throw popupErr;
+        }
 
         if (userRole) {
           localStorage.setItem("userRole", userRole);
         }
         return { success: true, user: firebaseResult.user };
-      } else {
-        throw new Error("No ID token received from Google Sign-In");
       }
     } catch (error) {
       console.error("❌ Google login error:", error);
-      alert(`Google Login Error: ${error.message || JSON.stringify(error)}`);
       throw error;
     } finally {
       setLoading(false);
@@ -379,12 +424,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // Firebase logout
+  // Complete logout: clears Firebase session and all localStorage auth keys
   const logout = useCallback(async () => {
     try {
-      await signOut(auth);
+      try {
+        await signOut(auth);
+      } catch (e) {}
       localStorage.removeItem("userRole");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("token");
+      localStorage.removeItem("firebaseToken");
+      localStorage.removeItem("userData");
+      localStorage.removeItem("user");
+      localStorage.removeItem("userEmail");
+      localStorage.removeItem("userName");
+      localStorage.removeItem("isLoggedIn");
       setUserRole(null);
       setToken(null);
       setIsAuthenticated(false);

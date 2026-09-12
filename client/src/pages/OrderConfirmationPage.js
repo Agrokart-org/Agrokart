@@ -87,15 +87,16 @@ const OrderConfirmationPage = () => {
         return {
           subtotal: orderData.subtotalAmount,
           deliveryFee: orderData.deliveryCharge,
+          platformFee: orderData.platformFee !== undefined ? orderData.platformFee : 10,
           total: orderData.totalAmount,
         };
       }
       
-      // Fallback calculation for older orders
-      const assumedDeliveryFee = orderTotal >= 700 ? 0 : (orderTotal > 100 ? 100 : 0);
+      // Fallback calculation
       return {
-        subtotal: orderTotal - assumedDeliveryFee,
-        deliveryFee: assumedDeliveryFee,
+        subtotal: Math.max(0, orderTotal - 10),
+        deliveryFee: 0,
+        platformFee: 10,
         total: orderTotal,
       };
     } else if (orderedItems && orderedItems.length > 0) {
@@ -103,25 +104,29 @@ const OrderConfirmationPage = () => {
       const subtotal = orderedItems.reduce((total, item) => {
         return total + parsePrice(item.price) * (item.quantity || 1);
       }, 0);
-      const deliveryFee = subtotal >= 700 ? 0 : 100;
+      const deliveryFee = 0;
+      const platformFee = 10;
       return {
         subtotal,
         deliveryFee,
-        total: subtotal + deliveryFee,
+        platformFee,
+        total: subtotal + platformFee,
       };
     } else {
       // Fallback to cart total (for initial load)
-      const subtotal = getCartTotal(); // This is now safe from CartContext
-      const deliveryFee = subtotal >= 700 ? 0 : 100;
+      const subtotal = Number(getCartTotal()) || 0;
+      const deliveryFee = 0;
+      const platformFee = 10;
       return {
         subtotal,
         deliveryFee,
-        total: subtotal + deliveryFee,
+        platformFee,
+        total: subtotal + platformFee,
       };
     }
   };
 
-  const { subtotal, deliveryFee, total } = calculateTotals();
+  const { subtotal, deliveryFee, platformFee = 10, total } = calculateTotals();
 
   const [countdown, setCountdown] = useState(5);
 
@@ -1006,6 +1011,12 @@ const OrderConfirmationPage = () => {
                     color={deliveryFee === 0 ? "success.main" : "text.primary"}
                   >
                     {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Typography variant="body2">Platform Fee:</Typography>
+                  <Typography variant="body2">
+                    ₹{platformFee}
                   </Typography>
                 </Box>
                 <Divider />

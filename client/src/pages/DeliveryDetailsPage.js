@@ -285,9 +285,10 @@ const DeliveryDetailsPage = () => {
     setView("select");
   };
 
-  const subtotal = getCartTotal();
-  const deliveryFee = subtotal > 5000 ? 0 : 200;
-  const total = subtotal + deliveryFee;
+  const subtotal = Number(getCartTotal()) || 0;
+  const deliveryFee = 0; // FREE Delivery
+  const platformFee = 10;
+  const total = subtotal + deliveryFee + platformFee;
 
   const handleChange = (field) => (event) => {
     setFormData({
@@ -761,25 +762,24 @@ const DeliveryDetailsPage = () => {
                   ))}
                   <Divider sx={{ borderStyle: "dashed", borderColor: "#e0e0e0" }} />
                   <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Typography color="text.secondary">Subtotal</Typography>
+                    <Typography color="text.secondary">Item Total</Typography>
                     <Typography fontWeight="500">₹{subtotal}</Typography>
                   </Box>
                   <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Typography color="text.secondary">Delivery</Typography>
-                    <Typography fontWeight="500" color={deliveryFee === 0 ? "success.main" : "inherit"}>
-                      {deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}
+                    <Typography color="text.secondary">Delivery Fee</Typography>
+                    <Typography fontWeight="500" color="success.main">
+                      FREE
                     </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                    <Typography color="text.secondary">Platform Fee</Typography>
+                    <Typography fontWeight="500">₹{platformFee}</Typography>
                   </Box>
                   <Divider sx={{ borderColor: "#000" }} />
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Typography variant="h6" fontWeight="800" color="#1a1a1a">Total</Typography>
+                    <Typography variant="h6" fontWeight="800" color="#1a1a1a">To Pay</Typography>
                     <Typography variant="h5" fontWeight="800" color="#2E7D32">₹{total}</Typography>
                   </Box>
-                  {deliveryFee > 0 && (
-                    <Alert severity="info" icon={<LocalShippingIcon fontSize="inherit" />} sx={{ borderRadius: 2, bgcolor: "#e3f2fd", "& .MuiAlert-icon": { color: "#1976d2" } }}>
-                      Add <Box component="span" fontWeight="bold">₹{5000 - subtotal}</Box> more for free delivery!
-                    </Alert>
-                  )}
                   <Box sx={{ mt: 2, bgcolor: "#f9f9f9", p: 1.5, borderRadius: 2, display: "flex", gap: 1, alignItems: "center" }}>
                     <SecurityIcon sx={{ fontSize: 16, color: "text.secondary" }} />
                     <Typography variant="caption" color="text.secondary">Safe & Secure Payment</Typography>

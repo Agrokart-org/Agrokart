@@ -25,10 +25,12 @@ const logError = (error) => {
   fs.appendFileSync(logPath, message);
 };
 
+const jwt = require("jsonwebtoken");
+
 // Initialize Firebase Admin from config
 const { auth: firebaseAuth } = require("../config/firebase");
 
-// Register with Firebase Authentication
+// Register endpoint
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password, phone, role, firebaseUid } = req.body;
@@ -38,22 +40,38 @@ router.post("/register", async (req, res) => {
       email,
       phone,
       role,
+      hasPassword: !!password,
       firebaseUid,
     });
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
 
     // Check if user already exists
     let user = await findUserByEmail(email);
     if (user) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: "An account with this email already exists. Please log in." });
     }
+
+    // Hash password if provided
+    let hashedPassword = undefined;
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(password, salt);
+    }
+
+    // Generate fallback phone if missing
+    const userPhone = phone || `98${Math.floor(10000000 + Math.random() * 90000000)}`;
 
     // Create new user in database
     user = await saveUser({
-      name,
+      name: name || email.split("@")[0],
       email,
-      firebaseUid, // Store Firebase UID instead of password
-      phone,
-      role: role || "customer", // Default to customer if no role specified
+      password: hashedPassword,
+      firebaseUid: firebaseUid || undefined,
+      phone: userPhone,
+      role: role || "customer",
     });
 
     console.log("✅ User registered successfully:", {
@@ -62,20 +80,30 @@ router.post("/register", async (req, res) => {
       role: user.role,
     });
 
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || "agrokart_jwt_secret_production_key_2026",
+      { expiresIn: "30d" }
+    );
+
     res.status(201).json({
+      success: true,
       message: "User registered successfully",
+      token,
       user: {
         id: user._id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        phone: user.phone,
       },
     });
   } catch (err) {
     console.error("Registration error:", err);
     res
       .status(500)
-      .json({ message: "Server error", error: err.message, stack: err.stack });
+      .json({ message: "Server error", error: err.message });
   }
 });
 
@@ -163,18 +191,26 @@ router.post("/login", async (req, res) => {
           }
         }
 
+        const token = jwt.sign(
+          { id: user._id, email: user.email, role: user.role, firebaseUid: user.firebaseUid },
+          process.env.JWT_SECRET || "agrokart_jwt_secret_production_key_2026",
+          { expiresIn: "30d" }
+        );
+
         return res.json({
+          success: true,
           message: "Login successful",
           user: {
             id: user._id,
+            _id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
             phone: user.phone,
-            address: user.address, // Include address explicitly
-            vendorProfile: user.vendorProfile, // Include vendor profile if valid
+            address: user.address,
+            vendorProfile: user.vendorProfile,
           },
-          token: `${user.role}-jwt-token`,
+          token,
         });
       } catch (innerError) {
         console.error("Inner Login Error (Token/DB):", innerError);
@@ -188,7 +224,7 @@ router.post("/login", async (req, res) => {
       }
     }
 
-    // Case 2: Email/Password Login (Legacy/Standard)
+    // Case 2: Email/Password Login (Standard)
     console.log("🔄 Customer login attempt:", { email, expectedRole });
 
     if (!email) {
@@ -209,7 +245,7 @@ router.post("/login", async (req, res) => {
     // Check if account has a password
     if (!user.password) {
       return res.status(401).json({
-        message: "This account uses Firebase authentication. Please sign in with Firebase.",
+        message: "This account was registered via Google or Firebase. Please sign in with Google.",
       });
     }
 
@@ -241,17 +277,25 @@ router.post("/login", async (req, res) => {
       role: user.role,
     });
 
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || "agrokart_jwt_secret_production_key_2026",
+      { expiresIn: "30d" }
+    );
+
     res.json({
+      success: true,
       message: "Login successful",
       user: {
         id: user._id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
         phone: user.phone,
         address: user.address,
       },
-      token: `${user.role}-jwt-token`, // Returns correct role placeholder token for dev mode
+      token,
     });
   } catch (error) {
     console.error("Outer Login error:", error);

@@ -14,6 +14,41 @@ module.exports = async function (req, res, next) {
       .json({ message: "No authentication token provided." });
   }
 
+  // 1. Verify standard signed JWT tokens
+  const jwt = require("jsonwebtoken");
+  try {
+    const decoded = jwt.verify(
+      firebaseToken,
+      process.env.JWT_SECRET || "agrokart_jwt_secret_production_key_2026"
+    );
+    if (decoded && decoded.id) {
+      const user = await User.findById(decoded.id);
+      if (user) {
+        const requestedUrl = req.originalUrl;
+        if (requestedUrl.startsWith("/api/vendor") && user.role !== "vendor") {
+          return res.status(403).json({ message: "Access denied. Vendor privileges required." });
+        }
+        if (requestedUrl.startsWith("/api/delivery") && user.role !== "delivery_partner") {
+          return res.status(403).json({ message: "Access denied. Delivery privileges required." });
+        }
+        if (requestedUrl.startsWith("/api/admin") && user.role !== "admin") {
+          return res.status(403).json({ message: "Access denied. Admin privileges required." });
+        }
+
+        req.user = {
+          id: user._id,
+          _id: user._id,
+          firebaseUid: user.firebaseUid || decoded.firebaseUid,
+          email: user.email,
+          role: user.role,
+        };
+        return next();
+      }
+    }
+  } catch (jwtErr) {
+    // Continue to role placeholders / Firebase verification
+  }
+
   // Handle Role-Specific Placeholder / Dev / Demo Tokens
   const rolePlaceholderTokens = {
     "customer-jwt-token": "customer",
