@@ -30,6 +30,8 @@ import {
   People as PeopleIcon,
   Science as ScienceIcon,
   Storefront as StorefrontIcon,
+  WbSunny as WeatherIcon,
+  WaterDrop as WaterDropIcon,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthContext";
@@ -68,8 +70,8 @@ const CustomerSidebar = ({
     { id: "soilAnalysis", label: "Crop & Soil Analysis", icon: ScienceIcon, path: "/customer/dr-agro?tool=soil" },
     { id: "fertilizerCalc", label: "Fertilizer Calculator", icon: CategoryIcon, path: "/customer/dr-agro?tool=fertilizer" },
     { id: "cropDiag", label: "Crop Diagnosis", icon: CategoryIcon, path: "/customer/dr-agro?tool=cropDiag" },
-    { id: "irrigationAdv", label: "Irrigation Advisor", icon: ScienceIcon, path: "/customer/dr-agro?tool=irrigation" },
-    { id: "weatherAdv", label: "Weather Advisor", icon: ScienceIcon, path: "/customer/dr-agro/weather" },
+    { id: "irrigationAdv", label: "Irrigation Advisor", icon: WaterDropIcon, path: "/customer/dr-agro?tool=irrigation" },
+    { id: "weatherAdv", label: "Weather Advisor", icon: WeatherIcon, path: "/customer/dr-agro/weather" },
   ];
 
   const aiAssistantItems = [

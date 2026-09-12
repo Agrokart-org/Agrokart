@@ -34,6 +34,8 @@ import {
   RemoveShoppingCart as EmptyCartIcon,
 } from "@mui/icons-material";
 import { useCart } from "../context/CartContext";
+import { getProductImageUrl } from "../services/api";
+import { getProductImage } from "../data/productImages";
 import { motion } from "framer-motion";
 
 const CartPage = () => {
@@ -238,18 +240,17 @@ const CartPage = () => {
                           >
                             <Box
                               component="img"
-                              src={
-                                item.images && item.images[0]
-                                  ? `/images/products/${item.images[0]}`
-                                  : item.image ||
-                                    "https://placehold.co/200x200/2E7D32/FFFFFF?text=No+Image"
-                              }
+                              src={getProductImageUrl(item)}
                               alt={item.name}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = getProductImage(item.name, item.category);
+                              }}
                               sx={{
                                 maxWidth: "100%",
                                 maxHeight: "100%",
                                 objectFit: "contain",
-                                borderRadius: 2,
+                                borderRadius: 1.5,
                               }}
                             />
                           </Box>

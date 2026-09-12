@@ -366,6 +366,10 @@ const ProductDetailPage = () => {
                       src={img}
                       alt={`Thumbnail ${index + 1}`}
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = getProductImage(product.name, product.category);
+                      }}
                       style={{
                         width: "100%",
                         height: "100%",

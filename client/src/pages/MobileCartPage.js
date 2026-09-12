@@ -22,6 +22,8 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { getProductImageUrl } from "../services/api";
+import { getProductImage } from "../data/productImages";
 import { motion, AnimatePresence } from "framer-motion";
 
 const MotionCard = motion(Card);
@@ -147,14 +149,20 @@ const MobileCartPage = () => {
                   <Box sx={{ position: "relative" }}>
                     <Box
                       component="img"
-                      src={item.image || "/api/placeholder/100/100"}
+                      src={getProductImageUrl(item)}
                       alt={item.name}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = getProductImage(item.name, item.category);
+                      }}
                       sx={{
                         width: 80,
                         height: 80,
-                        borderRadius: 3,
-                        objectFit: "cover",
-                        bgcolor: "#F5F5F5",
+                        borderRadius: 2,
+                        objectFit: "contain",
+                        bgcolor: "#FFFFFF",
+                        p: 0.5,
+                        border: "1px solid #E5E7EB",
                       }}
                     />
                   </Box>

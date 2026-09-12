@@ -38,6 +38,7 @@ import { useCart } from "../context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { mockProducts } from "../data/mockProducts";
 import api, { getProductImageUrl } from "../services/api";
+import { getProductImage } from "../data/productImages";
 
 const FilterContent = ({
   categories,
@@ -282,7 +283,7 @@ const ProductsPage = () => {
                           decoding="async"
                           onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = "/images/products/organic-fertilizer.jpg";
+                            e.target.src = getProductImage(product.name, product.category);
                           }}
                           sx={{
                             position: "absolute",

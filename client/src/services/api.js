@@ -258,36 +258,36 @@ export const extractProductsArray = (data) => {
 
 export const getProductImageUrl = (product) => {
   if (!product) return "/images/placeholder-product.png";
+
+  let rawUrl = "";
+  let name = "";
+  let category = "";
+
   if (typeof product === "string") {
-    if (
-      product.startsWith("http://") ||
-      product.startsWith("https://") ||
-      product.startsWith("data:")
-    ) {
-      return product;
-    }
-    if (product.startsWith("/uploads/")) {
-      const apiHost =
-        process.env.REACT_APP_API_URL ||
-        (typeof window !== "undefined" &&
-        window.location.hostname !== "localhost" &&
-        window.location.hostname !== "127.0.0.1"
-          ? "https://agrokart-api.onrender.com"
-          : "");
-      return `${apiHost.replace(/\/+$/, "")}${product}`;
-    }
-    return product;
+    rawUrl = product;
+  } else if (typeof product === "object") {
+    name = product.name || "";
+    category = product.category || "";
+    rawUrl =
+      (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) ||
+      product.image ||
+      product.imageUrl ||
+      product.image_url ||
+      product.productImage ||
+      "";
   }
 
-  const rawUrl =
-    (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) ||
-    product.image ||
-    product.imageUrl ||
-    product.image_url ||
-    product.productImage ||
-    "";
+  if (typeof rawUrl === "string" && rawUrl.trim()) {
+    rawUrl = rawUrl.trim();
 
-  if (rawUrl && typeof rawUrl === "string") {
+    // Sanitize any accidental double prefixing
+    while (rawUrl.includes("/images/products//images/products/")) {
+      rawUrl = rawUrl.replace("/images/products//images/products/", "/images/products/");
+    }
+    while (rawUrl.includes("/images/products/images/products/")) {
+      rawUrl = rawUrl.replace("/images/products/images/products/", "/images/products/");
+    }
+
     if (
       rawUrl.startsWith("http://") ||
       rawUrl.startsWith("https://") ||
@@ -295,6 +295,7 @@ export const getProductImageUrl = (product) => {
     ) {
       return rawUrl;
     }
+
     if (rawUrl.startsWith("/uploads/")) {
       const apiHost =
         process.env.REACT_APP_API_URL ||
@@ -305,12 +306,13 @@ export const getProductImageUrl = (product) => {
           : "");
       return `${apiHost.replace(/\/+$/, "")}${rawUrl}`;
     }
+
     if (rawUrl.startsWith("/images/")) {
       return rawUrl;
     }
   }
 
-  return getProductImage(product.name, product.category, rawUrl);
+  return getProductImage(name, category, rawUrl);
 };
 
 export const getProducts = async (params = {}) => {
