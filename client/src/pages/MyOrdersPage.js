@@ -17,9 +17,37 @@ import { useAuth } from "../context/AuthContext";
 import { getUserOrders } from "../services/api";
 import OrderCard from "../components/OrderCard";
 
+const demoCustomerOrders = [
+  {
+    _id: "demo-cust-ord-1",
+    orderId: "ORD-2024-889",
+    trackingNumber: "ORD-2024-889",
+    totalAmount: 2920,
+    orderStatus: "in_transit",
+    items: [
+      { product: { name: "NPK Complex 19-19-19 (50kg)" }, quantity: 2, price: 1250 },
+      { product: { name: "Bayer Confidor (250ml)" }, quantity: 1, price: 420 },
+    ],
+    deliveryAddress: { street: "Green Fields Farm, Sector 4", city: "Pune", state: "Maharashtra" },
+    createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+  },
+  {
+    _id: "demo-cust-ord-2",
+    orderId: "ORD-2024-850",
+    trackingNumber: "ORD-2024-850",
+    totalAmount: 801,
+    orderStatus: "delivered",
+    items: [
+      { product: { name: "Neem Coated Urea (45kg)" }, quantity: 3, price: 267 },
+    ],
+    deliveryAddress: { street: "Green Fields Farm, Sector 4", city: "Pune", state: "Maharashtra" },
+    createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+  },
+];
+
 const MyOrdersPage = () => {
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, isGuest } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,6 +55,11 @@ const MyOrdersPage = () => {
 
   useEffect(() => {
     const fetchOrders = async () => {
+      if (isGuest) {
+        setOrders(demoCustomerOrders);
+        setLoading(false);
+        return;
+      }
       if (!token) {
         setError("Authentication required");
         setLoading(false);
@@ -54,7 +87,7 @@ const MyOrdersPage = () => {
     };
 
     fetchOrders();
-  }, [token]);
+  }, [token, isGuest]);
 
   const filteredOrders = orders.filter((order) => {
     if (filterStatus === "All Orders") return true;

@@ -62,7 +62,7 @@ import SecurityDialog from "../components/profile/SecurityDialog";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const { user, logout, updateUserProfile } = useAuth();
+  const { user, logout, updateUserProfile, isGuest, exitGuestMode } = useAuth();
   
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -202,8 +202,13 @@ const ProfilePage = () => {
   }, [user]);
 
   const handleLogout = () => {
-    logout();
-    navigate("/login");
+    if (isGuest) {
+      exitGuestMode();
+      navigate("/role-selection");
+    } else {
+      logout();
+      navigate("/login");
+    }
   };
 
   const handleInputChange = (e) => {
@@ -214,6 +219,11 @@ const ProfilePage = () => {
   };
 
   const handleSaveChanges = async () => {
+    if (isGuest) {
+      setEditDialogOpen(false);
+      showToast("Profile changes saved (Demo Mode)");
+      return;
+    }
     setLoading(true);
     try {
       await updateUserProfile({
@@ -418,7 +428,7 @@ const ProfilePage = () => {
           onClick={handleLogout}
           sx={{ borderRadius: 3, py: 1.5, fontWeight: "800", textTransform: "none", boxShadow: "0 8px 16px rgba(239, 68, 68, 0.2)" }}
         >
-          Log Out
+          {isGuest ? "Exit Demo Mode" : "Log Out"}
         </Button>
 
       </motion.div>

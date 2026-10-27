@@ -52,7 +52,7 @@ const CustomerSidebar = ({
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const { user, logout } = useAuth();
+  const { user, logout, isGuest, exitGuestMode } = useAuth();
   const { cart } = useCart();
   const { t } = useTranslation();
 
@@ -97,8 +97,13 @@ const CustomerSidebar = ({
   };
 
   const handleLogout = () => {
-    logout();
-    navigate("/login");
+    if (isGuest) {
+      exitGuestMode();
+      navigate("/role-selection");
+    } else {
+      logout();
+      navigate("/login");
+    }
     if (isMobile) onMobileClose();
   };
 
@@ -253,7 +258,7 @@ const CustomerSidebar = ({
             <LogoutIcon sx={{ fontSize: 20 }} />
           </ListItemIcon>
           <ListItemText
-            primary="Sign Out"
+            primary={isGuest ? "Exit Demo" : "Sign Out"}
             primaryTypographyProps={{ fontWeight: 600, fontSize: "0.88rem" }}
           />
         </ListItemButton>

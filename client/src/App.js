@@ -28,7 +28,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 
 // Main App Content Component (must be inside AuthProvider)
 const AppContent = () => {
-  const { showRoleSelection, isAuthenticated, userRole } = useAuth();
+  const { showRoleSelection, isAuthenticated, userRole, isGuest, guestRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -161,12 +161,23 @@ const AppContent = () => {
     return <Navigate to="/customer/dashboard" replace />;
   }
 
+  // For guest demo users, route to their selected module dashboard
+  if (isGuest && location.pathname === "/") {
+    if (guestRole === "vendor") return <Navigate to="/vendor/dashboard" replace />;
+    if (guestRole === "delivery_partner") return <Navigate to="/delivery/dashboard" replace />;
+    return <Navigate to="/customer/dashboard" replace />;
+  }
+
   // Only gate root "/" or explicit "/role-selection" for unauthenticated visitors,
   // allowing direct access to public product catalog, cart, and auth routes.
-  if ((location.pathname === "/" || location.pathname === "/role-selection") && showRoleSelection && !isAuthenticated) {
+  if ((location.pathname === "/" || location.pathname === "/role-selection") && (showRoleSelection || location.pathname === "/role-selection") && !isAuthenticated && !isGuest) {
     if (isMobile && location.pathname === "/") {
       return <Navigate to="/login" replace />;
     }
+    return <RoleSelectionPage />;
+  }
+
+  if (location.pathname === "/role-selection") {
     return <RoleSelectionPage />;
   }
 

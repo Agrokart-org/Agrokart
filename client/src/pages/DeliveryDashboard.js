@@ -42,15 +42,27 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import theme from "../theme";
 import MobileDeliveryDashboard from "./MobileDeliveryDashboard";
+import DemoModeBanner from "../components/DemoModeBanner";
 
 // Animations
 const MotionCard = motion(Card);
 const MotionBox = motion(Box);
 
 const DeliveryDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isGuest, exitGuestMode } = useAuth();
   const socket = useSocket();
   const navigate = useNavigate();
+
+  const handleDeliveryLogout = () => {
+    handleProfileMenuClose();
+    if (isGuest) {
+      exitGuestMode();
+      navigate("/role-selection");
+    } else {
+      logout();
+      navigate("/");
+    }
+  };
   const [isOnline, setIsOnline] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -251,6 +263,8 @@ const DeliveryDashboard = () => {
           </Toolbar>
         </AppBar>
 
+        <DemoModeBanner />
+
         {/* Menu */}
         <Menu
           anchorEl={anchorEl}
@@ -260,7 +274,9 @@ const DeliveryDashboard = () => {
             sx: { borderRadius: 3, boxShadow: "0 8px 24px rgba(0,0,0,0.1)" },
           }}
         >
-          <MenuItem onClick={logout}>Logout</MenuItem>
+          <MenuItem onClick={handleDeliveryLogout}>
+            {isGuest ? "Exit Demo" : "Logout"}
+          </MenuItem>
         </Menu>
 
         <Container maxWidth="md" sx={{ mt: 3 }}>

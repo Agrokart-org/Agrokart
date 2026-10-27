@@ -93,9 +93,80 @@ import {
   API_BASE_URL,
 } from "../services/api";
 import { getProductImage } from "../data/productImages";
+import DemoModeBanner from "../components/DemoModeBanner";
 
 const MotionCard = motion(Card);
 const MotionBox = motion(Box);
+
+const demoVendorOrders = [
+  {
+    _id: "demo-v-ord-1",
+    orderId: "ORD-2024-889",
+    trackingNumber: "ORD-2024-889",
+    customer: { name: "Rahul Kumar", phone: "+91 98765 00001" },
+    deliveryAddress: { street: "Green Fields Farm, Sector 4", city: "Pune", state: "Maharashtra" },
+    items: [
+      { product: { name: "NPK Complex 19-19-19 (50kg)" }, quantity: 2, price: 1250 },
+      { product: { name: "Bayer Confidor (250ml)" }, quantity: 1, price: 420 },
+    ],
+    totalAmount: 2920,
+    orderStatus: "ready_for_pickup",
+    pickupPin: "4821",
+    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+  },
+  {
+    _id: "demo-v-ord-2",
+    orderId: "ORD-2024-850",
+    trackingNumber: "ORD-2024-850",
+    customer: { name: "Sunita Patil", phone: "+91 98765 00002" },
+    deliveryAddress: { street: "Village Khed, Taluka Haveli", city: "Pune", state: "Maharashtra" },
+    items: [
+      { product: { name: "Neem Coated Urea (45kg)" }, quantity: 3, price: 267 },
+    ],
+    totalAmount: 801,
+    orderStatus: "delivered",
+    pickupPin: "9102",
+    createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+  },
+];
+
+const demoInventoryItems = [
+  {
+    _id: "demo-inv-1",
+    product: { name: "NPK Complex 19-19-19", unit: "50kg bag", price: 1250 },
+    availableStock: 85,
+    reservedStock: 2,
+    isActive: true,
+  },
+  {
+    _id: "demo-inv-2",
+    product: { name: "Neem Coated Urea", unit: "45kg bag", price: 267 },
+    availableStock: 120,
+    reservedStock: 3,
+    isActive: true,
+  },
+  {
+    _id: "demo-inv-3",
+    product: { name: "DAP 18-46-0", unit: "50kg bag", price: 1350 },
+    availableStock: 60,
+    reservedStock: 0,
+    isActive: true,
+  },
+  {
+    _id: "demo-inv-4",
+    product: { name: "Bayer Confidor", unit: "250ml bottle", price: 420 },
+    availableStock: 45,
+    reservedStock: 1,
+    isActive: true,
+  },
+  {
+    _id: "demo-inv-5",
+    product: { name: "Zinc Sulphate 21%", unit: "25kg bag", price: 480 },
+    availableStock: 30,
+    reservedStock: 0,
+    isActive: true,
+  },
+];
 
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
@@ -104,11 +175,18 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 const MobileVendorDashboard = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  console.log("--- DEBUG AUTH ---");
-  console.log("User Context:", user);
-  console.log("Token in LocalStorage:", localStorage.getItem("authToken"));
-  console.log("--- END DEBUG ---");
+  const { user, logout, isGuest, exitGuestMode } = useAuth();
+
+  const handleVendorLogout = () => {
+    if (isGuest) {
+      exitGuestMode();
+      navigate("/role-selection");
+    } else {
+      logout();
+      navigate("/");
+    }
+  };
+
   const [value, setValue] = useState(0);
 
   // Real Dashboard Data State
@@ -118,6 +196,15 @@ const MobileVendorDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoadingDashboard(true);
+      if (isGuest) {
+        setDashboardData({
+          todayRevenue: 3721,
+          totalOrders: 14,
+          pendingOrders: 2,
+          completedOrders: 12,
+        });
+        return;
+      }
       const token = localStorage.getItem("authToken");
       if (!token) return;
       const response = await safeFetch(`${API_BASE_URL}/vendor/dashboard`, {
@@ -214,6 +301,10 @@ const MobileVendorDashboard = () => {
   const fetchMyOrders = async (silent = false) => {
     try {
       setLoadingOrders(true);
+      if (isGuest) {
+        setMyOrders(demoVendorOrders);
+        return;
+      }
       const token = localStorage.getItem("authToken");
       if (token) {
         console.log("Fetching vendor orders...");
@@ -230,6 +321,8 @@ const MobileVendorDashboard = () => {
         }
 
         setMyOrders(data.orders || []);
+      } else if (isGuest) {
+        setMyOrders(demoVendorOrders);
       }
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -695,11 +788,11 @@ const MobileVendorDashboard = () => {
           <ListItemText primary="Wallet" />
         </ListItemButton>
         <Divider sx={{ my: 1 }} />
-        <ListItemButton onClick={logout} sx={{ borderRadius: 2, mx: 1 }}>
+        <ListItemButton onClick={handleVendorLogout} sx={{ borderRadius: 2, mx: 1 }}>
           <ListItemIcon>
             <ExitToApp color="error" />
           </ListItemIcon>
-          <ListItemText primary="Logout" sx={{ color: "error.main" }} />
+          <ListItemText primary={isGuest ? "Exit Demo" : "Logout"} sx={{ color: "error.main" }} />
         </ListItemButton>
       </List>
     </Box>
@@ -1309,6 +1402,15 @@ const MobileVendorDashboard = () => {
   const fetchInventory = async () => {
     setLoadingInventory(true);
     try {
+      if (isGuest) {
+        setInventoryItems(demoInventoryItems);
+        const edits = {};
+        demoInventoryItems.forEach((item) => {
+          edits[item._id] = item.availableStock;
+        });
+        setDailyStockEdits(edits);
+        return;
+      }
       const token = localStorage.getItem("authToken");
       const data = await getVendorInventory({}, token);
       const items = data.inventory || data || [];
@@ -2660,7 +2762,7 @@ const MobileVendorDashboard = () => {
 
           {/* Logout Button */}
           <Box
-            onClick={logout}
+            onClick={handleVendorLogout}
             sx={{
               display: "flex",
               alignItems: "center",
@@ -2693,10 +2795,10 @@ const MobileVendorDashboard = () => {
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography variant="body2" fontWeight={700} sx={{ color: "#EF4444" }}>
-                Logout
+                {isGuest ? "Exit Demo" : "Logout"}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Sign out from your account
+                {isGuest ? "Switch or exit demo mode" : "Sign out from your account"}
               </Typography>
             </Box>
             <ArrowForward sx={{ fontSize: 16, color: "#FECACA" }} />
@@ -2797,6 +2899,8 @@ const MobileVendorDashboard = () => {
           </Box>
         </Toolbar>
       </AppBar>
+
+      <DemoModeBanner />
 
       {/* Main Content Area */}
       <Box sx={{ p: 0 }}>

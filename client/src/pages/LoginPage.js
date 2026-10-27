@@ -21,7 +21,7 @@ import { login } from "../services/api";
 const LoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login: authLogin, setRole, googleLogin } = useAuth();
+  const { login: authLogin, setRole, googleLogin, continueAsGuest, isAuthenticated, user, logout } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -29,6 +29,8 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState(null);
+
+  const redirectPath = searchParams.get("redirect");
 
   useEffect(() => {
     // Get role from URL parameters
@@ -40,11 +42,10 @@ const LoginPage = () => {
   }, [searchParams, setRole]);
 
   // Handle redirection when authenticated
-  const { isAuthenticated, user, logout } = useAuth();
   useEffect(() => {
     if (isAuthenticated && user) {
       if (user.role === "customer") {
-        navigate("/customer/dashboard", { replace: true });
+        navigate(redirectPath || "/customer/dashboard", { replace: true });
       } else {
         // If logged in as non-customer (e.g. stale delivery session), logout automatically
         // so they can login as customer
@@ -54,7 +55,7 @@ const LoginPage = () => {
         logout();
       }
     }
-  }, [isAuthenticated, user, navigate, logout]);
+  }, [isAuthenticated, user, navigate, logout, redirectPath]);
 
   const handleChange = (e) => {
     setFormData({
@@ -92,6 +93,11 @@ const LoginPage = () => {
     navigate("/otp");
   };
 
+  const handleContinueAsGuest = () => {
+    continueAsGuest("customer");
+    navigate("/customer/dashboard");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -109,7 +115,7 @@ const LoginPage = () => {
             `Access denied. This account is registered as ${result.user.role}. Please use the correct login page for your account type.`,
           );
         }
-        navigate("/customer/dashboard", { replace: true });
+        navigate(redirectPath || "/customer/dashboard", { replace: true });
       }
     } catch (err) {
       console.error("Customer login error:", err);
@@ -216,10 +222,31 @@ const LoginPage = () => {
             type="submit"
             fullWidth
             variant="contained"
-            sx={{ mt: 3, mb: 2 }}
+            sx={{ mt: 3, mb: 1.5 }}
             disabled={loading}
           >
             {loading ? <CircularProgress size={24} /> : "Login"}
+          </Button>
+
+          <Button
+            type="button"
+            fullWidth
+            variant="outlined"
+            color="secondary"
+            onClick={handleContinueAsGuest}
+            sx={{
+              mb: 2,
+              py: 1,
+              fontWeight: 600,
+              borderRadius: 2,
+              textTransform: "none",
+              borderWidth: "1.5px",
+              "&:hover": {
+                borderWidth: "1.5px",
+              },
+            }}
+          >
+            Continue as Guest (Demo)
           </Button>
           <Box sx={{ textAlign: "center" }}>
             <Link href="/register" variant="body2">

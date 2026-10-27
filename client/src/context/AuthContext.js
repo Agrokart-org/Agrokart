@@ -31,12 +31,63 @@ import { getApiBaseUrl } from "../services/api";
 
 const AuthContext = createContext(null);
 
+export const getGuestUserData = (role) => {
+  switch (role) {
+    case "vendor":
+      return {
+        id: "guest-vendor-preview",
+        _id: "guest-vendor-preview",
+        name: "Demo Agro Store",
+        email: "guest.vendor@demo.agrokart",
+        role: "vendor",
+        businessName: "Demo Agro Store & Farm Supplies",
+        phone: "+91 98765 43210",
+        address: {
+          street: "Station Road, Agricultural Market Yard",
+          city: "Pune",
+          district: "Pune",
+          state: "Maharashtra",
+          pincode: "411001",
+        },
+        isGuest: true,
+      };
+    case "delivery_partner":
+      return {
+        id: "guest-delivery-preview",
+        _id: "guest-delivery-preview",
+        name: "Suresh Patil (Demo Rider)",
+        email: "guest.delivery@demo.agrokart",
+        role: "delivery_partner",
+        vehicleType: "Motorcycle (MH-12-DE-2026)",
+        phone: "+91 98765 12345",
+        isGuest: true,
+      };
+    case "customer":
+    default:
+      return {
+        id: "guest-customer-preview",
+        _id: "guest-customer-preview",
+        name: "Guest Farmer (Demo)",
+        email: "guest.farmer@demo.agrokart",
+        role: "customer",
+        phone: "+91 98765 00000",
+        isGuest: true,
+      };
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRoleSelection, setShowRoleSelection] = useState(true);
+  const [isGuest, setIsGuest] = useState(() => {
+    return localStorage.getItem("agrokart_guest_mode") === "true";
+  });
+  const [guestRole, setGuestRole] = useState(() => {
+    return localStorage.getItem("agrokart_guest_role") || null;
+  });
 
   const [token, setToken] = useState(localStorage.getItem("authToken"));
 
@@ -124,6 +175,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("userRole", userData.role);
         localStorage.setItem("userEmail", userData.email);
         localStorage.setItem("isLoggedIn", "true");
+        localStorage.removeItem("agrokart_guest_mode");
+        localStorage.removeItem("agrokart_guest_role");
+        setIsGuest(false);
+        setGuestRole(null);
 
         setUser(userData);
         setIsAuthenticated(true);
@@ -142,6 +197,10 @@ export const AuthProvider = ({ children }) => {
           try {
             const parsedUser = JSON.parse(savedUserStr);
             console.log("✅ Restored persistent user session:", parsedUser.email);
+            localStorage.removeItem("agrokart_guest_mode");
+            localStorage.removeItem("agrokart_guest_role");
+            setIsGuest(false);
+            setGuestRole(null);
             setUser(parsedUser);
             setUserRole(parsedUser.role || savedRole || "customer");
             setToken(savedToken);
@@ -168,6 +227,17 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(false);
             setShowRoleSelection(true);
           }
+        } else if (localStorage.getItem("agrokart_guest_mode") === "true") {
+          const savedGuestRole = localStorage.getItem("agrokart_guest_role") || "customer";
+          const guestUser = getGuestUserData(savedGuestRole);
+          console.log("⚡ Restored Guest Demo Mode session for role:", savedGuestRole);
+          setIsGuest(true);
+          setGuestRole(savedGuestRole);
+          setUser(guestUser);
+          setUserRole(savedGuestRole);
+          setToken(null);
+          setIsAuthenticated(false);
+          setShowRoleSelection(false);
         } else {
           console.log("👋 User signed out, clearing state");
           localStorage.removeItem("authToken");
@@ -287,6 +357,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("userData", JSON.stringify(userObj));
         localStorage.setItem("user", JSON.stringify(userObj));
         localStorage.setItem("isLoggedIn", "true");
+        localStorage.removeItem("agrokart_guest_mode");
+        localStorage.removeItem("agrokart_guest_role");
+        setIsGuest(false);
+        setGuestRole(null);
 
         setToken(userToken);
         setUser(userObj);
@@ -332,6 +406,10 @@ export const AuthProvider = ({ children }) => {
         if (result?.result?.idToken) {
           const credential = GoogleAuthProvider.credential(result.result.idToken);
           const firebaseResult = await signInWithCredential(auth, credential);
+          localStorage.removeItem("agrokart_guest_mode");
+          localStorage.removeItem("agrokart_guest_role");
+          setIsGuest(false);
+          setGuestRole(null);
           if (userRole) localStorage.setItem("userRole", userRole);
           return { success: true, user: firebaseResult.user };
         } else {
@@ -352,6 +430,10 @@ export const AuthProvider = ({ children }) => {
           throw popupErr;
         }
 
+        localStorage.removeItem("agrokart_guest_mode");
+        localStorage.removeItem("agrokart_guest_role");
+        setIsGuest(false);
+        setGuestRole(null);
         if (userRole) {
           localStorage.setItem("userRole", userRole);
         }
@@ -403,6 +485,10 @@ export const AuthProvider = ({ children }) => {
           throw new Error("No OTP request found.");
         const result = await window.confirmationResult.confirm(otpCode);
         const user = result.user;
+        localStorage.removeItem("agrokart_guest_mode");
+        localStorage.removeItem("agrokart_guest_role");
+        setIsGuest(false);
+        setGuestRole(null);
         if (userRole) localStorage.setItem("userRole", userRole);
         return { success: true, user };
       } catch (error) {
@@ -439,6 +525,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("userEmail");
       localStorage.removeItem("userName");
       localStorage.removeItem("isLoggedIn");
+      localStorage.removeItem("agrokart_guest_mode");
+      localStorage.removeItem("agrokart_guest_role");
+      setIsGuest(false);
+      setGuestRole(null);
       setUserRole(null);
       setToken(null);
       setIsAuthenticated(false);
@@ -448,6 +538,43 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       throw error;
     }
+  }, []);
+
+  // Guest Demo Access Handler (No fake Firebase accounts, isolated from real mutations)
+  const continueAsGuest = useCallback((role = "customer") => {
+    // Clear any real auth artifacts
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("token");
+    localStorage.removeItem("firebaseToken");
+    localStorage.removeItem("userData");
+    localStorage.removeItem("user");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("isLoggedIn");
+
+    localStorage.setItem("agrokart_guest_mode", "true");
+    localStorage.setItem("agrokart_guest_role", role);
+
+    const guestUser = getGuestUserData(role);
+    setIsGuest(true);
+    setGuestRole(role);
+    setUser(guestUser);
+    setUserRole(role);
+    setToken(null);
+    setIsAuthenticated(false); // Deliberately false: guest is not an authenticated customer
+    setShowRoleSelection(false);
+    console.log("⚡ Entered AgroKart Guest Demo Mode:", { role, guestUser });
+    return guestUser;
+  }, []);
+
+  const exitGuestMode = useCallback(() => {
+    localStorage.removeItem("agrokart_guest_mode");
+    localStorage.removeItem("agrokart_guest_role");
+    setIsGuest(false);
+    setGuestRole(null);
+    setUser(null);
+    setUserRole(null);
+    setShowRoleSelection(true);
   }, []);
 
   const setRole = useCallback((role) => {
@@ -535,6 +662,10 @@ export const AuthProvider = ({ children }) => {
   const value = React.useMemo(
     () => ({
       isAuthenticated,
+      isGuest,
+      guestRole,
+      continueAsGuest,
+      exitGuestMode,
       user,
       token, // Expose token
       userRole,
@@ -565,6 +696,10 @@ export const AuthProvider = ({ children }) => {
     }),
     [
       isAuthenticated,
+      isGuest,
+      guestRole,
+      continueAsGuest,
+      exitGuestMode,
       user,
       token,
       userRole,

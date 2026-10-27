@@ -23,7 +23,12 @@ const EmailLoginPage = () => {
   const [error, setError] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
-  const { login: authLogin } = useAuth();
+  const { login: authLogin, continueAsGuest } = useAuth();
+
+  const handleContinueAsGuest = () => {
+    continueAsGuest("customer");
+    navigate("/customer/dashboard");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -125,6 +130,27 @@ const EmailLoginPage = () => {
               ) : (
                 "Sign In"
               )}
+            </Button>
+
+            <Button
+              type="button"
+              fullWidth
+              variant="outlined"
+              color="secondary"
+              onClick={handleContinueAsGuest}
+              sx={{
+                mt: 1.5,
+                py: 1.1,
+                fontWeight: 600,
+                borderRadius: 2,
+                textTransform: "none",
+                borderWidth: "1.5px",
+                "&:hover": {
+                  borderWidth: "1.5px",
+                },
+              }}
+            >
+              Continue as Guest (Demo)
             </Button>
 
             <Box sx={{ mt: 2, textAlign: "center" }}>

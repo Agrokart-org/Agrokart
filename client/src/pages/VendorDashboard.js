@@ -74,6 +74,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import theme from "../theme"; // Using the main theme we just updated
 import MobileVendorDashboard from "./MobileVendorDashboard";
+import DemoModeBanner from "../components/DemoModeBanner";
 
 const drawerWidth = 280;
 
@@ -100,8 +101,69 @@ const itemVariants = {
   },
 };
 
+const demoAvailableOrders = [
+  {
+    _id: "demo-ord-1",
+    orderId: "ORD-2024-889",
+    trackingNumber: "ORD-2024-889",
+    customer: { name: "Rahul Kumar", phone: "+91 98765 00001" },
+    deliveryAddress: { street: "Green Fields Farm, Sector 4", city: "Pune", state: "Maharashtra" },
+    items: [
+      { product: { name: "NPK Complex 19-19-19 (50kg)" }, quantity: 2, price: 1250 },
+      { product: { name: "Bayer Confidor (250ml)" }, quantity: 1, price: 420 },
+    ],
+    totalAmount: 2920,
+    createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    orderStatus: "finding_vendor",
+  },
+  {
+    _id: "demo-ord-2",
+    orderId: "ORD-2024-912",
+    trackingNumber: "ORD-2024-912",
+    customer: { name: "Sunita Patil", phone: "+91 98765 00002" },
+    deliveryAddress: { street: "Village Khed, Taluka Haveli", city: "Pune", state: "Maharashtra" },
+    items: [
+      { product: { name: "Neem Coated Urea (45kg)" }, quantity: 3, price: 267 },
+    ],
+    totalAmount: 801,
+    createdAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
+    orderStatus: "finding_vendor",
+  },
+];
+
+const demoMyOrders = [
+  {
+    _id: "demo-ord-active-1",
+    orderId: "ORD-2024-874",
+    trackingNumber: "ORD-2024-874",
+    customer: { name: "Mahesh Shinde", phone: "+91 98765 00003" },
+    deliveryAddress: { street: "Plot 14, Agri Market", city: "Pune", state: "Maharashtra" },
+    items: [
+      { product: { name: "Zinc Sulphate 21% (25kg)" }, quantity: 1, price: 480 },
+    ],
+    totalAmount: 480,
+    orderStatus: "ready_for_pickup",
+    pickupPin: "4821",
+    createdAt: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
+  },
+  {
+    _id: "demo-ord-past-1",
+    orderId: "ORD-2024-820",
+    trackingNumber: "ORD-2024-820",
+    customer: { name: "Ganesh Deshmukh", phone: "+91 98765 00004" },
+    deliveryAddress: { street: "Farm Gate 3, Saswad Road", city: "Pune", state: "Maharashtra" },
+    items: [
+      { product: { name: "DAP 18-46-0 (50kg)" }, quantity: 2, price: 1350 },
+    ],
+    totalAmount: 2700,
+    orderStatus: "delivered",
+    pickupPin: "1192",
+    createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+  },
+];
+
 const VendorDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isGuest, exitGuestMode } = useAuth();
   const socket = useSocket(); // Use socket
   const navigate = useNavigate();
   const themeInstance = useTheme();
@@ -305,46 +367,72 @@ const VendorDashboard = () => {
   };
 
   const fetchAvailableOrders = async () => {
+    if (isGuest) {
+      setAvailableOrders(demoAvailableOrders);
+      return;
+    }
     try {
       const token = localStorage.getItem("token");
       if (token) {
         console.log("Fetching available orders...");
         const data = await getVendorAvailableOrders(token);
         console.log("Available orders data:", data);
-        setAvailableOrders(data);
+        setAvailableOrders(Array.isArray(data) && data.length > 0 ? data : demoAvailableOrders);
+      } else {
+        setAvailableOrders(demoAvailableOrders);
       }
     } catch (error) {
       console.error("Error fetching available orders", error);
+      setAvailableOrders(demoAvailableOrders);
     }
   };
 
   const fetchMyOrders = async () => {
+    if (isGuest) {
+      setMyOrders(demoMyOrders);
+      return;
+    }
     try {
       const token = localStorage.getItem("token");
       if (token) {
         console.log("Fetching my orders...");
         const data = await getVendorOrders({}, token);
         console.log("My orders data:", data);
-        setMyOrders(data.orders || []);
-
-        if (data.orders) {
-          const active = data.orders.filter(
-            (o) =>
-              !["delivered", "cancelled", "rejected"].includes(o.orderStatus),
-          );
-          const past = data.orders.filter((o) =>
-            ["delivered", "cancelled", "rejected"].includes(o.orderStatus),
-          );
-          console.log("Filtered Active Orders:", active);
-          console.log("Filtered Past Orders:", past);
-        }
+        setMyOrders(data?.orders?.length ? data.orders : demoMyOrders);
+      } else {
+        setMyOrders(demoMyOrders);
       }
     } catch (error) {
       console.error("Error fetching my orders", error);
+      setMyOrders(demoMyOrders);
     }
   };
 
   const handleClaimOrder = async (orderId) => {
+    if (isGuest) {
+      const target = availableOrders.find((o) => (o._id || o.orderId) === orderId) || {
+        orderId: typeof orderId === "string" ? orderId : "ORD-DEMO",
+        customer: { name: "Demo Farmer" },
+        items: [{ product: { name: "NPK 19-19-19" }, quantity: 1, price: 1250 }],
+        totalAmount: 1250,
+      };
+      setAvailableOrders((prev) => prev.filter((o) => (o._id || o.orderId) !== orderId));
+      setMyOrders((prev) => [
+        {
+          ...target,
+          orderStatus: "ready_for_pickup",
+          pickupPin: "8421",
+        },
+        ...prev,
+      ]);
+      setNotification({
+        open: true,
+        message: "Demo Mode: Order Claimed successfully (Simulation)!",
+        severity: "success",
+      });
+      setOrderTab(0);
+      return;
+    }
     try {
       const token = localStorage.getItem("token");
       await claimVendorOrder(orderId, token);
@@ -407,8 +495,13 @@ const VendorDashboard = () => {
   const handleProfileMenuClose = () => setAnchorEl(null);
 
   const handleLogout = () => {
-    logout();
-    navigate("/");
+    if (isGuest) {
+      exitGuestMode();
+      navigate("/role-selection");
+    } else {
+      logout();
+      navigate("/");
+    }
   };
 
   const menuItems = [
@@ -1213,6 +1306,7 @@ const VendorDashboard = () => {
             initial="hidden"
             animate="visible"
           >
+            <DemoModeBanner sx={{ mb: 3, borderRadius: 2 }} />
             {/* Stats Overview */}
             {!user?.address?.coordinates?.coordinates && (
               <Alert severity="warning" sx={{ mb: 3 }}>

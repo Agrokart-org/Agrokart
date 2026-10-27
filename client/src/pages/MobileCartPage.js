@@ -22,6 +22,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import { getProductImageUrl } from "../services/api";
 import { getProductImage } from "../data/productImages";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,8 +32,17 @@ const MotionCard = motion(Card);
 const MobileCartPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { isGuest, user } = useAuth();
   const { cart, updateQuantity, removeFromCart, getCartTotal, cartCount } =
     useCart();
+
+  const handleProceedToCheckout = () => {
+    if (isGuest || !user || !user.firebaseUid) {
+      navigate("/login?redirect=/delivery-details");
+      return;
+    }
+    navigate("/delivery-details");
+  };
 
   if (cartCount === 0) {
     return (
@@ -393,11 +403,29 @@ const MobileCartPage = () => {
           bgcolor: "#FFFFFF",
         }}
       >
+        {isGuest && (
+          <Box
+            sx={{
+              p: 1.5,
+              mb: 1.5,
+              borderRadius: 2,
+              bgcolor: "#FFFBEB",
+              border: "1px solid #FCD34D",
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
+            <Typography variant="caption" sx={{ color: "#92400E", fontWeight: 600 }}>
+              Demo Mode: Sign in to complete your purchase. Your cart items will be preserved.
+            </Typography>
+          </Box>
+        )}
         <Button
           variant="contained"
           fullWidth
           size="large"
-          onClick={() => navigate("/delivery-details")}
+          onClick={handleProceedToCheckout}
           endIcon={
             <Box
               component="span"

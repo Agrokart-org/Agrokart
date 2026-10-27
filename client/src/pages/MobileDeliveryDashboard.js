@@ -113,6 +113,48 @@ import {
 import { DEMO_MODE, getDeviceGPS } from "../config/demoConfig";
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
+import DemoModeBanner from "../components/DemoModeBanner";
+
+const demoDeliveryAssignments = [
+  {
+    _id: "demo-asg-1",
+    deliveryFee: 85,
+    distance: 4.2,
+    deliveryLocation: {
+      address: { street: "Green Fields Farm, Sector 4, Pune" },
+      coordinates: [73.8567, 18.5204],
+    },
+    pickupLocation: {
+      address: { street: "Kisan Agro Kendra, Market Yard Gate 2, Pune" },
+      coordinates: [73.8500, 18.5150],
+    },
+    order: {
+      orderId: "ORD-2024-889",
+      totalAmount: 2920,
+      customer: { name: "Rahul Kumar", phone: "+91 98765 00001" },
+    },
+    status: "assigned",
+  },
+  {
+    _id: "demo-asg-2",
+    deliveryFee: 120,
+    distance: 6.5,
+    deliveryLocation: {
+      address: { street: "Shree Ganesh Nursery, Wagholi, Pune" },
+      coordinates: [73.8750, 18.5400],
+    },
+    pickupLocation: {
+      address: { street: "Jai Hind Seeds & Fertilizers, Hadapsar, Pune" },
+      coordinates: [73.8600, 18.5250],
+    },
+    order: {
+      orderId: "ORD-2024-890",
+      totalAmount: 1450,
+      customer: { name: "Sunita Patil", phone: "+91 98765 00002" },
+    },
+    status: "assigned",
+  },
+];
 
 const MotionCard = motion(Card);
 const MotionBox = motion(Box);
@@ -153,7 +195,17 @@ const MobileDeliveryDashboard = () => {
   const theme = useTheme();
   const { mode, toggleTheme } = useThemeContext(); // Get theme mode and toggle function
   const navigate = useNavigate();
-  const { user, logout, token } = useAuth();
+  const { user, logout, token, isGuest, exitGuestMode } = useAuth();
+
+  const handleDeliveryLogout = () => {
+    if (isGuest) {
+      exitGuestMode();
+      navigate("/role-selection");
+    } else {
+      logout();
+      navigate("/");
+    }
+  };
   const socket = useSocket();
   const [value, setValue] = useState(0);
   const [isOnline, setIsOnline] = useState(false);
@@ -215,6 +267,19 @@ const MobileDeliveryDashboard = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
+        if (isGuest) {
+          setEarnings({
+            daily: 680,
+            monthly: 14250,
+            todayDeliveries: 8,
+            monthlyDeliveries: 142,
+          });
+          setDashboardData({
+            stats: { todayDeliveries: 8, deliveriesThisMonth: 142 },
+            earningsSummary: { totalNet: 680 },
+          });
+          return;
+        }
         if (token && isOnline) {
           const data = await getDeliveryDashboard(token);
           setDashboardData(data);
@@ -254,6 +319,14 @@ const MobileDeliveryDashboard = () => {
   useEffect(() => {
     let isMounted = true;
     const fetchAssignments = async () => {
+      if (isGuest && isMounted) {
+        if (isOnline) {
+          setAvailableAssignments(demoDeliveryAssignments);
+        } else {
+          setAvailableAssignments([]);
+        }
+        return;
+      }
       if (isOnline && token && isMounted) {
         try {
           console.log("🔄 Fetching assignments from API...");
@@ -668,14 +741,14 @@ const MobileDeliveryDashboard = () => {
           }}
         />
         <ListItemButton
-          onClick={logout}
+          onClick={handleDeliveryLogout}
           sx={{ mx: 2, borderRadius: 2, color: "#D32F2F" }}
         >
           <ListItemIcon sx={{ color: "#D32F2F" }}>
             <ExitToApp />
           </ListItemIcon>
           <ListItemText
-            primary="Logout"
+            primary={isGuest ? "Exit Demo" : "Logout"}
             primaryTypographyProps={{ fontWeight: 600 }}
           />
         </ListItemButton>
@@ -1246,6 +1319,18 @@ const MobileDeliveryDashboard = () => {
                     fullWidth
                     sx={{ mt: 2, borderRadius: 2, background: PURPLE_GRADIENT }}
                     onClick={async () => {
+                      if (isGuest) {
+                        setCurrentAssignment({
+                          ...assignment,
+                          status: "in_transit",
+                          currentStatus: "in_transit",
+                        });
+                        setAvailableAssignments((prev) =>
+                          prev.filter((a) => a._id !== assignment._id),
+                        );
+                        handleSnackbar("Assignment accepted (Demo Mode)");
+                        return;
+                      }
                       try {
                         const response = await acceptAssignment(
                           assignment._id,
@@ -2121,14 +2206,14 @@ const MobileDeliveryDashboard = () => {
           fullWidth
           variant="outlined"
           color="error"
-          onClick={logout}
+          onClick={handleDeliveryLogout}
           startIcon={<ExitToApp />}
           sx={{ 
             borderRadius: 1.5, py: 1.5, fontWeight: 800, mb: 4,
             borderWidth: 2, "&:hover": { borderWidth: 2, bgcolor: "#FEF2F2" }
           }}
         >
-          LOG OUT SECURELY
+          {isGuest ? "EXIT DEMO MODE" : "LOG OUT SECURELY"}
         </Button>
       </Box>
     </Box>
@@ -2381,6 +2466,7 @@ const MobileDeliveryDashboard = () => {
 
       {/* Main Content */}
       <Box component="main" sx={{ flexGrow: 1, width: "100%", mb: 7 }}>
+        <DemoModeBanner />
         {value === 0 && renderDashboard()}
         {value === 1 && renderHistory()}
         {value === 2 && renderWallet()}

@@ -32,12 +32,36 @@ import { cancelOrder } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 
+const demoMobileOrders = [
+  {
+    id: "ORD-2024-889",
+    date: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+    status: "in_transit",
+    total: 2920,
+    items: [
+      { name: "NPK Complex 19-19-19 (50kg)", quantity: 2, price: 1250 },
+      { name: "Bayer Confidor (250ml)", quantity: 1, price: 420 },
+    ],
+    expectedDelivery: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: "ORD-2024-850",
+    date: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+    status: "delivered",
+    total: 801,
+    items: [
+      { name: "Neem Coated Urea (45kg)", quantity: 3, price: 267 },
+    ],
+    expectedDelivery: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+  },
+];
+
 const MotionCard = motion(Card);
 
 const MobileOrdersPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, isGuest } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [orders, setOrders] = useState([]);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -54,6 +78,11 @@ const MobileOrdersPage = () => {
 
   useEffect(() => {
     const fetchOrders = async () => {
+      if (isGuest) {
+        setOrders(demoMobileOrders);
+        setLoading(false);
+        return;
+      }
       try {
         setCancelLoading(true);
         const data = await import("../services/api").then((module) =>

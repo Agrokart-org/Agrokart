@@ -39,6 +39,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationProvider";
 import CustomerSidebar from "./CustomerSidebar";
 import Footer from "./Footer";
+import DemoModeBanner from "../DemoModeBanner";
 import { BottomNavigation, BottomNavigationAction, Paper } from "@mui/material";
 
 const CustomerLayout = ({ children }) => {
@@ -351,6 +352,7 @@ const CustomerLayout = ({ children }) => {
           boxSizing: "border-box",
         }}
       >
+        <DemoModeBanner />
         <Box sx={{ flex: 1, width: "100%", boxSizing: "border-box" }}>{children}</Box>
         {!isMobile && <Footer />}
       </Box>

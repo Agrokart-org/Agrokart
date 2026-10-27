@@ -44,7 +44,13 @@ const VendorLogin = () => {
     setIsAuthenticated,
     setShowRoleSelection,
     googleLogin,
+    continueAsGuest,
   } = useAuth();
+
+  const handleContinueAsGuest = () => {
+    continueAsGuest("vendor");
+    navigate("/vendor/dashboard");
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -390,6 +396,27 @@ const VendorLogin = () => {
               ) : (
                 "Login to Dashboard"
               )}
+            </Button>
+
+            <Button
+              type="button"
+              fullWidth
+              variant="outlined"
+              color="secondary"
+              onClick={handleContinueAsGuest}
+              sx={{
+                mb: 2,
+                py: 1.1,
+                fontWeight: 600,
+                borderRadius: 2,
+                textTransform: "none",
+                borderWidth: "1.5px",
+                "&:hover": {
+                  borderWidth: "1.5px",
+                },
+              }}
+            >
+              Continue as Guest (Demo)
             </Button>
 
             <Divider sx={{ my: 3 }}>

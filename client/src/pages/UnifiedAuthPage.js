@@ -37,7 +37,7 @@ const UnifiedAuthPage = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, register, setRole } = useAuth();
+  const { login, register, setRole, continueAsGuest } = useAuth();
 
   useEffect(() => {
     // Test Firebase auth status on component mount
@@ -144,6 +144,23 @@ const UnifiedAuthPage = () => {
       password: "",
       confirmPassword: "",
     });
+  };
+
+  const handleContinueAsGuest = () => {
+    const roleMap = {
+      customer: "customer",
+      vendor: "vendor",
+      delivery: "delivery_partner",
+    };
+    const targetRole = roleMap[selectedRole] || "customer";
+    continueAsGuest(targetRole);
+    if (targetRole === "vendor") {
+      navigate("/vendor/dashboard");
+    } else if (targetRole === "delivery_partner") {
+      navigate("/delivery/dashboard");
+    } else {
+      navigate("/customer/dashboard");
+    }
   };
 
   // Direct Firebase test function - bypasses the regular flow
@@ -683,6 +700,29 @@ const UnifiedAuthPage = () => {
                           ? "Sign In"
                           : "Create Account"}
                     </Button>
+
+                    {authMode === "login" && (
+                      <Button
+                        type="button"
+                        fullWidth
+                        variant="outlined"
+                        color="secondary"
+                        onClick={handleContinueAsGuest}
+                        sx={{
+                          mt: 1.5,
+                          py: 1.2,
+                          fontWeight: 600,
+                          borderRadius: 2,
+                          textTransform: "none",
+                          borderWidth: "1.5px",
+                          "&:hover": {
+                            borderWidth: "1.5px",
+                          },
+                        }}
+                      >
+                        Continue as Guest (Demo)
+                      </Button>
+                    )}
 
                     {authMode === "register" &&
                       (selectedRole === "vendor" ||

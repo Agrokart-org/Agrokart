@@ -34,6 +34,7 @@ import {
   RemoveShoppingCart as EmptyCartIcon,
 } from "@mui/icons-material";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import { getProductImageUrl } from "../services/api";
 import { getProductImage } from "../data/productImages";
 import { motion } from "framer-motion";
@@ -41,6 +42,7 @@ import { motion } from "framer-motion";
 const CartPage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { isAuthenticated, isGuest } = useAuth();
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -74,6 +76,10 @@ const CartPage = () => {
   const total = subtotal + deliveryFee + platformFee;
 
   const handleCheckout = () => {
+    if (!isAuthenticated) {
+      navigate("/login?redirect=/delivery-details");
+      return;
+    }
     navigate("/delivery-details");
   };
 
@@ -505,6 +511,15 @@ const CartPage = () => {
                     </Typography>
                   </Box>
                 </Stack>
+
+                {isGuest && (
+                  <Alert
+                    severity="warning"
+                    sx={{ mb: 2, borderRadius: 2, fontSize: "0.85rem" }}
+                  >
+                    <strong>Demo Mode:</strong> Sign in with your customer account at checkout to complete real purchases. Your cart items will be saved!
+                  </Alert>
+                )}
 
                 <Button
                   variant="contained"

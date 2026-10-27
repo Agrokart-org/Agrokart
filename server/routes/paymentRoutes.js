@@ -3,6 +3,7 @@ const router = express.Router();
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const dotenv = require("dotenv");
+const auth = require("../middleware/auth");
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ const getRazorpayInstance = () => {
 };
 
 // Create an order
-router.post("/create-order", async (req, res) => {
+router.post("/create-order", auth, async (req, res) => {
   try {
     const { amount, currency = "INR" } = req.body;
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
@@ -49,7 +50,7 @@ router.post("/create-order", async (req, res) => {
 });
 
 // Verify payment signature
-router.post("/verify-payment", (req, res) => {
+router.post("/verify-payment", auth, (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {

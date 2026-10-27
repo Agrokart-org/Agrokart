@@ -64,7 +64,6 @@ const getDashboardForRole = (role) => {
     case "vendor":
       return "/vendor/dashboard";
     case "delivery_partner":
-    case "delivery_partner":
       return "/delivery/dashboard";
     case "admin":
       return "/admin/dashboard";
@@ -75,7 +74,7 @@ const getDashboardForRole = (role) => {
 
 // Component to handle /home redirect to customer dashboard (with sidebar)
 const HomeRedirect = () => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, loading, isGuest, guestRole } = useAuth();
 
   if (loading) return <div>Loading...</div>;
 
@@ -83,29 +82,50 @@ const HomeRedirect = () => {
     return <Navigate to="/customer/dashboard" replace />;
   }
 
+  if (isGuest && guestRole === "customer") {
+    return <Navigate to="/customer/dashboard" replace />;
+  }
+
   // For unauthenticated users or other roles, redirect to login
   return <Navigate to="/login" replace />;
 };
 
-// Protected Route restricted to Customers
-const CustomerRoute = ({ children, useSidebar = false }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+// Protected Route restricted to Customers (or Customer Guest Demo)
+const CustomerRoute = ({ children, useSidebar = false, requireRealAuth = false }) => {
+  const { isAuthenticated, user, loading, isGuest, guestRole } = useAuth();
+  const currentPath = window.location.pathname;
 
   console.log("🛡️ CustomerRoute Check:", {
     isAuthenticated,
+    isGuest,
+    guestRole,
     loading,
     userRole: user?.role,
-    path: window.location.pathname,
+    path: currentPath,
   });
 
   if (loading) return <div>Loading...</div>;
 
-  if (!isAuthenticated) {
-    console.warn("⛔ CustomerRoute: Not authenticated, redirecting to /login");
-    return <Navigate to="/login" />;
+  // Checkout and payment mandatory exception:
+  // Guest demo users must NEVER proceed into actual delivery-details or payment without real authentication
+  const isCheckoutRoute =
+    currentPath === "/delivery-details" ||
+    currentPath === "/payment" ||
+    requireRealAuth;
+
+  if (isCheckoutRoute && !isAuthenticated) {
+    console.warn("🔒 Checkout requires real customer authentication, redirecting to /login");
+    return <Navigate to={`/login?redirect=${encodeURIComponent(currentPath)}`} replace />;
   }
 
-  if (user && user.role !== "customer") {
+  const isCustomerGuest = isGuest && (guestRole === "customer" || user?.role === "customer");
+
+  if (!isAuthenticated && !isCustomerGuest) {
+    console.warn("⛔ CustomerRoute: Not authenticated and not guest customer, redirecting to /login");
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user && user.role !== "customer" && !isCustomerGuest) {
     console.warn(
       `⛔ CustomerRoute: Role mismatch (${user.role}), redirecting...`,
     );
@@ -123,12 +143,16 @@ const CustomerRoute = ({ children, useSidebar = false }) => {
 // Public Route that redirects Vendors/Delivery Partners to their specific dashboards
 // Used for Home, Products, Cart etc which should be accessible to public + customers, but NOT vendors/delivery (who have their own portals)
 const CustomerOrPublicRoute = ({ children, useSidebar = false }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, loading, isGuest, guestRole } = useAuth();
 
   if (loading) return <div>Loading...</div>;
 
   if (isAuthenticated && user && user.role !== "customer") {
     return <Navigate to={getDashboardForRole(user.role)} replace />;
+  }
+
+  if (isGuest && guestRole && guestRole !== "customer") {
+    return <Navigate to={getDashboardForRole(guestRole)} replace />;
   }
 
   if (useSidebar) {
@@ -374,7 +398,7 @@ const Routes = () => {
       <Route
         path="/delivery-details"
         element={
-          <CustomerRoute useSidebar={true}>
+          <CustomerRoute useSidebar={true} requireRealAuth={true}>
             <DeliveryDetailsPage />
           </CustomerRoute>
         }
@@ -388,7 +412,7 @@ const Routes = () => {
       <Route
         path="/payment"
         element={
-          <CustomerRoute useSidebar={true}>
+          <CustomerRoute useSidebar={true} requireRealAuth={true}>
             <PaymentPage />
           </CustomerRoute>
         }
